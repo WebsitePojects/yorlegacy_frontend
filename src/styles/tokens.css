@@ -1,0 +1,19 @@
+:root {
+  font-family: Inter, sans-serif;
+  color: #f0e6d3;
+  background-color: #131313;
+  --yor-bg: #131313;
+  --yor-surface: #201f1f;
+  --yor-surface-high: #2a2a2a;
+  --yor-glass: rgba(30, 22, 16, 0.85);
+  --yor-border: #7a4020;
+  --yor-copper: #c8703a;
+  --yor-copper-soft: #e8a87c;
+  --yor-amber: #f5c842;
+  --yor-text: #f0e6d3;
+  --yor-muted: #a09080;
+  --yor-shadow: 0 30px 80px rgba(200, 112, 58, 0.2);
+  --yor-radius-lg: 24px;
+  --yor-radius-md: 16px;
+  --yor-max-width: 1280px;
+}

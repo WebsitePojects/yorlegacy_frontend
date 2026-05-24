@@ -1,0 +1,81 @@
+import { BonusDetailPageView } from '../components/pages/BonusDetailPageView';
+import { CollectionPageView } from '../components/pages/CollectionPageView';
+import { EarnOverviewPageView } from '../components/pages/EarnOverviewPageView';
+import { FounderShowcasePage } from '../components/pages/FounderShowcasePage';
+import { HomeExperiencePage } from '../components/pages/HomeExperiencePage';
+import { PackagesPageView } from '../components/pages/PackagesPageView';
+import { RegistrationPageView } from '../components/pages/RegistrationPageView';
+import { SpotlightPage } from '../components/pages/SpotlightPage';
+import { PageTemplate } from '../components/layout/PageTemplate';
+import { usePageContent } from '../hooks/usePageContent';
+
+type ContentPageProps = {
+  slug: string;
+};
+
+export function ContentPage({ slug }: ContentPageProps) {
+  const { data, isLoading, error } = usePageContent(slug);
+
+  if (isLoading) {
+    return (
+      <section className="page-template">
+        <div className="page-container">
+          <div className="glass-panel content-card">
+            <span className="eyebrow">Loading</span>
+            <h1 className="display-heading">Preparing the experience</h1>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <section className="page-template">
+        <div className="page-container">
+          <div className="glass-panel content-card">
+            <span className="eyebrow">Unavailable</span>
+            <h1 className="display-heading">Page content not available</h1>
+            <p className="hero-summary">
+              {error ?? 'The requested content could not be loaded.'}
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (slug === 'home') {
+    return <HomeExperiencePage content={data} />;
+  }
+
+  if (slug === 'founder') {
+    return <FounderShowcasePage content={data} />;
+  }
+
+  if (slug === 'perfume-collection') {
+    return <CollectionPageView content={data} />;
+  }
+
+  if (slug === 'packages') {
+    return <PackagesPageView content={data} />;
+  }
+
+  if (slug === 'register') {
+    return <RegistrationPageView content={data} />;
+  }
+
+  if (slug === 'earn') {
+    return <EarnOverviewPageView content={data} />;
+  }
+
+  if (slug.startsWith('earn/')) {
+    return <BonusDetailPageView content={data} />;
+  }
+
+  if (slug === 'mission' || slug === 'vision' || slug === 'thank-you') {
+    return <SpotlightPage content={data} />;
+  }
+
+  return <PageTemplate content={data} />;
+}
