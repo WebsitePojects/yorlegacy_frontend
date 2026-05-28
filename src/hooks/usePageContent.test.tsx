@@ -10,7 +10,7 @@ describe('usePageContent', () => {
         ok: true,
         json: async () => ({
           slug: 'home',
-          title: 'Yor Legacy',
+          title: 'Yor International',
           eyebrow: 'Prestige in Motion',
           summary: 'Premium brand experience',
           sections: []

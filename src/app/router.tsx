@@ -1,7 +1,12 @@
 import { createBrowserRouter } from 'react-router-dom';
 import App from './App';
+import { ProtectedRoute } from '../components/layout/ProtectedRoute';
+import { AdminDashboardPage } from '../pages/AdminDashboardPage';
 import { HomePage } from '../pages/HomePage';
 import { ContentPage } from '../pages/ContentPage';
+import { LoginPage } from '../pages/LoginPage';
+import { MemberDashboardPage } from '../pages/MemberDashboardPage';
+import { UnauthorizedPage } from '../pages/UnauthorizedPage';
 
 export const routes = [
   {
@@ -57,8 +62,36 @@ export const routes = [
         element: <ContentPage slug="earn/salesmatch" />
       },
       {
+        path: 'earn/binary-cycle',
+        element: <ContentPage slug="earn/binary-cycle" />
+      },
+      {
         path: 'earn/leadership',
-        element: <ContentPage slug="earn/leadership" />
+        element: <ContentPage slug="earn/binary-cycle" />
+      },
+      {
+        path: 'login',
+        element: <LoginPage />
+      },
+      {
+        path: 'member',
+        element: (
+          <ProtectedRoute allowedRoles={['member', 'admin']}>
+            <MemberDashboardPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'admin',
+        element: (
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminDashboardPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'unauthorized',
+        element: <UnauthorizedPage />
       },
       {
         path: 'earn/get-five',
