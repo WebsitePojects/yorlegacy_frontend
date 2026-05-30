@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://cz9c2qnq-8787.asse.devtunnels.ms/api/$1"
+      "destination": "https://api.yorinternational.net/api/$1"
     },
     {
       "source": "/(.*)",
