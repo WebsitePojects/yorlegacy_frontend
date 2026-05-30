@@ -15,35 +15,37 @@ const reveal = {
 
 export function PageTemplate({ content }: PageTemplateProps) {
   return (
-    <section className="page-template">
+    <section className="page-template public-story-page">
       <AmbientEmbers />
       <OrnateCorners />
       <div className="page-gradient" />
       <div className="page-container">
         <motion.div
           animate="visible"
-          className="hero-copy"
+          className="public-story-hero"
           initial="hidden"
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           variants={reveal}
         >
-          <span className="eyebrow">{content.eyebrow}</span>
-          <h1 className="display-heading">{content.title}</h1>
-          {content.strapline ? (
-            <p className="display-strapline">{content.strapline}</p>
-          ) : null}
-          <p className="hero-summary">{content.summary}</p>
-          {content.ctaLabel && content.ctaHref ? (
-            <NavLink className="site-cta hero-cta" to={content.ctaHref}>
-              {content.ctaLabel}
-            </NavLink>
-          ) : null}
+          <div className="public-story-heading">
+            <span className="eyebrow">{content.eyebrow}</span>
+            <h1 className="display-heading">{content.title}</h1>
+            {content.strapline ? <p className="display-strapline">{content.strapline}</p> : null}
+          </div>
+          <div className="public-story-summary">
+            <p className="hero-summary">{content.summary}</p>
+            {content.ctaLabel && content.ctaHref ? (
+              <NavLink className="site-cta hero-cta" to={content.ctaHref}>
+                {content.ctaLabel}
+              </NavLink>
+            ) : null}
+          </div>
         </motion.div>
 
         {content.stats?.length ? (
           <motion.section
             animate="visible"
-            className="stats-grid"
+            className="stats-grid public-stats-grid"
             initial="hidden"
             transition={{ delay: 0.12, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             variants={reveal}
@@ -60,7 +62,7 @@ export function PageTemplate({ content }: PageTemplateProps) {
         {content.highlights?.length ? (
           <motion.section
             animate="visible"
-            className="highlights-grid"
+            className="highlights-grid public-highlights-grid"
             initial="hidden"
             transition={{ delay: 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             variants={reveal}
@@ -88,6 +90,7 @@ export function PageTemplate({ content }: PageTemplateProps) {
               }}
               variants={reveal}
             >
+              <span className="eyebrow">Section {index + 1}</span>
               <h2>{section.heading}</h2>
               <p>{section.body}</p>
             </motion.article>

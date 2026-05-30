@@ -1,0 +1,307 @@
+import { useEffect, useState, type PropsWithChildren } from 'react';
+import {
+  ChevronRight,
+  LayoutDashboard,
+  LogOut,
+  UserCircle2
+} from 'lucide-react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/auth/AuthContext';
+import { useFeedback } from '@/components/feedback/FeedbackProvider';
+import { ModeToggle } from '@/components/mode-toggle';
+import { MobileOfficeNav, OfficeSidebar } from '@/components/ops/office-ui';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { YorBrandMark } from '@/components/branding/YorBrandMark';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
+import type { AppRole, OperationalModule } from '@/types/auth';
+
+export type OfficeBasePath = '/member' | '/admin' | '/cashier' | '/bod';
+
+type ProtectedOfficeFrameProps = PropsWithChildren<{
+  currentModuleId: string;
+  moduleLabel: string;
+  moduleDescription: string;
+  sidebarHeading: string;
+  sidebarSubheading: string;
+  modules: OperationalModule[];
+  headerBadge: string;
+  summaryCard?: {
+    label: string;
+    value: string | number;
+    detail?: string;
+  };
+  footerLinks?: Array<{ label: string; href: string; external?: boolean }>;
+}>;
+
+type WorkspaceLink = {
+  href: OfficeBasePath | '/';
+  label: string;
+};
+
+export function resolveOfficeBasePath(pathname: string): OfficeBasePath {
+  if (pathname.startsWith('/cashier')) {
+    return '/cashier';
+  }
+
+  if (pathname.startsWith('/bod')) {
+    return '/bod';
+  }
+
+  if (pathname.startsWith('/admin')) {
+    return '/admin';
+  }
+
+  return '/member';
+}
+
+function officeLabelForBasePath(basePath: OfficeBasePath): string {
+  switch (basePath) {
+    case '/cashier':
+      return 'Cashier Office';
+    case '/bod':
+      return 'Board Office';
+    case '/admin':
+      return 'Admin Office';
+    default:
+      return 'Member Office';
+  }
+}
+
+function workspaceLinksForRole(role: AppRole | undefined): WorkspaceLink[] {
+  if (role === 'member') {
+    return [
+      { href: '/member', label: 'Member' },
+      { href: '/', label: 'Public Site' }
+    ];
+  }
+
+  if (role === 'cashier') {
+    return [
+      { href: '/cashier', label: 'Cashier' },
+      { href: '/member', label: 'Member View' },
+      { href: '/', label: 'Public Site' }
+    ];
+  }
+
+  if (role === 'bod') {
+    return [
+      { href: '/bod', label: 'Board' },
+      { href: '/member', label: 'Member View' },
+      { href: '/', label: 'Public Site' }
+    ];
+  }
+
+  return [
+    { href: '/admin', label: 'Admin' },
+    { href: '/cashier', label: 'Cashier' },
+    { href: '/bod', label: 'Board' },
+    { href: '/member', label: 'Member View' },
+    { href: '/', label: 'Public Site' }
+  ];
+}
+
+export function ProtectedOfficeFrame({
+  currentModuleId,
+  moduleLabel,
+  moduleDescription,
+  sidebarHeading,
+  sidebarSubheading,
+  modules,
+  headerBadge,
+  summaryCard,
+  footerLinks = [],
+  children
+}: ProtectedOfficeFrameProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { logout, user } = useAuth();
+  const { confirmAction, notify } = useFeedback();
+  const basePath = resolveOfficeBasePath(location.pathname);
+  const officeLabel = officeLabelForBasePath(basePath);
+  const workspaceLinks = workspaceLinksForRole(user?.role);
+  const profilePath = '/member/account-details';
+  const shellStorageKey = `yor-office-shell:${basePath}:${user?.role ?? 'guest'}`;
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    const stored = window.localStorage.getItem(shellStorageKey);
+    return stored ? stored === 'open' : false;
+  });
+  const [scrollElevated, setScrollElevated] = useState(false);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(shellStorageKey);
+    setSidebarExpanded(stored ? stored === 'open' : false);
+  }, [shellStorageKey]);
+
+  useEffect(() => {
+    window.localStorage.setItem(shellStorageKey, sidebarExpanded ? 'open' : 'closed');
+  }, [shellStorageKey, sidebarExpanded]);
+
+  async function handleSignOut() {
+    const confirmed = await confirmAction({
+      title: 'Log out of Yor Office?',
+      description: 'Your protected office session will close and you will return to the sign-in screen.',
+      confirmLabel: 'Log Out',
+      tone: 'warning'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    await logout();
+    notify({
+      title: 'Signed out',
+      description: 'Your protected office session has ended.',
+      tone: 'success'
+    });
+    navigate('/login', { replace: true });
+  }
+
+  return (
+    <section className="ops-shell bg-[var(--background)] text-[var(--foreground)]">
+      <header className={cn('ops-shell-header', scrollElevated ? 'is-scrolled' : '')}>
+        <div className="flex min-w-0 items-center gap-4">
+          <Link to={basePath} className="protected-brand-link">
+            <YorBrandMark className="protected-brand-mark" />
+          </Link>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate text-sm font-semibold text-[var(--foreground)]">Yor International</p>
+              <Badge variant="outline">{officeLabel}</Badge>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-[var(--muted-foreground)]">
+              <span>{sidebarHeading}</span>
+              <ChevronRight className="size-4" />
+              <span>{moduleLabel}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <nav className="hidden flex-wrap items-center gap-2 lg:flex">
+            {workspaceLinks.map((link) => (
+              <Button
+                key={link.href}
+                asChild
+                variant={location.pathname.startsWith(link.href) && link.href !== '/' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-9 rounded-lg"
+              >
+                <NavLink to={link.href}>{link.label}</NavLink>
+              </Button>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <ModeToggle />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button aria-label="Open user menu" variant="outline" className="h-10 gap-3 rounded-full px-3">
+                  <span className="flex size-8 items-center justify-center rounded-full bg-[var(--background)] text-[var(--yor-copper-soft)]">
+                    <UserCircle2 className="size-5" />
+                  </span>
+                  <span className="hidden text-left sm:block">
+                    <span className="block text-sm font-medium leading-5">{user?.name ?? 'Protected User'}</span>
+                    <span className="block text-xs text-[var(--muted-foreground)]">{user?.email ?? 'Signed in'}</span>
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="z-[120] w-64">
+                <DropdownMenuLabel className="space-y-1">
+                  <p className="text-sm font-semibold">{user?.name ?? 'Protected User'}</p>
+                  <p className="text-xs font-normal text-[var(--muted-foreground)]">{user?.email ?? 'No email available'}</p>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5">
+                  <Badge variant="outline">{user?.role ?? 'member'}</Badge>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to={profilePath}>
+                    <UserCircle2 className="size-4" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to={basePath}>
+                    <LayoutDashboard className="size-4" />
+                    Office Home
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => void handleSignOut()}>
+                  <LogOut className="size-4" />
+                  Log Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </header>
+
+      <div className="ops-shell-body">
+        <OfficeSidebar
+          basePath={basePath}
+          currentModuleId={currentModuleId}
+          heading={sidebarHeading}
+          subheading={sidebarSubheading}
+          modules={modules}
+          footerLinks={footerLinks}
+          expanded={sidebarExpanded}
+          onSignOut={() => void handleSignOut()}
+          onExpandedChange={setSidebarExpanded}
+        />
+
+        <main className="ops-content-stage" onScroll={(event) => {
+          const target = event.currentTarget;
+          setScrollElevated(target.scrollTop > 8);
+        }}>
+          <Card className="overflow-hidden border-[var(--border)] bg-[var(--card)]">
+            <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{headerBadge}</Badge>
+                </div>
+                <div className="space-y-1">
+                  <CardTitle className="text-2xl">{moduleLabel}</CardTitle>
+                  <CardDescription className="max-w-3xl leading-6">{moduleDescription}</CardDescription>
+                </div>
+              </div>
+              {summaryCard ? (
+                <div className="min-w-56 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+                    {summaryCard.label}
+                  </p>
+                  <p className="mt-2 text-xl font-semibold text-[var(--foreground)]">{summaryCard.value}</p>
+                  {summaryCard.detail ? (
+                    <p className="mt-1 text-sm text-[var(--muted-foreground)]">{summaryCard.detail}</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </CardHeader>
+          </Card>
+
+          <div className="lg:hidden">
+            <MobileOfficeNav basePath={basePath} currentModuleId={currentModuleId} modules={modules} />
+          </div>
+
+          {children}
+        </main>
+      </div>
+    </section>
+  );
+}

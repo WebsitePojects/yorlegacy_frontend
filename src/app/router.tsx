@@ -34,6 +34,10 @@ export const routes = [
         element: <ContentPage slug="perfume-collection" />
       },
       {
+        path: 'products',
+        element: <ContentPage slug="perfume-collection" />
+      },
+      {
         path: 'packages',
         element: <ContentPage slug="packages" />
       },
@@ -76,7 +80,15 @@ export const routes = [
       {
         path: 'member',
         element: (
-          <ProtectedRoute allowedRoles={['member', 'admin']}>
+          <ProtectedRoute allowedRoles={['member', 'admin', 'cashier', 'bod', 'superadmin']}>
+            <MemberDashboardPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'member/:moduleId',
+        element: (
+          <ProtectedRoute allowedRoles={['member', 'admin', 'cashier', 'bod', 'superadmin']}>
             <MemberDashboardPage />
           </ProtectedRoute>
         )
@@ -84,7 +96,47 @@ export const routes = [
       {
         path: 'admin',
         element: (
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={['admin', 'cashier', 'bod', 'superadmin']}>
+            <AdminDashboardPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'admin/:moduleId',
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'cashier', 'bod', 'superadmin']}>
+            <AdminDashboardPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'cashier',
+        element: (
+          <ProtectedRoute allowedRoles={['cashier', 'admin', 'superadmin']}>
+            <AdminDashboardPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'cashier/:moduleId',
+        element: (
+          <ProtectedRoute allowedRoles={['cashier', 'admin', 'superadmin']}>
+            <AdminDashboardPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'bod',
+        element: (
+          <ProtectedRoute allowedRoles={['bod', 'admin', 'superadmin']}>
+            <AdminDashboardPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'bod/:moduleId',
+        element: (
+          <ProtectedRoute allowedRoles={['bod', 'admin', 'superadmin']}>
             <AdminDashboardPage />
           </ProtectedRoute>
         )
@@ -103,6 +155,10 @@ export const routes = [
       },
       {
         path: 'earn/unilevel-rank',
+        element: <ContentPage slug="earn/unilevel-rank" />
+      },
+      {
+        path: 'earn/unilevel',
         element: <ContentPage slug="earn/unilevel-rank" />
       },
       {
