@@ -1,10 +1,10 @@
 # Yor International Deployment Guide
 
-This guide deploys the Yor frontend to Vercel, connects the public site to `yorinternational.net`, and keeps the frontend talking to the temporary backend tunnel:
+This guide deploys the Yor frontend to Vercel, connects the public site to `yorinternational.net`, and keeps the browser on same-origin `/api` requests:
 
 - Public domain: `https://yorinternational.net`
 - Optional `www`: `https://www.yorinternational.net`
-- Temporary backend API: `https://cz9c2qnq-8787.asse.devtunnels.ms/`
+- Temporary backend rewrite target: `https://cz9c2qnq-8787.asse.devtunnels.ms/`
 
 ## 1. What is already configured in code
 
@@ -15,6 +15,11 @@ That means:
 - local Vite development proxies `/api` to `https://cz9c2qnq-8787.asse.devtunnels.ms`
 - Vercel rewrites `/api/*` to `https://cz9c2qnq-8787.asse.devtunnels.ms/api/*`
 - browser requests stay on the frontend origin, which is safer for cookie-based auth than hardcoding a cross-origin API URL into the browser
+
+Important:
+
+- do not set `VITE_API_BASE_URL` in Vercel production while using rewrites
+- if you set `VITE_API_BASE_URL`, the browser will call that host directly and can hit CORS or tunnel-auth issues
 
 Relevant files:
 
@@ -136,11 +141,11 @@ Then restart the backend.
 
 ## 9. Run the temporary backend tunnel
 
-Your frontend currently depends on:
+Your current rewrite target is:
 
 - `https://cz9c2qnq-8787.asse.devtunnels.ms/`
 
-That means your local backend on port `8787` must stay reachable through that dev tunnel.
+That means your local backend on port `8787` must stay reachable through that dev tunnel until `api.yorinternational.net` is live.
 
 Each time you restart or recreate the tunnel:
 
@@ -150,7 +155,28 @@ Each time you restart or recreate the tunnel:
    - [vercel.json](C:\Users\Win10\Desktop\YorLegacyMLM\yor_frontend\vercel.json)
 3. redeploy the frontend in Vercel
 
-## 10. Verify production after the domain is live
+## 10. Switch rewrites to the real API domain after VPS deploy
+
+Once the backend is live on `https://api.yorinternational.net`, update [vercel.json](C:\Users\Win10\Desktop\YorLegacyMLM\yor_frontend\vercel.json):
+
+```json
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://api.yorinternational.net/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+```
+
+Redeploy Vercel after that change.
+
+## 11. Verify production after the domain is live
 
 Check these URLs:
 
@@ -167,15 +193,16 @@ Verify:
 - register preview and register submit hit the backend
 - sidebar logout works
 
-## 11. If login fails in production
+## 12. If login fails in production
 
 Check these first:
 
-1. the backend tunnel is still alive
-2. the frontend was redeployed after any tunnel URL change
-3. backend `FRONTEND_ORIGIN` includes both production domains
-4. Vercel rewrite is present in [vercel.json](C:\Users\Win10\Desktop\YorLegacyMLM\yor_frontend\vercel.json)
-5. browser network requests are going to `/api/...` on the frontend domain, not directly to a different host
+1. `VITE_API_BASE_URL` is not set in Vercel production
+2. browser network requests are going to `/api/...` on the frontend domain, not directly to a different host
+3. the frontend was redeployed after any rewrite target change
+4. backend `FRONTEND_ORIGIN` includes both production domains
+5. the temporary tunnel is public/reachable, or the rewrite target has already been switched to `https://api.yorinternational.net`
+6. if browser requests redirect to `global.rel.tunnels.api.visualstudio.com`, the current dev tunnel is private and Vercel cannot use it until you make it public or move to `https://api.yorinternational.net`
 
 ## Source references
 

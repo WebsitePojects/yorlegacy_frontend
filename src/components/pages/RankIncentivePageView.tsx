@@ -15,6 +15,7 @@ import {
   Wallet
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import gsap from 'gsap';
 import { useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { rankIncentiveBenefits, rankIncentiveRoadmap } from '../../config/pagePresets';
@@ -34,7 +35,11 @@ const benefitIcons = [Activity, Wallet, Building2] as const;
 export function RankIncentivePageView({ content }: { content: PageContent }) {
   const stripRef = useRef<HTMLElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const touchYRef = useRef<number | null>(null);
+  const touchStateRef = useRef<{ y: number | null; delta: number }>({ y: null, delta: 0 });
+  const currentStepRef = useRef(0);
+  const maxStepRef = useRef(0);
+  const animatingRef = useRef(false);
+  const tweenRef = useRef<gsap.core.Tween | null>(null);
 
   useEffect(() => {
     const strip = stripRef.current;
@@ -44,16 +49,23 @@ export function RankIncentivePageView({ content }: { content: PageContent }) {
       return;
     }
 
-    function canTranslate(deltaY: number) {
-      if (!rail) {
-        return false;
-      }
+    const currentRail = rail;
 
-      const maxScroll = rail.scrollWidth - rail.clientWidth;
-      const atStart = rail.scrollLeft <= 0;
-      const atEnd = rail.scrollLeft >= maxScroll - 1;
+    function getSnapState() {
+      const cards = Array.from(currentRail.children) as HTMLElement[];
+      const stride = cards.length > 1 ? cards[1].offsetLeft - cards[0].offsetLeft : currentRail.clientWidth;
+      const safeStride = Math.max(1, stride);
+      const visibleCount = Math.max(1, Math.floor((currentRail.clientWidth + safeStride * 0.25) / safeStride));
+      const maxStep = Math.max(0, cards.length - visibleCount);
+      const maxScroll = Math.max(0, currentRail.scrollWidth - currentRail.clientWidth);
 
-      return (deltaY > 0 && !atEnd) || (deltaY < 0 && !atStart);
+      maxStepRef.current = maxStep;
+
+      return {
+        safeStride,
+        maxStep,
+        maxScroll
+      };
     }
 
     function stageIsLocked() {
@@ -62,13 +74,55 @@ export function RankIncentivePageView({ content }: { content: PageContent }) {
       }
 
       const rect = strip.getBoundingClientRect();
-      const viewportMid = window.innerHeight * 0.52;
+      const lockTop = window.innerWidth <= 820 ? window.innerHeight * 0.84 : window.innerHeight * 0.74;
+      const lockBottom = window.innerHeight * 0.24;
 
-      return rect.top <= viewportMid && rect.bottom >= viewportMid;
+      return maxStepRef.current > 0 && rect.top <= lockTop && rect.bottom >= lockBottom;
     }
 
-    function translateRankRail(deltaY: number, event: WheelEvent | TouchEvent) {
-      if (!rail || Math.abs(deltaY) < 1 || !stageIsLocked() || !canTranslate(deltaY)) {
+    function syncStepFromScroll() {
+      const { safeStride, maxStep } = getSnapState();
+      currentStepRef.current = Math.max(0, Math.min(maxStep, Math.round(currentRail.scrollLeft / safeStride)));
+    }
+
+    function animateToStep(nextStep: number) {
+      const { safeStride, maxScroll } = getSnapState();
+      const clampedStep = Math.max(0, Math.min(maxStepRef.current, nextStep));
+      const target = Math.min(maxScroll, clampedStep * safeStride);
+
+      tweenRef.current?.kill();
+      animatingRef.current = true;
+      currentStepRef.current = clampedStep;
+
+      tweenRef.current = gsap.to(currentRail, {
+        scrollLeft: target,
+        duration: window.innerWidth <= 820 ? 0.42 : 0.55,
+        ease: 'power2.out',
+        overwrite: true,
+        onComplete: () => {
+          animatingRef.current = false;
+          tweenRef.current = null;
+          syncStepFromScroll();
+        }
+      });
+    }
+
+    function stepCards(direction: 1 | -1, event: WheelEvent | TouchEvent) {
+      if (!stageIsLocked()) {
+        return false;
+      }
+
+      if (animatingRef.current) {
+        if (event.cancelable) {
+          event.preventDefault();
+        }
+        return true;
+      }
+
+      syncStepFromScroll();
+      const nextStep = currentStepRef.current + direction;
+
+      if (nextStep < 0 || nextStep > maxStepRef.current) {
         return false;
       }
 
@@ -76,42 +130,82 @@ export function RankIncentivePageView({ content }: { content: PageContent }) {
         event.preventDefault();
       }
 
-      rail.scrollLeft += deltaY;
+      animateToStep(nextStep);
       return true;
     }
 
     function handleWheel(event: WheelEvent) {
-      if (!rail || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX) || Math.abs(event.deltaY) < 22) {
         return;
       }
 
-      translateRankRail(event.deltaY, event);
+      const direction = event.deltaY > 0 ? 1 : -1;
+      const locked = stepCards(direction, event);
+
+      if (!locked && animatingRef.current && event.cancelable) {
+        event.preventDefault();
+      }
     }
 
     function handleTouchStart(event: TouchEvent) {
-      touchYRef.current = event.touches[0]?.clientY ?? null;
+      touchStateRef.current = {
+        y: event.touches[0]?.clientY ?? null,
+        delta: 0
+      };
     }
 
     function handleTouchMove(event: TouchEvent) {
-      if (!rail || touchYRef.current === null) {
+      if (touchStateRef.current.y === null) {
         return;
       }
 
-      const nextY = event.touches[0]?.clientY ?? touchYRef.current;
-      const deltaY = touchYRef.current - nextY;
+      const nextY = event.touches[0]?.clientY ?? touchStateRef.current.y;
+      const deltaY = touchStateRef.current.y - nextY;
 
-      translateRankRail(deltaY, event);
-      touchYRef.current = nextY;
+      touchStateRef.current = {
+        y: nextY,
+        delta: touchStateRef.current.delta + deltaY
+      };
+
+      if (animatingRef.current && stageIsLocked()) {
+        if (event.cancelable) {
+          event.preventDefault();
+        }
+        return;
+      }
+
+      if (Math.abs(touchStateRef.current.delta) < 30) {
+        return;
+      }
+
+      const direction = touchStateRef.current.delta > 0 ? 1 : -1;
+      const locked = stepCards(direction, event);
+
+      if (locked) {
+        touchStateRef.current.delta = 0;
+      }
     }
 
+    function handleTouchEnd() {
+      touchStateRef.current = { y: null, delta: 0 };
+    }
+
+    syncStepFromScroll();
+    window.addEventListener('resize', syncStepFromScroll);
     window.addEventListener('wheel', handleWheel, { passive: false });
     window.addEventListener('touchstart', handleTouchStart, { passive: true });
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', handleTouchEnd, { passive: true });
 
     return () => {
+      tweenRef.current?.kill();
+      window.removeEventListener('resize', syncStepFromScroll);
       window.removeEventListener('wheel', handleWheel);
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
     };
   }, []);
 

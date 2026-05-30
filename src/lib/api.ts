@@ -21,17 +21,29 @@ import type { RegistrationReadiness } from '../types/auth';
 import type { PageContent } from '../types/content';
 import type { RegistrationPreview, RegistrationSubmitResponse } from '../types/registration';
 
-export const DEFAULT_API_BASE_URL = 'https://cz9c2qnq-8787.asse.devtunnels.ms';
+export const DEFAULT_API_BASE_URL = '';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
+const requestedApiBaseUrl = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).trim();
+const isYorPublicHost =
+  typeof window !== 'undefined' &&
+  ['yorinternational.net', 'www.yorinternational.net'].includes(window.location.hostname);
+const API_BASE_URL = (
+  isYorPublicHost && requestedApiBaseUrl.includes('asse.devtunnels.ms')
+    ? ''
+    : requestedApiBaseUrl
+).replace(/\/+$/, '');
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers ?? {});
+
+  // Avoid forcing CORS preflights on simple GET/HEAD requests.
+  if (init?.body != null && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {})
-    },
+    headers,
     ...init
   });
 

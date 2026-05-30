@@ -2,17 +2,19 @@ import { useEffect, useRef, type PropsWithChildren } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const protectedPrefixes = ['/member', '/admin', '/cashier', '/bod'];
+const nativeScrollRoutes = ['/rank-incentives'];
 
 export function SmoothScrollProvider({ children }: PropsWithChildren) {
   const location = useLocation();
   const lenisRef = useRef<{ destroy: () => void; resize: () => void } | null>(null);
   const refreshRef = useRef<(() => void) | null>(null);
   const isProtectedOffice = protectedPrefixes.some((prefix) => location.pathname.startsWith(prefix));
+  const isNativeScrollRoute = nativeScrollRoutes.some((route) => location.pathname.startsWith(route));
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    if (prefersReducedMotion || isProtectedOffice) {
+    if (prefersReducedMotion || isProtectedOffice || isNativeScrollRoute) {
       lenisRef.current?.destroy();
       lenisRef.current = null;
       refreshRef.current = null;
@@ -78,10 +80,14 @@ export function SmoothScrollProvider({ children }: PropsWithChildren) {
       cancelled = true;
       teardown();
     };
-  }, [isProtectedOffice]);
+  }, [isNativeScrollRoute, isProtectedOffice]);
 
   useEffect(() => {
-    if (isProtectedOffice || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (
+      isProtectedOffice ||
+      isNativeScrollRoute ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
       return;
     }
 
@@ -93,7 +99,7 @@ export function SmoothScrollProvider({ children }: PropsWithChildren) {
     return () => {
       window.cancelAnimationFrame(refreshId);
     };
-  }, [isProtectedOffice, location.pathname]);
+  }, [isNativeScrollRoute, isProtectedOffice, location.pathname]);
 
   return children;
 }
