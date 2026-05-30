@@ -469,13 +469,13 @@ export function MemberDashboardPage() {
         { label: 'Products and packages', href: '/packages' }
       ]}
     >
-      <div className="space-y-4">
+      <div className="member-office-flow space-y-4">
           {visibleMetrics.length ? <MetricGrid metrics={visibleMetrics} /> : null}
 
           {moduleId === 'dashboard' ? <QuickLinkGrid links={quickLinks} /> : null}
 
           {moduleId === 'dashboard' && mvpDashboard?.incomeStreams.length ? (
-            <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <section className="member-income-grid grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {mvpDashboard.incomeStreams.map((stream) => {
                 const routeConfig = memberIncomeRouteMap[stream.streamId];
                 const workspaceHref = routeConfig
@@ -498,8 +498,8 @@ export function MemberDashboardPage() {
                     <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">
                       {stream.statusLabel}
                     </p>
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      <Button asChild size="sm">
+                    <div className="member-inline-actions mt-4 flex items-center justify-between gap-3">
+                      <Button asChild size="sm" className="member-inline-primary-action">
                         <Link to={workspaceHref}>Open Workflow</Link>
                       </Button>
                       {routeConfig ? (
@@ -521,7 +521,7 @@ export function MemberDashboardPage() {
           {showModuleTable && activeModule ? <ModuleTableCard module={activeModule} /> : null}
 
           {moduleId === 'wallet' && walletDetail ? (
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
               <DataListCard
                 title="Wallet Summary"
                 rows={[
@@ -550,11 +550,11 @@ export function MemberDashboardPage() {
                     <DataPoint label="CD Deduction" value={formatCurrency(walletDetail.preview.cdDeduction)} />
                     <DataPoint label="Net" value={formatCurrency(walletDetail.preview.netReceivable)} />
                   </div>
-                  <div className="flex flex-wrap gap-3">
-                    <Button type="button" onClick={handlePreviewEncashment}>
+                  <div className="member-action-row flex flex-wrap gap-3">
+                    <Button type="button" className="member-action-button" onClick={handlePreviewEncashment}>
                       Preview
                     </Button>
-                    <Button type="button" variant="outline" onClick={handleSubmitEncashment}>
+                    <Button type="button" variant="outline" className="member-action-button" onClick={handleSubmitEncashment}>
                       Submit Request
                     </Button>
                   </div>
@@ -595,7 +595,7 @@ export function MemberDashboardPage() {
           ) : null}
 
           {moduleId === 'activation-codes' && activationCodes ? (
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
               <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
                 <CardHeader>
                   <CardTitle>Activation Code Inventory</CardTitle>
@@ -652,11 +652,11 @@ export function MemberDashboardPage() {
                       value: target.username
                     }))}
                   />
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Button type="button" onClick={handleTransferCodes}>
+                  <div className="member-action-grid grid gap-3 sm:grid-cols-2">
+                    <Button type="button" className="member-action-button" onClick={handleTransferCodes}>
                       Transfer Code
                     </Button>
-                    <Button type="button" variant="outline" onClick={handleUpgradeCode}>
+                    <Button type="button" variant="outline" className="member-action-button" onClick={handleUpgradeCode}>
                       Upgrade Account
                     </Button>
                   </div>
@@ -672,7 +672,7 @@ export function MemberDashboardPage() {
                     <span className="font-medium text-[var(--muted-foreground)]">Maintenance code</span>
                     <Input value={maintenanceCode} onChange={(event) => setMaintenanceCode(event.target.value)} />
                   </label>
-                  <Button type="button" className="w-full" onClick={handleMaintenanceCode}>
+                  <Button type="button" className="member-action-button w-full" onClick={handleMaintenanceCode}>
                     Use Maintenance Code
                   </Button>
                   <ul className="space-y-2 text-sm leading-6 text-[var(--muted-foreground)]">
@@ -686,7 +686,7 @@ export function MemberDashboardPage() {
           ) : null}
 
           {moduleId === 'transactions' ? (
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
               <Card className="border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Transaction History</CardTitle>
@@ -697,7 +697,7 @@ export function MemberDashboardPage() {
                     <button
                       key={transaction.id}
                       type="button"
-                      className="flex w-full items-center justify-between rounded-xl border border-[var(--border)] p-3 text-left hover:bg-[var(--accent)]"
+                      className="member-transaction-item flex w-full items-center justify-between rounded-xl border border-[var(--border)] p-3 text-left hover:bg-[var(--accent)]"
                       onClick={() => handleSelectTransaction(transaction.id)}
                     >
                       <div>
@@ -744,7 +744,7 @@ export function MemberDashboardPage() {
           ) : null}
 
           {moduleId === 'account-details' && office ? (
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
               <DataListCard
                 title="Profile"
                 rows={[
@@ -770,14 +770,14 @@ export function MemberDashboardPage() {
                   <CardTitle>Next Member Actions</CardTitle>
                   <CardDescription>Use this page as your clean account checkpoint before money, code, or network actions.</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-wrap gap-3">
-                  <Button asChild>
+                <CardContent className="member-action-row flex flex-wrap gap-3">
+                  <Button asChild className="member-action-button">
                     <Link to="/member/wallet">Open Wallet</Link>
                   </Button>
-                  <Button asChild variant="outline">
+                  <Button asChild variant="outline" className="member-action-button">
                     <Link to="/member/activation-codes">Manage Codes</Link>
                   </Button>
-                  <Button asChild variant="outline">
+                  <Button asChild variant="outline" className="member-action-button">
                     <Link to="/member/genealogy">Review Placement</Link>
                   </Button>
                 </CardContent>
@@ -786,7 +786,7 @@ export function MemberDashboardPage() {
           ) : null}
 
           {moduleId === 'upgrade-registration' && registrationReadiness ? (
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
               <Card className="border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Registration Readiness</CardTitle>
@@ -800,14 +800,14 @@ export function MemberDashboardPage() {
                   <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-sm leading-6 text-[var(--muted-foreground)]">
                     {registrationReadiness.placementPolicy.recommendation.note}
                   </div>
-                  <div className="flex flex-wrap gap-3">
-                    <Button asChild>
+                  <div className="member-action-row flex flex-wrap gap-3">
+                    <Button asChild className="member-action-button">
                       <Link to={`/register?ref=${registrationReadiness.sponsor.referralCode}`}>
                         Open Registration
                         <ArrowRight className="size-4" />
                       </Link>
                     </Button>
-                    <Button asChild variant="outline">
+                    <Button asChild variant="outline" className="member-action-button">
                       <Link to="/member/genealogy">
                         Review Tree
                         <GitBranch className="size-4" />
@@ -840,7 +840,7 @@ export function MemberDashboardPage() {
           ) : null}
 
           {moduleId === 'genealogy' && binaryTree ? (
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]">
+            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]">
               <Card className="border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Placement Network View</CardTitle>
@@ -875,7 +875,7 @@ export function MemberDashboardPage() {
           ) : null}
 
           {showStatusRail || showDashboardActions ? (
-            <section className="grid gap-4 xl:grid-cols-3">
+            <section className="member-status-grid grid gap-4 xl:grid-cols-3">
               {showStatusRail ? (
                 <Card className="border-[var(--border)] bg-[var(--card)]">
                   <CardHeader>

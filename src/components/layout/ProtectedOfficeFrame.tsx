@@ -1,4 +1,4 @@
-import { useEffect, useState, type PropsWithChildren } from 'react';
+import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import {
   ChevronRight,
   LayoutDashboard,
@@ -140,6 +140,7 @@ export function ProtectedOfficeFrame({
     return stored ? stored === 'open' : false;
   });
   const [scrollElevated, setScrollElevated] = useState(false);
+  const stageRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(shellStorageKey);
@@ -149,6 +150,16 @@ export function ProtectedOfficeFrame({
   useEffect(() => {
     window.localStorage.setItem(shellStorageKey, sidebarExpanded ? 'open' : 'closed');
   }, [shellStorageKey, sidebarExpanded]);
+
+  useEffect(() => {
+    setScrollElevated(false);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      if (typeof stageRef.current?.scrollTo === 'function') {
+        stageRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      }
+    });
+  }, [location.pathname]);
 
   async function handleSignOut() {
     const confirmed = await confirmAction({
@@ -174,16 +185,16 @@ export function ProtectedOfficeFrame({
   return (
     <section className="ops-shell bg-[var(--background)] text-[var(--foreground)]">
       <header className={cn('ops-shell-header', scrollElevated ? 'is-scrolled' : '')}>
-        <div className="flex min-w-0 items-center gap-4">
+        <div className="ops-shell-header-main flex min-w-0 items-center gap-4">
           <Link to={basePath} className="protected-brand-link">
             <YorBrandMark className="protected-brand-mark" />
           </Link>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate text-sm font-semibold text-[var(--foreground)]">Yor International</p>
+              <p className="protected-office-title truncate text-sm font-semibold text-[var(--foreground)]">Yor International</p>
               <Badge variant="outline">{officeLabel}</Badge>
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-[var(--muted-foreground)]">
+            <div className="protected-office-breadcrumb mt-1 flex flex-wrap items-center gap-2 text-sm text-[var(--muted-foreground)]">
               <span>{sidebarHeading}</span>
               <ChevronRight className="size-4" />
               <span>{moduleLabel}</span>
@@ -191,7 +202,7 @@ export function ProtectedOfficeFrame({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-3">
+        <div className="ops-shell-header-actions flex flex-wrap items-center justify-end gap-3">
           <nav className="hidden flex-wrap items-center gap-2 lg:flex">
             {workspaceLinks.map((link) => (
               <Button
@@ -206,15 +217,21 @@ export function ProtectedOfficeFrame({
             ))}
           </nav>
 
-          <div className="flex items-center gap-3">
-            <ModeToggle />
+          <div className="ops-shell-header-tools flex items-center gap-3">
+            <div className="ops-shell-theme-toggle">
+              <ModeToggle />
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button aria-label="Open user menu" variant="outline" className="h-10 gap-3 rounded-full px-3">
+                <Button
+                  aria-label="Open user menu"
+                  variant="outline"
+                  className="ops-shell-profile-trigger h-10 gap-3 rounded-full px-3"
+                >
                   <span className="flex size-8 items-center justify-center rounded-full bg-[var(--background)] text-[var(--yor-copper-soft)]">
                     <UserCircle2 className="size-5" />
                   </span>
-                  <span className="hidden text-left sm:block">
+                  <span className="protected-office-user-copy hidden text-left sm:block">
                     <span className="block text-sm font-medium leading-5">{user?.name ?? 'Protected User'}</span>
                     <span className="block text-xs text-[var(--muted-foreground)]">{user?.email ?? 'Signed in'}</span>
                   </span>
@@ -266,12 +283,12 @@ export function ProtectedOfficeFrame({
           onExpandedChange={setSidebarExpanded}
         />
 
-        <main className="ops-content-stage" onScroll={(event) => {
+        <main ref={stageRef} className="ops-content-stage" onScroll={(event) => {
           const target = event.currentTarget;
           setScrollElevated(target.scrollTop > 8);
         }}>
-          <Card className="overflow-hidden border-[var(--border)] bg-[var(--card)]">
-            <CardHeader className="gap-4 md:flex-row md:items-start md:justify-between">
+          <Card className="ops-stage-hero-card overflow-hidden border-[var(--border)] bg-[var(--card)]">
+            <CardHeader className="ops-stage-hero-header gap-4 md:flex-row md:items-start md:justify-between">
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline">{headerBadge}</Badge>
@@ -282,7 +299,7 @@ export function ProtectedOfficeFrame({
                 </div>
               </div>
               {summaryCard ? (
-                <div className="min-w-56 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                <div className="ops-stage-summary-card min-w-56 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
                     {summaryCard.label}
                   </p>
@@ -295,7 +312,7 @@ export function ProtectedOfficeFrame({
             </CardHeader>
           </Card>
 
-          <div className="lg:hidden">
+          <div className="ops-mobile-nav-shell lg:hidden">
             <MobileOfficeNav basePath={basePath} currentModuleId={currentModuleId} modules={modules} />
           </div>
 

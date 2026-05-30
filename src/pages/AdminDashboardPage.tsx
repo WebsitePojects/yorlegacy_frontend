@@ -322,14 +322,14 @@ export function AdminDashboardPage() {
         { label: 'Open registration page', href: '/register' }
       ]}
     >
-      <div className="space-y-4">
+      <div className="ops-admin-page space-y-4">
           {visibleMetrics.length ? <MetricGrid metrics={visibleMetrics} /> : null}
           {moduleId === 'dashboard' ? <QuickLinkGrid links={quickLinks} /> : null}
 
           {moduleId === 'dashboard' && office?.queues.length ? (
-            <section className="grid gap-3 md:grid-cols-3">
+            <section className="ops-admin-queue-grid grid gap-3 md:grid-cols-3">
               {office.queues.map((queue) => (
-                <Card key={queue.label} className="border-[var(--border)] bg-[var(--card)]">
+                <Card key={queue.label} className="ops-admin-queue-card border-[var(--border)] bg-[var(--card)]">
                   <CardHeader className="pb-3">
                     <CardDescription className="text-xs uppercase tracking-[0.18em]">Queue</CardDescription>
                     <CardTitle className="text-base">{queue.label}</CardTitle>
@@ -350,7 +350,7 @@ export function AdminDashboardPage() {
           {showModuleTable && activeModule ? <ModuleTableCard module={activeModule} /> : null}
 
           {moduleId === 'activation-codes' && activationCodes ? (
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+            <section className="ops-admin-activation-grid grid gap-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
               <DataListCard
                 title="Code Metrics"
                 rows={[
@@ -359,7 +359,7 @@ export function AdminDashboardPage() {
                   { label: 'Used', value: activationCodes.metrics.usedCodes }
                 ]}
               />
-              <Card className="border-[var(--border)] bg-[var(--card)]">
+              <Card className="ops-admin-control-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Generation Control</CardTitle>
                   <CardDescription>
@@ -369,7 +369,7 @@ export function AdminDashboardPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="ops-admin-form-grid grid gap-3 sm:grid-cols-3">
                     <label className="grid gap-2 text-sm">
                       <span className="font-medium text-[var(--muted-foreground)]">Quantity</span>
                       <Input
@@ -400,13 +400,13 @@ export function AdminDashboardPage() {
                       />
                     </label>
                   </div>
-                  <Button type="button" onClick={handleGenerateCodes}>
+                  <Button className="ops-admin-primary-action" type="button" onClick={handleGenerateCodes}>
                     Generate Batch
                   </Button>
-                  <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                  <div className="ops-admin-audit-box space-y-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
                     <p className="text-sm font-medium text-[var(--foreground)]">Audit Trail</p>
                     {activationCodes.auditTrail.map((event) => (
-                      <div key={`${event.occurredAt}-${event.action}`} className="flex items-start justify-between gap-4 text-sm">
+                      <div key={`${event.occurredAt}-${event.action}`} className="ops-admin-audit-row flex items-start justify-between gap-4 text-sm">
                         <span className="text-[var(--foreground)]">{event.action}</span>
                         <span className="text-right text-[var(--muted-foreground)]">{event.actor}</span>
                       </div>
@@ -414,7 +414,7 @@ export function AdminDashboardPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
+              <Card className="ops-admin-table-card border-[var(--border)] bg-[var(--card)] xl:col-span-2">
                 <CardHeader>
                   <CardTitle>Activation Code Inventory</CardTitle>
                   <CardDescription>Shows who owns a code, which ones are released, and which paths are ready for the next registration or transfer step.</CardDescription>
@@ -445,7 +445,7 @@ export function AdminDashboardPage() {
           ) : null}
 
           {moduleId === 'encashment-reports' && encashments ? (
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+            <section className="ops-admin-encashment-grid grid gap-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
               <DataListCard
                 title="Queue Totals"
                 rows={[
@@ -454,7 +454,7 @@ export function AdminDashboardPage() {
                   { label: 'Awaiting Review', value: encashments.totals.awaitingReview }
                 ]}
               />
-              <Card className="border-[var(--border)] bg-[var(--card)]">
+              <Card className="ops-admin-process-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Process Notes</CardTitle>
                   <CardDescription>
@@ -469,15 +469,15 @@ export function AdminDashboardPage() {
                   ))}
                 </CardContent>
               </Card>
-              <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
+              <Card className="ops-admin-table-card border-[var(--border)] bg-[var(--card)] xl:col-span-2">
                 <CardHeader>
                   <CardTitle>Encashment Queue</CardTitle>
                   <CardDescription>Operational payout queue with a real approve path and branch-only sandbox persistence.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {encashments.encashments.map((item) => (
-                    <div key={item.id} className="rounded-xl border border-[var(--border)] p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div key={item.id} className="ops-admin-encashment-item rounded-xl border border-[var(--border)] p-4">
+                      <div className="ops-admin-encashment-row flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="font-medium text-[var(--foreground)]">{item.member}</p>
                           <p className="text-sm text-[var(--muted-foreground)]">
@@ -487,7 +487,7 @@ export function AdminDashboardPage() {
                         <div className="text-sm text-[var(--muted-foreground)]">
                           Gross {item.gross} / Net {item.net}
                         </div>
-                        <Button type="button" variant="outline" onClick={() => handleApproveEncashment(item.id)}>
+                        <Button className="ops-admin-inline-action" type="button" variant="outline" onClick={() => handleApproveEncashment(item.id)}>
                           Approve
                         </Button>
                       </div>
@@ -499,16 +499,16 @@ export function AdminDashboardPage() {
           ) : null}
 
           {(moduleId === 'binary-placement-tree' || moduleId === 'sponsor-tree') && genealogyTree ? (
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-              <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
-                <CardHeader className="gap-4 md:flex-row md:items-end md:justify-between">
+            <section className="ops-admin-tree-grid grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+              <Card className="ops-admin-tree-card border-[var(--border)] bg-[var(--card)] xl:col-span-2">
+                <CardHeader className="ops-admin-tree-header gap-4 md:flex-row md:items-end md:justify-between">
                   <div>
                     <CardTitle>{moduleId === 'sponsor-tree' ? 'Sponsor Network View' : 'Placement Network View'}</CardTitle>
                     <CardDescription>
                       Search a root account and inspect the tree without collapsing sponsor and binary logic into the same payload.
                     </CardDescription>
                   </div>
-                  <div className="w-full max-w-md space-y-2">
+                  <div className="ops-admin-tree-search w-full max-w-md space-y-2">
                     <Input
                       value={treeRootUsername}
                       onChange={(event) => setTreeRootUsername(event.target.value.toUpperCase())}
@@ -528,7 +528,7 @@ export function AdminDashboardPage() {
                 </CardContent>
               </Card>
               {selectedTreeNode ? (
-                <Card className="border-[var(--border)] bg-[var(--card)]">
+                <Card className="ops-admin-tree-detail-card border-[var(--border)] bg-[var(--card)]">
                   <CardHeader>
                     <CardTitle>Node Focus</CardTitle>
                     <CardDescription>Searchable admin node detail with package, state, and point context.</CardDescription>
@@ -546,11 +546,11 @@ export function AdminDashboardPage() {
           ) : null}
 
           {showSecurityRail || showDashboardActions ? (
-            <section className="grid gap-4 xl:grid-cols-2">
+            <section className="ops-admin-footer-grid grid gap-4 xl:grid-cols-2">
               {showDashboardActions ? <GatedActionsCard actions={branchNotes} /> : null}
 
               {showSecurityRail ? (
-                <Card className="border-[var(--border)] bg-[var(--card)]">
+                <Card className="ops-admin-security-card border-[var(--border)] bg-[var(--card)]">
                   <CardHeader>
                     <CardTitle>Security Status</CardTitle>
                     <CardDescription>Protected access posture and audit mindset for the current office role.</CardDescription>
@@ -565,7 +565,7 @@ export function AdminDashboardPage() {
                         ))
                       : null}
                     {office?.auditEvents.length ? (
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                        <div className="ops-admin-audit-box rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
                         <p className="mb-2 text-sm font-medium text-[var(--foreground)]">Recent audit events</p>
                         <div className="space-y-2 text-sm text-[var(--muted-foreground)]">
                           {office.auditEvents.slice(0, 4).map((event) => (

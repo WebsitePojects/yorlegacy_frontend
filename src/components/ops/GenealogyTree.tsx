@@ -34,7 +34,7 @@ function GenealogyBranch({
       <button
         type="button"
         className={cn(
-          'w-full rounded-xl border p-4 text-left transition-colors',
+          'member-genealogy-node w-full rounded-xl border p-4 text-left transition-colors',
           level > 0 && 'ml-0 lg:ml-6',
           isSelected
             ? 'border-[var(--ring)] bg-[var(--accent)]'
@@ -45,20 +45,20 @@ function GenealogyBranch({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <strong className="text-sm text-[var(--foreground)]">{node.username}</strong>
+              <strong className="break-words text-sm text-[var(--foreground)]">{node.username}</strong>
               <Badge variant="outline">{node.packageTier}</Badge>
               <Badge variant="secondary">{node.accountStateLabel}</Badge>
             </div>
-            <p className="text-sm text-[var(--muted-foreground)]">{node.fullName}</p>
+            <p className="break-words text-sm text-[var(--muted-foreground)]">{node.fullName}</p>
           </div>
-          <div className="grid grid-cols-2 gap-2 text-xs text-[var(--muted-foreground)] sm:grid-cols-4">
+          <div className="member-genealogy-meta grid grid-cols-2 gap-2 text-xs text-[var(--muted-foreground)] sm:grid-cols-4">
             <span>Placement: {node.placement}</span>
             <span>Direct: {node.directReferrals}</span>
             <span>L: {node.leftPoints}</span>
             <span>R: {node.rightPoints}</span>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+        <div className="member-genealogy-badges mt-3 flex flex-wrap gap-2 text-xs">
           <Badge variant={node.openSlots.left ? 'warning' : 'outline'}>
             {node.openSlots.left ? 'Open left slot' : 'Left filled'}
           </Badge>

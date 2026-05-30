@@ -29,7 +29,8 @@ import {
   UserCircle2,
   UserPlus,
   Users,
-  WalletCards
+  WalletCards,
+  X
 } from 'lucide-react';
 import { NavLink, Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -218,31 +219,74 @@ export function MobileOfficeNav({
   currentModuleId: string;
   modules: OperationalModule[];
 }) {
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const grouped = useMemo(() => groupModules(modules), [modules]);
+  const preferredGroups = ['Overview', 'Finance', 'Compensation', 'Network', 'Account'];
+  const orderedGroups = [
+    ...preferredGroups
+      .map((groupName) => grouped.find(([group]) => group.toLowerCase() === groupName.toLowerCase()))
+      .filter((group): group is [string, OperationalModule[]] => Boolean(group)),
+    ...grouped.filter(
+      ([group]) => !preferredGroups.some((groupName) => groupName.toLowerCase() === group.toLowerCase())
+    )
+  ].slice(0, 5);
+  const compensationIndex = orderedGroups.findIndex(([group]) => group.toLowerCase() === 'compensation');
+  const centerIndex = compensationIndex >= 0 ? compensationIndex : Math.min(2, orderedGroups.length - 1);
+  const activeGroupEntry = orderedGroups.find(([group]) => group === activeGroup);
+
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 lg:hidden">
-      {modules.map((module) => (
-        <NavLink
-          key={module.id}
-          to={module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`}
-          className={cn(
-            'shrink-0 rounded-full border px-3 py-2 text-xs font-medium',
-            currentModuleId === module.id
-              ? 'border-[var(--ring)] bg-[var(--accent)] text-[var(--foreground)]'
-              : 'border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)]'
-          )}
-        >
-          {module.label}
-        </NavLink>
-      ))}
-    </div>
+    <nav className="ops-mobile-bottom-nav lg:hidden" aria-label={`${basePath.slice(1)} mobile office navigation`}>
+      {activeGroupEntry ? (
+        <div className="ops-mobile-bottom-popover">
+          <div className="ops-mobile-bottom-popover-head">
+            <span>{activeGroupEntry[0]}</span>
+            <button type="button" onClick={() => setActiveGroup(null)} aria-label="Close office section">
+              <X className="size-4" />
+            </button>
+          </div>
+          <div className="ops-mobile-bottom-links">
+            {activeGroupEntry[1].map((module) => (
+              <NavLink
+                key={module.id}
+                to={module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`}
+                className={cn(currentModuleId === module.id && 'is-active')}
+              >
+                <span className="ops-mobile-bottom-link-icon">{renderIcon(getModuleIcon(module.id), 'size-4')}</span>
+                <span>{module.label}</span>
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <div className="ops-mobile-bottom-shell">
+        {orderedGroups.map(([group, groupModules], index) => {
+          const active = groupModules.some((module) => module.id === currentModuleId) || activeGroup === group;
+          const Icon = getGroupIcon(group);
+          const center = index === centerIndex;
+
+          return (
+            <button
+              key={group}
+              type="button"
+              className={cn('ops-mobile-bottom-item', center && 'is-center', active && 'is-active')}
+              aria-expanded={activeGroup === group}
+              onClick={() => setActiveGroup((current) => (current === group ? null : group))}
+            >
+              <Icon className={center ? 'size-5' : 'size-4'} />
+              <span>{group}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 
 export function MetricGrid({ metrics }: { metrics: OperationalMetric[] }) {
   return (
-    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="ops-metric-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric) => (
-        <Card key={metric.label} className="border-[var(--border)] bg-[var(--card)]">
+        <Card key={metric.label} className="ops-metric-card border-[var(--border)] bg-[var(--card)]">
           <CardHeader className="pb-2">
             <CardDescription className="text-xs uppercase tracking-[0.18em]">{metric.label}</CardDescription>
             <CardTitle className="text-2xl">{metric.value}</CardTitle>
@@ -260,15 +304,15 @@ export function QuickLinkGrid({
   links: Array<{ title: string; body: string; href: string }>;
 }) {
   return (
-    <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <section className="ops-quicklink-grid grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       {links.map((link) => (
-        <Card key={link.href} className="border-[var(--border)] bg-[var(--card)]">
+        <Card key={link.href} className="ops-quicklink-card border-[var(--border)] bg-[var(--card)]">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">{link.title}</CardTitle>
             <CardDescription className="leading-6">{link.body}</CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <Button asChild variant="outline" className="w-full justify-between">
+            <Button asChild variant="outline" className="ops-inline-action w-full justify-between">
               <Link to={link.href}>
                 Open
                 <ArrowRight className="size-4" />
@@ -291,14 +335,14 @@ export function ModuleTableCard({
   subtitle?: string;
 }) {
   return (
-    <Card className="border-[var(--border)] bg-[var(--card)]">
-      <CardHeader className="gap-3 md:flex-row md:items-start md:justify-between">
+    <Card className="ops-module-table-card border-[var(--border)] bg-[var(--card)]">
+      <CardHeader className="ops-module-table-header gap-3 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
           <CardTitle>{heading}</CardTitle>
           <CardDescription>{subtitle ?? module.description}</CardDescription>
           <p className="text-xs text-[var(--muted-foreground)]">Reference: {module.legacyReference}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="ops-module-table-metrics flex flex-wrap gap-2">
           {module.metrics.map((metric) => (
             <Badge key={metric.label} variant="outline">
               {metric.label}: {metric.value}
@@ -315,9 +359,9 @@ export function ModuleTableCard({
 
 export function ReportTableView({ table }: { table: ReportTable }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-[var(--border)]">
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
+    <div className="ops-report-table-shell overflow-hidden rounded-xl border border-[var(--border)]">
+      <div className="ops-report-table-scroll overflow-x-auto">
+        <table className="ops-report-table min-w-full text-left text-sm">
           <thead className="bg-[var(--muted)]/55">
             <tr>
               {table.columns.map((column) => (
@@ -334,7 +378,11 @@ export function ReportTableView({ table }: { table: ReportTable }) {
             {table.rows.map((row, index) => (
               <tr key={`${table.title}-${index}`} className="border-t border-[var(--border)]">
                 {table.columns.map((column) => (
-                  <td key={column.key} className="whitespace-pre-wrap px-4 py-3 align-top text-[var(--foreground)]">
+                  <td
+                    key={column.key}
+                    data-label={column.label}
+                    className="whitespace-pre-wrap px-4 py-3 align-top text-[var(--foreground)]"
+                  >
                     {String(row[column.key] ?? '')}
                   </td>
                 ))}
@@ -357,14 +405,17 @@ export function DataListCard({
   rows: Array<{ label: string; value: string | number }>;
 }) {
   return (
-    <Card className="border-[var(--border)] bg-[var(--card)]">
+    <Card className="ops-data-list-card border-[var(--border)] bg-[var(--card)]">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="ops-data-list-content space-y-3">
         {rows.map((row) => (
-          <div key={row.label} className="flex items-start justify-between gap-4 border-b border-[var(--border)] pb-3 last:border-b-0 last:pb-0">
+          <div
+            key={row.label}
+            className="ops-data-list-row flex items-start justify-between gap-4 border-b border-[var(--border)] pb-3 last:border-b-0 last:pb-0"
+          >
             <span className="text-sm text-[var(--muted-foreground)]">{row.label}</span>
             <strong className="text-right text-sm text-[var(--foreground)]">{row.value}</strong>
           </div>
@@ -376,7 +427,7 @@ export function DataListCard({
 
 export function GatedActionsCard({ actions }: { actions: GatedAction[] }) {
   return (
-    <Card className="border-amber-500/30 bg-amber-500/5">
+    <Card className="ops-gated-card border-amber-500/30 bg-amber-500/5">
       <CardHeader>
         <div className="flex items-center gap-2">
           <ShieldAlert className="size-4 text-amber-500" />
@@ -384,9 +435,9 @@ export function GatedActionsCard({ actions }: { actions: GatedAction[] }) {
         </div>
         <CardDescription>These notes explain how the branch-local sandbox behaves so the team can test hard without mistaking it for production.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="ops-gated-card-content space-y-3">
         {actions.map((action) => (
-          <div key={action.label} className="rounded-lg border border-amber-500/20 bg-[var(--card)] p-3">
+          <div key={action.label} className="ops-gated-item rounded-lg border border-amber-500/20 bg-[var(--card)] p-3">
             <p className="font-medium text-[var(--foreground)]">{action.label}</p>
             <p className="mt-1 text-sm leading-6 text-[var(--muted-foreground)]">{action.reason}</p>
             <p className="mt-2 text-xs uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">

@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -66,6 +67,27 @@ export function FeedbackProvider({ children }: PropsWithChildren) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const toastIdRef = useRef(0);
+  const dismissToasts = useCallback(() => {
+    setToasts([]);
+  }, []);
+
+  useEffect(() => {
+    if (!toasts.length) {
+      return;
+    }
+
+    window.addEventListener('pointerdown', dismissToasts, { capture: true });
+    window.addEventListener('scroll', dismissToasts, { capture: true, passive: true });
+    window.addEventListener('wheel', dismissToasts, { capture: true, passive: true });
+    window.addEventListener('touchmove', dismissToasts, { capture: true, passive: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', dismissToasts, { capture: true });
+      window.removeEventListener('scroll', dismissToasts, { capture: true });
+      window.removeEventListener('wheel', dismissToasts, { capture: true });
+      window.removeEventListener('touchmove', dismissToasts, { capture: true });
+    };
+  }, [dismissToasts, toasts.length]);
 
   const notify = useCallback((options: NotifyOptions) => {
     const id = `toast-${Date.now()}-${toastIdRef.current++}`;

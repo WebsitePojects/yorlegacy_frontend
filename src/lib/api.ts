@@ -23,7 +23,7 @@ import type { RegistrationPreview, RegistrationSubmitResponse } from '../types/r
 
 export const DEFAULT_API_BASE_URL = '';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL;
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {

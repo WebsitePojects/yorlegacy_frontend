@@ -15,6 +15,7 @@ import {
   Wallet
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { rankIncentiveBenefits, rankIncentiveRoadmap } from '../../config/pagePresets';
 import type { PageContent } from '../../types/content';
@@ -31,6 +32,76 @@ const rewardIcons = [Smartphone, CarFront, Plane, CarFront, CircleDollarSign, Bu
 const benefitIcons = [Activity, Wallet, Building2] as const;
 
 export function RankIncentivePageView({ content }: { content: PageContent }) {
+  const stripRef = useRef<HTMLElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const touchYRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const strip = stripRef.current;
+    const rail = scrollRef.current;
+
+    if (!strip || !rail) {
+      return;
+    }
+
+    function canTranslate(deltaY: number) {
+      if (!rail) {
+        return false;
+      }
+
+      const maxScroll = rail.scrollWidth - rail.clientWidth;
+      const atStart = rail.scrollLeft <= 0;
+      const atEnd = rail.scrollLeft >= maxScroll - 1;
+
+      return (deltaY > 0 && !atEnd) || (deltaY < 0 && !atStart);
+    }
+
+    function handleWheel(event: WheelEvent) {
+      if (window.innerWidth > 820 || !rail || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
+        return;
+      }
+
+      if (!canTranslate(event.deltaY)) {
+        return;
+      }
+
+      event.preventDefault();
+      rail.scrollLeft += event.deltaY;
+    }
+
+    function handleTouchStart(event: TouchEvent) {
+      touchYRef.current = event.touches[0]?.clientY ?? null;
+    }
+
+    function handleTouchMove(event: TouchEvent) {
+      if (window.innerWidth > 820 || !rail || touchYRef.current === null) {
+        return;
+      }
+
+      const nextY = event.touches[0]?.clientY ?? touchYRef.current;
+      const deltaY = touchYRef.current - nextY;
+
+      if (Math.abs(deltaY) < 2 || !canTranslate(deltaY)) {
+        touchYRef.current = nextY;
+        return;
+      }
+
+      event.preventDefault();
+      rail.scrollLeft += deltaY;
+      touchYRef.current = nextY;
+    }
+
+    strip.addEventListener('wheel', handleWheel, { passive: false });
+    strip.addEventListener('touchstart', handleTouchStart, { passive: true });
+    strip.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      strip.removeEventListener('wheel', handleWheel);
+      strip.removeEventListener('touchstart', handleTouchStart);
+      strip.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
+
   return (
     <section className="rank-roadmap-stage">
       <AmbientEmbers />
@@ -56,13 +127,14 @@ export function RankIncentivePageView({ content }: { content: PageContent }) {
         </motion.div>
 
         <motion.section
+          ref={stripRef}
           animate={{ opacity: 1, y: 0 }}
           className="rank-roadmap-strip"
           initial={{ opacity: 0, y: 28 }}
           transition={{ ...revealTransition, delay: 0.08 }}
         >
           <div className="rank-roadmap-line" />
-          <div className="rank-roadmap-scroll">
+          <div ref={scrollRef} className="rank-roadmap-scroll">
             {rankIncentiveRoadmap.map((item, index) => {
               const RankIcon = rankIcons[index] ?? Award;
               const RewardIcon = rewardIcons[index] ?? Trophy;
