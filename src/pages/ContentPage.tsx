@@ -4,6 +4,7 @@ import { EarnOverviewPageView } from '../components/pages/EarnOverviewPageView';
 import { FounderShowcasePage } from '../components/pages/FounderShowcasePage';
 import { HomeExperiencePage } from '../components/pages/HomeExperiencePage';
 import { PackagesPageView } from '../components/pages/PackagesPageView';
+import { RankIncentivePageView } from '../components/pages/RankIncentivePageView';
 import { RegistrationPageView } from '../components/pages/RegistrationPageView';
 import { SpotlightPage } from '../components/pages/SpotlightPage';
 import { PageTemplate } from '../components/layout/PageTemplate';
@@ -16,20 +17,7 @@ type ContentPageProps = {
 export function ContentPage({ slug }: ContentPageProps) {
   const { data, isLoading, error } = usePageContent(slug);
 
-  if (isLoading) {
-    return (
-      <section className="page-template">
-        <div className="page-container">
-          <div className="glass-panel content-card">
-            <span className="eyebrow">Loading</span>
-            <h1 className="display-heading">Preparing the experience</h1>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (error || !data) {
+  if (!data && (error || !isLoading)) {
     return (
       <section className="page-template">
         <div className="page-container">
@@ -43,6 +31,10 @@ export function ContentPage({ slug }: ContentPageProps) {
         </div>
       </section>
     );
+  }
+
+  if (!data) {
+    return null;
   }
 
   if (slug === 'home') {
@@ -67,6 +59,10 @@ export function ContentPage({ slug }: ContentPageProps) {
 
   if (slug === 'earn') {
     return <EarnOverviewPageView content={data} />;
+  }
+
+  if (slug === 'rank-incentives') {
+    return <RankIncentivePageView content={data} />;
   }
 
   if (slug.startsWith('earn/')) {

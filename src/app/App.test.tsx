@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { AuthProvider } from '../auth/AuthContext';
+import { ThemeProvider } from '../components/theme-provider';
 import App from './App';
 import { vi } from 'vitest';
 
@@ -45,9 +46,11 @@ describe('App', () => {
     );
 
     render(
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
+      <ThemeProvider defaultTheme="dark">
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </ThemeProvider>
     );
 
     expect(

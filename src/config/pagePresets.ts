@@ -1,29 +1,46 @@
 export const pageAssets = {
-  coverSkyline: '/assets/yor/vision-banner.jpg',
-  founderPortrait: '/assets/yor/vision-banner-portrait.jpg',
-  registrationBackdrop: '/assets/yor/vision-new-image.jpg'
+  roundLogo: '/assets/yor/branding/yor-logo-round.png',
+  showcaseLogo: '/assets/yor/branding/yor-logo-showcase.jpg',
+  coverSkyline: '/assets/yor/branding/login-bg.png',
+  founderPortrait: '/assets/yor/generated/yor-founder-portrait-ai.png',
+  founderBackdrop: '/assets/yor/generated/yor-founder-generated.png',
+  registrationBackdrop: '/assets/yor/branding/login-bg.png',
+  authBackdrop: '/assets/yor/branding/login-bg.png',
+  visionBanner: '/assets/yor/vision-banner.jpg',
+  visionPoster: '/assets/yor/vision-poster.jpg',
+  bag: '/assets/yor/bag.jpg'
+} as const;
+
+export const founderProfile = {
+  eyebrow: 'The Visionary',
+  badge: 'President / CEO',
+  name: 'Mr. Yoren B. Abihay',
+  summary:
+    'A visionary leader dedicated to building a sustainable financial legacy for families across the globe through strategic innovation, ethical leadership, and direct-selling excellence.',
+  ctaLabel: 'Discover the Story',
+  ctaHref: '/mission'
 } as const;
 
 export const founderHighlights = [
-  'Traditional Business Man',
-  'Trainer / Mentor of MLM',
+  'Traditional Businessman',
+  'Trainer and Mentor of MLM',
   'Network Builder',
-  'Chairman of Non-Profit Organization',
-  '8 Years Experience in Corporate World',
+  'Chairman of a Non-Profit Organization',
+  '8 Years in the Corporate World',
   '6x Top Earner',
   'BS Criminology Graduate'
 ];
 
 export const packageTiers = [
   {
-    name: 'Basic',
+    name: 'Classic',
     label: 'Entry Package',
     price: 'PHP 1,998',
     pv: 'PV-5',
     features: ['40% lifetime discount', 'Direct selling access', 'Value-for-money starter entry']
   },
   {
-    name: 'Classic',
+    name: 'Basic',
     label: 'Growth Package',
     price: 'PHP 5,998',
     pv: 'PV-10',
@@ -92,7 +109,7 @@ export const earnCards = [
     body: 'Repeat purchase volume feeds lifestyle-oriented bonuses and longer-term prestige rewards.'
   },
   {
-    href: '/earn/unilevel-rank',
+    href: '/earn/unilevel',
     number: '7',
     title: 'Unilevel Bonus',
     body: 'Move through up to ten levels of public unilevel percentages as your organization expands.'
@@ -109,25 +126,79 @@ export const collectionProducts = [
   {
     title: 'Hugo Boss',
     code: 'YM1',
-    note: 'Part of the Yor Perfume men\'s line presented in the business deck.',
+    note: 'Flagship men\'s scent showcased in the legacy deck.',
     accent: 'For Men'
   },
   {
     title: 'Swiss Army',
     code: 'YM2',
-    note: 'A men\'s fragrance entry designed for broad premium appeal.',
+    note: 'A broad-appeal men\'s fragrance entry in the lineup.',
     accent: 'For Men'
   },
   {
     title: 'Chanel Bleu',
     code: 'YM3',
-    note: 'Luxury-positioned men\'s scent in the public Yor lineup.',
+    note: 'Luxury-positioned men\'s scent in the public lineup.',
+    accent: 'For Men'
+  },
+  {
+    title: 'Drakkar Noir',
+    code: 'YM4',
+    note: 'A heritage-styled men\'s signature with classic depth.',
+    accent: 'For Men'
+  },
+  {
+    title: 'Lacoste Red',
+    code: 'YM5',
+    note: 'A crisp men\'s fragrance with youthful energy.',
+    accent: 'For Men'
+  },
+  {
+    title: 'Acqua Invictus',
+    code: 'YM6',
+    note: 'A bright men\'s profile positioned as a confident daily wear.',
+    accent: 'For Men'
+  },
+  {
+    title: 'Clinique Happy',
+    code: 'YM7',
+    note: 'A fresh men\'s option with broad mass-market familiarity.',
+    accent: 'For Men'
+  },
+  {
+    title: 'One Million',
+    code: 'YM8',
+    note: 'A prestige men\'s scent highlighted for aspirational appeal.',
+    accent: 'For Men'
+  },
+  {
+    title: 'Polo Sport',
+    code: 'YM9',
+    note: 'An active men\'s variant with sporty positioning.',
+    accent: 'For Men'
+  },
+  {
+    title: 'Acqua Di Gio',
+    code: 'YM10',
+    note: 'A globally recognized men\'s fragrance anchor.',
     accent: 'For Men'
   },
   {
     title: 'Paris Hilton',
     code: 'YF1',
-    note: 'A women\'s fragrance entry from the Yor public deck.',
+    note: 'A women\'s fragrance entry from the public deck.',
+    accent: 'For Women'
+  },
+  {
+    title: 'Britney Spears',
+    code: 'YF2',
+    note: 'A playful women\'s scent included in the public catalog.',
+    accent: 'For Women'
+  },
+  {
+    title: 'Meow',
+    code: 'YF3',
+    note: 'A feminine selection with youthful presentation.',
     accent: 'For Women'
   },
   {
@@ -137,9 +208,121 @@ export const collectionProducts = [
     accent: 'For Women'
   },
   {
+    title: 'D&G Light Blue',
+    code: 'YF5',
+    note: 'A bright women\'s fragrance with premium recognition.',
+    accent: 'For Women'
+  },
+  {
     title: 'VS Bombshell',
     code: 'YF6',
     note: 'A recognizable women\'s fragrance entry in the Yor set.',
     accent: 'For Women'
+  },
+  {
+    title: 'Jo Malone',
+    code: 'YF7',
+    note: 'A refined women\'s luxury option for prestige framing.',
+    accent: 'For Women'
+  },
+  {
+    title: 'Sweet Pea',
+    code: 'YF8',
+    note: 'A softer women\'s profile for broader gift appeal.',
+    accent: 'For Women'
+  },
+  {
+    title: 'Eclat',
+    code: 'YF9',
+    note: 'A polished women\'s entry for modern signature wear.',
+    accent: 'For Women'
+  },
+  {
+    title: 'Lacoste Pink',
+    code: 'YF10',
+    note: 'A lively women\'s scent with familiar prestige branding.',
+    accent: 'For Women'
   }
 ];
+
+export const homePreviewRoutes = [
+  {
+    href: '/vision',
+    title: 'Vision',
+    body: 'A global community of empowered entrepreneurs with shared success at the center.'
+  },
+  {
+    href: '/mission',
+    title: 'Mission',
+    body: 'Ethical leadership, quality products, and business tools that help members build durable momentum.'
+  },
+  {
+    href: '/products',
+    title: 'Products',
+    body: 'A perfume collection positioned as the premium retail anchor for the Yor legacy story.'
+  },
+  {
+    href: '/earn',
+    title: '8 Ways To Earn',
+    body: 'Direct selling, referral, team growth, and global bonus pathways presented with premium clarity.'
+  },
+  {
+    href: '/packages',
+    title: 'Entry Packages',
+    body: 'A five-tier ladder from Classic to VIP designed to move admiration into confident action.'
+  }
+] as const;
+
+export const rankIncentiveRoadmap = [
+  {
+    rank: 'Manager',
+    target: 'PHP 50k',
+    reward: 'Exclusive iPhone',
+    accent: 'standard' as const
+  },
+  {
+    rank: 'Bronze Director',
+    target: 'PHP 100k',
+    reward: 'PHP 100k Car DP (Sedan)',
+    accent: 'standard' as const
+  },
+  {
+    rank: 'Silver Director',
+    target: 'PHP 250k',
+    reward: 'Asian Travel Package',
+    accent: 'standard' as const
+  },
+  {
+    rank: 'Gold Director',
+    target: 'PHP 500k',
+    reward: 'SUV Downpayment',
+    accent: 'featured' as const
+  },
+  {
+    rank: 'Platinum Elite',
+    target: 'PHP 1M',
+    reward: 'US / Europe Travel',
+    accent: 'standard' as const
+  },
+  {
+    rank: 'Hall of Famer',
+    target: 'PHP 50M+',
+    reward: 'Luxury Condo and Elite Rewards',
+    accent: 'prestige' as const
+  }
+] as const;
+
+export const rankIncentiveBenefits = [
+  {
+    title: 'Growth Metrics',
+    body: 'Track real-time network expansion and cumulative earnings volume.'
+  },
+  {
+    title: 'Instant Redemptions',
+    body: 'Travel and gadget incentives are released within 30 days of qualification.'
+  },
+  {
+    title: 'Heritage Legacy',
+    body: 'Condo and high-value assets are transferable to your next of kin.'
+  }
+] as const;

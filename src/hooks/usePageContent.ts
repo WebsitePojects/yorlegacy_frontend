@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { fallbackContent } from '../data/fallbackContent';
 import { fetchPageContent } from '../lib/api';
 import type { PageContent } from '../types/content';
 
@@ -10,19 +11,19 @@ type PageState = {
 
 export function usePageContent(slug: string): PageState {
   const [state, setState] = useState<PageState>({
-    data: null,
-    isLoading: true,
+    data: fallbackContent[slug] ?? null,
+    isLoading: !fallbackContent[slug],
     error: null
   });
 
   useEffect(() => {
     let isActive = true;
 
-    setState({
-      data: null,
+    setState((current) => ({
+      data: current.data ?? fallbackContent[slug] ?? null,
       isLoading: true,
       error: null
-    });
+    }));
 
     fetchPageContent(slug)
       .then((data) => {
@@ -41,11 +42,11 @@ export function usePageContent(slug: string): PageState {
           return;
         }
 
-        setState({
-          data: null,
+        setState((current) => ({
+          data: current.data ?? fallbackContent[slug] ?? null,
           isLoading: false,
           error: cause.message
-        });
+        }));
       });
 
     return () => {

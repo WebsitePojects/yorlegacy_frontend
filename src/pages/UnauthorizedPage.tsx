@@ -1,6 +1,10 @@
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 
 export function UnauthorizedPage() {
+  const { user } = useAuth();
+  const defaultPath = user?.role && user.role !== 'member' ? '/admin' : '/member';
+
   return (
     <section className="page-template">
       <div className="page-container">
@@ -10,8 +14,8 @@ export function UnauthorizedPage() {
           <p className="hero-summary">
             The route is protected, but the signed-in role does not have permission to view it.
           </p>
-          <NavLink className="site-cta" to="/member">
-            Return to Member Area
+          <NavLink className="site-cta" to={defaultPath}>
+            Return to Dashboard
           </NavLink>
         </div>
       </div>

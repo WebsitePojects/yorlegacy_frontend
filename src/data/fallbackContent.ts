@@ -3,11 +3,11 @@ import type { PageContent } from '../types/content';
 export const fallbackContent: Record<string, PageContent> = {
   home: {
     slug: 'home',
-    eyebrow: 'Business Presentation',
+    eyebrow: 'Founder-Led Fragrance Opportunity',
     title: 'Yor International',
-    strapline: 'Legacy',
+    strapline: 'International',
     summary:
-      'A premium fragrance-driven direct selling platform built around legacy, entrepreneurship, and shared success.',
+      'A luxury fragrance-driven business platform built to turn ambition into founder-guided momentum, polished onboarding, and shared success.',
     ctaLabel: 'Join Now',
     ctaHref: '/packages',
     stats: [
@@ -22,7 +22,7 @@ export const fallbackContent: Record<string, PageContent> = {
       },
       {
         title: 'Structured Opportunity',
-        body: 'The journey moves from business presentation to products, packages, and the public eight ways to earn.'
+        body: 'The journey moves from founder story to products, packages, registration, and the public eight ways to earn.'
       }
     ],
     sections: [
@@ -109,7 +109,7 @@ export const fallbackContent: Record<string, PageContent> = {
     eyebrow: 'Our President / CEO',
     title: 'Mr. Yoren B. Abihay',
     summary:
-      'Traditional businessman, trainer, mentor, network builder, and six-time top earner guiding the public face of Yor International.',
+      'A visionary leader dedicated to building a sustainable financial legacy for families across the globe through strategic innovation, ethical leadership, and direct-selling excellence.',
     ctaLabel: 'View Collection',
     ctaHref: '/perfume-collection',
     stats: [
@@ -166,7 +166,7 @@ export const fallbackContent: Record<string, PageContent> = {
     eyebrow: 'Entry Packages',
     title: 'Entry Packages Comparison',
     summary:
-      'Five public package tiers create a clear ladder from Basic through VIP, each with its own price point and PV value.',
+      'Five public package tiers create a clear ladder from Classic through VIP, each with its own price point and PV value.',
     ctaLabel: 'Register',
     ctaHref: '/register',
     stats: [
@@ -177,8 +177,8 @@ export const fallbackContent: Record<string, PageContent> = {
     sections: [
       {
         key: 'comparison',
-        heading: 'Basic to VIP with visible value progression',
-        body: 'The public Yor package ladder currently reads Basic, Classic, Standard, Business, and VIP, paired with public values such as PV-5 through PV-300.'
+        heading: 'Classic to VIP with visible value progression',
+        body: 'The public Yor package ladder currently reads Classic, Basic, Standard, Business, and VIP, paired with public values such as PV-5 through PV-300.'
       },
       {
         key: 'urgency',
@@ -189,11 +189,11 @@ export const fallbackContent: Record<string, PageContent> = {
   },
   register: {
     slug: 'register',
-    eyebrow: 'Join the Legacy',
-    title: 'Registration & Package Checkout',
+    eyebrow: 'Join Yor International',
+    title: 'Registration & Secure Onboarding',
     summary:
-      'A premium registration path that captures account details, sponsor information, and package selection without losing the luxury brand treatment.',
-    ctaLabel: 'Complete Registration',
+      'A cinematic registration flow that collects account details, sponsor information, and package selection without losing Yor’s premium brand treatment.',
+    ctaLabel: 'Open Your Account',
     ctaHref: '/thank-you',
     sections: [
       {
@@ -274,7 +274,7 @@ export const fallbackContent: Record<string, PageContent> = {
       {
         key: 'mechanics',
         heading: 'Personally sponsor and earn package-based bonuses',
-        body: 'The PDF shows public referral values such as PHP 200, PHP 1,000, PHP 5,000, PHP 7,000, and PHP 15,000 depending on the package involved.'
+        body: 'The PDF shows public referral values such as Classic: PHP 200, Basic: PHP 1,000, Standard: PHP 5,000, Business: PHP 7,000, and VIP: PHP 15,000.'
       }
     ]
   },
@@ -319,7 +319,7 @@ export const fallbackContent: Record<string, PageContent> = {
   'earn/get-five': {
     slug: 'earn/get-five',
     eyebrow: 'Way 5',
-    title: '5. Get Five Bonus',
+    title: '5. Get Yor Five Bonus',
     summary:
       'Every five direct signups on the same package unlock a public milestone reward under the Get Yor Five mechanic.',
     sections: [
@@ -377,11 +377,11 @@ export const fallbackContent: Record<string, PageContent> = {
     eyebrow: 'Leadership Roadmap',
     title: 'Rank & Incentive System',
     summary:
-      'Bronze Director through Hall of Famer ranks are paired with public reward milestones such as cash, gadgets, travel, vehicle, and property incentives.',
+      'Manager through Hall of Famer ranks are paired with public reward milestones such as cash, gadgets, travel, vehicle, and property incentives.',
     sections: [
       {
         key: 'path',
-        heading: 'Recognition grows from director status to hall of fame',
+        heading: 'Recognition grows from manager status to hall-of-famer prestige',
         body: 'The business presentation frames progression through income milestones and incentive markers, culminating in high-prestige rewards and global bonus participation.'
       }
     ]

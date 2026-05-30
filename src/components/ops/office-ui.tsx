@@ -1,0 +1,480 @@
+import { useMemo, useState, type ComponentType } from 'react';
+import {
+  Activity,
+  ArrowLeftRight,
+  ArrowRight,
+  BadgeCheck,
+  BadgeDollarSign,
+  Banknote,
+  BarChart3,
+  ExternalLink,
+  FileBadge,
+  GitBranch,
+  Globe2,
+  Headphones,
+  HelpCircle,
+  KeyRound,
+  LayoutDashboard,
+  Medal,
+  Menu,
+  LogOut,
+  PanelLeftClose,
+  ReceiptText,
+  RefreshCcw,
+  Shield,
+  ShieldAlert,
+  ShoppingBag,
+  Sparkles,
+  Table2,
+  UserCircle2,
+  UserPlus,
+  Users,
+  WalletCards
+} from 'lucide-react';
+import { NavLink, Link } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
+import type {
+  GatedAction,
+  OperationalMetric,
+  OperationalModule,
+  ReportTable
+} from '@/types/auth';
+
+type OfficeSidebarProps = {
+  basePath: '/member' | '/admin' | '/cashier' | '/bod';
+  currentModuleId: string;
+  heading: string;
+  subheading: string;
+  modules: OperationalModule[];
+  footerLinks?: Array<{ label: string; href: string; external?: boolean }>;
+  expanded: boolean;
+  onSignOut?: () => void;
+  onExpandedChange: (nextExpanded: boolean) => void;
+};
+
+export function OfficeSidebar({
+  basePath,
+  currentModuleId,
+  heading,
+  subheading,
+  modules,
+  footerLinks = [],
+  expanded,
+  onSignOut,
+  onExpandedChange
+}: OfficeSidebarProps) {
+  const grouped = useMemo(() => groupModules(modules), [modules]);
+  const sidebarWidth = expanded ? '300px' : '72px';
+  const sidebarFlex = expanded ? '0 0 300px' : '0 0 72px';
+
+  return (
+    <aside
+      className={cn('relative hidden h-full min-h-0 overflow-hidden lg:block', expanded ? 'ops-sidebar-expanded' : 'ops-sidebar-collapsed')}
+      style={{ width: sidebarWidth, minWidth: sidebarWidth, flex: sidebarFlex }}
+    >
+      <div className={cn('ops-sidebar-shell', expanded ? 'is-expanded' : 'is-collapsed')}>
+        {expanded ? (
+          <div className="ops-sidebar-panel" aria-hidden={!expanded}>
+            <div className="ops-sidebar-panel-header">
+              <button
+                aria-label="Collapse sidebar"
+                aria-expanded={expanded}
+                className="ops-sidebar-toggle"
+                type="button"
+                onClick={() => onExpandedChange(false)}
+              >
+                <PanelLeftClose className="size-4" />
+              </button>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+                  Yor Office
+                </p>
+                <h1 className="text-lg font-semibold text-[var(--foreground)]">{heading}</h1>
+                <p className="text-sm leading-6 text-[var(--muted-foreground)]">{subheading}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {grouped.map(([group, groupModules]) => (
+                <div key={group} className="space-y-2">
+                  <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+                    {group}
+                  </p>
+                  <div className="space-y-1">
+                    {groupModules.map((module) => {
+                      const active = module.id === currentModuleId;
+                      return (
+                        <NavLink
+                          key={module.id}
+                          to={module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`}
+                          className={cn(
+                            'block rounded-xl border px-3 py-2.5 transition-colors',
+                            active
+                              ? 'border-[var(--ring)] bg-[var(--accent)]'
+                              : 'border-transparent hover:border-[var(--border)] hover:bg-[var(--accent)]'
+                          )}
+                          onClick={() => onExpandedChange(true)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="ops-sidebar-item-icon mt-0.5">{renderIcon(getModuleIcon(module.id), 'size-4')}</span>
+                            <span className="ops-sidebar-link-text flex-1 whitespace-normal break-words text-sm font-medium leading-5 text-[var(--foreground)]">
+                              {module.label}
+                            </span>
+                          </div>
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {footerLinks.length ? (
+              <>
+                <Separator className="my-4" />
+                <div className="space-y-2">
+                  {footerLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      to={link.href}
+                      className="flex items-center justify-between rounded-lg px-2 py-2 text-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+                    >
+                      <span className="whitespace-normal break-words">{link.label}</span>
+                      {link.external ? <ExternalLink className="size-4" /> : <ArrowRight className="size-4" />}
+                    </Link>
+                  ))}
+                </div>
+              </>
+            ) : null}
+            {onSignOut ? (
+              <>
+                <Separator className="my-4" />
+                <button
+                  className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+                  type="button"
+                  onClick={onSignOut}
+                >
+                  <span>Log Out</span>
+                  <LogOut className="size-4" />
+                </button>
+              </>
+            ) : null}
+          </div>
+        ) : (
+          <div className="ops-sidebar-rail">
+            <button
+              aria-label="Expand sidebar"
+              className="ops-sidebar-toggle"
+              aria-expanded={expanded}
+              type="button"
+              onClick={() => onExpandedChange(true)}
+            >
+              <Menu className="size-4" />
+            </button>
+            <div className="ops-sidebar-rail-stack">
+              {grouped.map(([group, groupModules]) => (
+                <button
+                  key={group}
+                  className={cn(
+                    'ops-sidebar-rail-chip',
+                    groupModules.some((module) => module.id === currentModuleId) ? 'is-active' : ''
+                  )}
+                  type="button"
+                  title={group}
+                  aria-label={group}
+                  onClick={() => onExpandedChange(true)}
+                >
+                  {renderIcon(getGroupIcon(group), 'size-4')}
+                </button>
+              ))}
+            </div>
+            {onSignOut ? (
+              <button
+                className="ops-sidebar-rail-chip mt-auto"
+                type="button"
+                title="Log Out"
+                aria-label="Log Out"
+                onClick={onSignOut}
+              >
+                <LogOut className="size-4" />
+              </button>
+            ) : null}
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+export function MobileOfficeNav({
+  basePath,
+  currentModuleId,
+  modules
+}: {
+  basePath: '/member' | '/admin' | '/cashier' | '/bod';
+  currentModuleId: string;
+  modules: OperationalModule[];
+}) {
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-2 lg:hidden">
+      {modules.map((module) => (
+        <NavLink
+          key={module.id}
+          to={module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`}
+          className={cn(
+            'shrink-0 rounded-full border px-3 py-2 text-xs font-medium',
+            currentModuleId === module.id
+              ? 'border-[var(--ring)] bg-[var(--accent)] text-[var(--foreground)]'
+              : 'border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)]'
+          )}
+        >
+          {module.label}
+        </NavLink>
+      ))}
+    </div>
+  );
+}
+
+export function MetricGrid({ metrics }: { metrics: OperationalMetric[] }) {
+  return (
+    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {metrics.map((metric) => (
+        <Card key={metric.label} className="border-[var(--border)] bg-[var(--card)]">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-xs uppercase tracking-[0.18em]">{metric.label}</CardDescription>
+            <CardTitle className="text-2xl">{metric.value}</CardTitle>
+          </CardHeader>
+          {metric.detail ? <CardContent className="pt-0 text-sm text-[var(--muted-foreground)]">{metric.detail}</CardContent> : null}
+        </Card>
+      ))}
+    </section>
+  );
+}
+
+export function QuickLinkGrid({
+  links
+}: {
+  links: Array<{ title: string; body: string; href: string }>;
+}) {
+  return (
+    <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {links.map((link) => (
+        <Card key={link.href} className="border-[var(--border)] bg-[var(--card)]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{link.title}</CardTitle>
+            <CardDescription className="leading-6">{link.body}</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <Button asChild variant="outline" className="w-full justify-between">
+              <Link to={link.href}>
+                Open
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ))}
+    </section>
+  );
+}
+
+export function ModuleTableCard({
+  module,
+  heading = module.table.title,
+  subtitle
+}: {
+  module: OperationalModule;
+  heading?: string;
+  subtitle?: string;
+}) {
+  return (
+    <Card className="border-[var(--border)] bg-[var(--card)]">
+      <CardHeader className="gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-1">
+          <CardTitle>{heading}</CardTitle>
+          <CardDescription>{subtitle ?? module.description}</CardDescription>
+          <p className="text-xs text-[var(--muted-foreground)]">Reference: {module.legacyReference}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {module.metrics.map((metric) => (
+            <Badge key={metric.label} variant="outline">
+              {metric.label}: {metric.value}
+            </Badge>
+          ))}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ReportTableView table={module.table} />
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ReportTableView({ table }: { table: ReportTable }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-[var(--muted)]/55">
+            <tr>
+              {table.columns.map((column) => (
+                <th
+                  key={column.key}
+                  className="whitespace-nowrap px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]"
+                >
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.map((row, index) => (
+              <tr key={`${table.title}-${index}`} className="border-t border-[var(--border)]">
+                {table.columns.map((column) => (
+                  <td key={column.key} className="whitespace-pre-wrap px-4 py-3 align-top text-[var(--foreground)]">
+                    {String(row[column.key] ?? '')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export function DataListCard({
+  title,
+  description,
+  rows
+}: {
+  title: string;
+  description?: string;
+  rows: Array<{ label: string; value: string | number }>;
+}) {
+  return (
+    <Card className="border-[var(--border)] bg-[var(--card)]">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        {description ? <CardDescription>{description}</CardDescription> : null}
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-start justify-between gap-4 border-b border-[var(--border)] pb-3 last:border-b-0 last:pb-0">
+            <span className="text-sm text-[var(--muted-foreground)]">{row.label}</span>
+            <strong className="text-right text-sm text-[var(--foreground)]">{row.value}</strong>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function GatedActionsCard({ actions }: { actions: GatedAction[] }) {
+  return (
+    <Card className="border-amber-500/30 bg-amber-500/5">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="size-4 text-amber-500" />
+          <CardTitle>Sandbox Notes</CardTitle>
+        </div>
+        <CardDescription>These notes explain how the branch-local sandbox behaves so the team can test hard without mistaking it for production.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {actions.map((action) => (
+          <div key={action.label} className="rounded-lg border border-amber-500/20 bg-[var(--card)] p-3">
+            <p className="font-medium text-[var(--foreground)]">{action.label}</p>
+            <p className="mt-1 text-sm leading-6 text-[var(--muted-foreground)]">{action.reason}</p>
+            <p className="mt-2 text-xs uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">
+              Required evidence: {action.requiredEvidence}
+            </p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function groupModules(modules: OperationalModule[]) {
+  const map = new Map<string, OperationalModule[]>();
+
+  for (const module of modules) {
+    const group = module.group || 'General';
+    const groupModules = map.get(group) ?? [];
+    groupModules.push(module);
+    map.set(group, groupModules);
+  }
+
+  return Array.from(map.entries());
+}
+
+function renderIcon(Icon: ComponentType<{ className?: string }>, className = 'size-4') {
+  return <Icon className={className} />;
+}
+
+function getGroupIcon(group: string) {
+  switch (group.toLowerCase()) {
+    case 'overview':
+      return LayoutDashboard;
+    case 'finance':
+      return WalletCards;
+    case 'account':
+    case 'accounts':
+      return UserCircle2;
+    case 'network':
+      return GitBranch;
+    case 'compensation':
+      return BadgeDollarSign;
+    case 'codes':
+      return KeyRound;
+    case 'support':
+      return Headphones;
+    case 'security':
+      return Shield;
+    default:
+      return HelpCircle;
+  }
+}
+
+function getModuleIcon(moduleId: string) {
+  const iconMap: Record<string, ComponentType<{ className?: string }>> = {
+    dashboard: LayoutDashboard,
+    wallet: WalletCards,
+    'account-details': UserCircle2,
+    transactions: ReceiptText,
+    'direct-referrals': Users,
+    genealogy: GitBranch,
+    'salesmatch-bonus': ArrowLeftRight,
+    'binary-cycle-bonus': RefreshCcw,
+    'get-five-bonus': Medal,
+    'activation-codes': KeyRound,
+    support: Headphones,
+    'upgrade-registration': UserPlus,
+    'product-orders': ShoppingBag,
+    'lifestyle-rewards': Sparkles,
+    'unilevel-rank-progress': BarChart3,
+    'global-bonus-eligibility': Globe2,
+    'member-management': Users,
+    'account-shadow-management': Shield,
+    'sponsor-tree': Users,
+    'binary-placement-tree': GitBranch,
+    'payment-verification': BadgeCheck,
+    'package-rule-matrix': Table2,
+    'direct-referral-reports': BadgeDollarSign,
+    'salesmatch-reports': ArrowLeftRight,
+    'binary-cycle-reports': RefreshCcw,
+    'lifestyle-rewards-reports': Sparkles,
+    'unilevel-rank-reports': Medal,
+    'global-bonus-pool': Globe2,
+    'wallet-ledger': WalletCards,
+    'system-health': Activity,
+    'encashment-reports': Banknote,
+    'audit-status': FileBadge
+  };
+
+  return iconMap[moduleId] ?? HelpCircle;
+}
