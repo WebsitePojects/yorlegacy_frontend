@@ -56,17 +56,36 @@ export function RankIncentivePageView({ content }: { content: PageContent }) {
       return (deltaY > 0 && !atEnd) || (deltaY < 0 && !atStart);
     }
 
+    function stageIsLocked() {
+      if (!strip) {
+        return false;
+      }
+
+      const rect = strip.getBoundingClientRect();
+      const viewportMid = window.innerHeight * 0.52;
+
+      return rect.top <= viewportMid && rect.bottom >= viewportMid;
+    }
+
+    function translateRankRail(deltaY: number, event: WheelEvent | TouchEvent) {
+      if (!rail || Math.abs(deltaY) < 1 || !stageIsLocked() || !canTranslate(deltaY)) {
+        return false;
+      }
+
+      if (event.cancelable) {
+        event.preventDefault();
+      }
+
+      rail.scrollLeft += deltaY;
+      return true;
+    }
+
     function handleWheel(event: WheelEvent) {
-      if (window.innerWidth > 820 || !rail || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
+      if (!rail || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
         return;
       }
 
-      if (!canTranslate(event.deltaY)) {
-        return;
-      }
-
-      event.preventDefault();
-      rail.scrollLeft += event.deltaY;
+      translateRankRail(event.deltaY, event);
     }
 
     function handleTouchStart(event: TouchEvent) {
@@ -74,31 +93,25 @@ export function RankIncentivePageView({ content }: { content: PageContent }) {
     }
 
     function handleTouchMove(event: TouchEvent) {
-      if (window.innerWidth > 820 || !rail || touchYRef.current === null) {
+      if (!rail || touchYRef.current === null) {
         return;
       }
 
       const nextY = event.touches[0]?.clientY ?? touchYRef.current;
       const deltaY = touchYRef.current - nextY;
 
-      if (Math.abs(deltaY) < 2 || !canTranslate(deltaY)) {
-        touchYRef.current = nextY;
-        return;
-      }
-
-      event.preventDefault();
-      rail.scrollLeft += deltaY;
+      translateRankRail(deltaY, event);
       touchYRef.current = nextY;
     }
 
-    strip.addEventListener('wheel', handleWheel, { passive: false });
-    strip.addEventListener('touchstart', handleTouchStart, { passive: true });
-    strip.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
 
     return () => {
-      strip.removeEventListener('wheel', handleWheel);
-      strip.removeEventListener('touchstart', handleTouchStart);
-      strip.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
     };
   }, []);
 

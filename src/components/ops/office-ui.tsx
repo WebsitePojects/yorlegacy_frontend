@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentType } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import {
   Activity,
   ArrowLeftRight,
@@ -32,7 +32,7 @@ import {
   WalletCards,
   X
 } from 'lucide-react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -220,6 +220,8 @@ export function MobileOfficeNav({
   modules: OperationalModule[];
 }) {
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const [closingGroup, setClosingGroup] = useState<string | null>(null);
+  const location = useLocation();
   const grouped = useMemo(() => groupModules(modules), [modules]);
   const preferredGroups = ['Overview', 'Finance', 'Compensation', 'Network', 'Account'];
   const orderedGroups = [
@@ -234,13 +236,39 @@ export function MobileOfficeNav({
   const centerIndex = compensationIndex >= 0 ? compensationIndex : Math.min(2, orderedGroups.length - 1);
   const activeGroupEntry = orderedGroups.find(([group]) => group === activeGroup);
 
+  useEffect(() => {
+    if (!activeGroup) {
+      return;
+    }
+
+    setClosingGroup(activeGroup);
+    const timeout = window.setTimeout(() => {
+      setActiveGroup(null);
+      setClosingGroup(null);
+    }, 210);
+
+    return () => window.clearTimeout(timeout);
+  }, [location.pathname]);
+
+  function closeActiveGroup() {
+    if (!activeGroup) {
+      return;
+    }
+
+    setClosingGroup(activeGroup);
+    window.setTimeout(() => {
+      setActiveGroup(null);
+      setClosingGroup(null);
+    }, 210);
+  }
+
   return (
     <nav className="ops-mobile-bottom-nav lg:hidden" aria-label={`${basePath.slice(1)} mobile office navigation`}>
       {activeGroupEntry ? (
-        <div className="ops-mobile-bottom-popover">
+        <div className={cn('ops-mobile-bottom-popover', closingGroup === activeGroupEntry[0] && 'is-closing')}>
           <div className="ops-mobile-bottom-popover-head">
             <span>{activeGroupEntry[0]}</span>
-            <button type="button" onClick={() => setActiveGroup(null)} aria-label="Close office section">
+            <button type="button" onClick={closeActiveGroup} aria-label="Close office section">
               <X className="size-4" />
             </button>
           </div>
@@ -250,6 +278,7 @@ export function MobileOfficeNav({
                 key={module.id}
                 to={module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`}
                 className={cn(currentModuleId === module.id && 'is-active')}
+                onClick={closeActiveGroup}
               >
                 <span className="ops-mobile-bottom-link-icon">{renderIcon(getModuleIcon(module.id), 'size-4')}</span>
                 <span>{module.label}</span>

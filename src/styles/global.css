@@ -944,6 +944,250 @@ a {
   text-transform: uppercase;
 }
 
+.genealogy-canvas-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.genealogy-canvas-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid color-mix(in oklab, var(--border) 74%, var(--yor-copper) 26%);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 18% 0%, color-mix(in oklab, var(--yor-copper) 12%, transparent), transparent 34%),
+    color-mix(in oklab, var(--card) 94%, transparent);
+}
+
+.genealogy-canvas-hint,
+.genealogy-canvas-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.genealogy-canvas-hint {
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.genealogy-canvas-actions {
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+}
+
+.genealogy-canvas-actions button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.genealogy-canvas-actions button:hover {
+  background: color-mix(in oklab, var(--yor-copper) 16%, transparent);
+  color: var(--yor-copper-soft);
+  transform: translateY(-1px);
+}
+
+.genealogy-canvas-actions span {
+  min-width: 44px;
+  color: var(--muted-foreground);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.genealogy-canvas-viewport {
+  min-height: clamp(520px, 64dvh, 760px);
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--border) 72%, var(--yor-copper) 28%);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(245, 200, 66, 0.13), transparent 28%),
+    linear-gradient(90deg, color-mix(in oklab, var(--border) 10%, transparent) 1px, transparent 1px),
+    linear-gradient(180deg, color-mix(in oklab, var(--border) 10%, transparent) 1px, transparent 1px),
+    linear-gradient(180deg, color-mix(in oklab, var(--card) 94%, transparent), color-mix(in oklab, var(--background) 96%, transparent));
+  background-size: auto, 42px 42px, 42px 42px, auto;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.genealogy-canvas-viewport:active {
+  cursor: grabbing;
+}
+
+.genealogy-canvas {
+  width: max-content;
+  min-width: 1120px;
+  margin: 54px auto 72px;
+  transform-origin: top center;
+  transition: transform 80ms linear;
+}
+
+.genealogy-canvas-branch {
+  display: grid;
+  justify-items: center;
+  gap: 34px;
+  position: relative;
+}
+
+.genealogy-canvas-children {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(250px, 1fr));
+  gap: 54px;
+  width: 100%;
+}
+
+.genealogy-canvas-children::before {
+  content: '';
+  position: absolute;
+  top: -18px;
+  left: 25%;
+  right: 25%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(245, 200, 66, 0.5), transparent);
+}
+
+.genealogy-canvas-children > .genealogy-canvas-branch::before {
+  content: '';
+  position: absolute;
+  top: -34px;
+  width: 1px;
+  height: 34px;
+  background: linear-gradient(180deg, rgba(245, 200, 66, 0.55), rgba(122, 64, 32, 0.18));
+}
+
+.genealogy-canvas-node {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  width: 230px;
+  min-height: 138px;
+  padding: 14px;
+  border: 1px solid color-mix(in oklab, var(--border) 62%, var(--yor-copper) 38%);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(245, 200, 66, 0.16), transparent 32%),
+    linear-gradient(180deg, color-mix(in oklab, var(--card) 96%, transparent), color-mix(in oklab, var(--background) 88%, transparent));
+  color: var(--foreground);
+  text-align: left;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.14);
+  cursor: pointer;
+  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.genealogy-canvas-node:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklab, var(--yor-copper) 58%, var(--border));
+  box-shadow: 0 24px 52px rgba(180, 103, 52, 0.18);
+}
+
+.genealogy-canvas-node.is-selected {
+  border-color: var(--yor-copper-soft);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--yor-copper) 28%, transparent), 0 22px 60px rgba(245, 200, 66, 0.16);
+}
+
+.genealogy-canvas-node.is-left {
+  border-top-color: color-mix(in oklab, #56d6a1 48%, var(--border));
+}
+
+.genealogy-canvas-node.is-right {
+  border-top-color: color-mix(in oklab, #f1b943 54%, var(--border));
+}
+
+.genealogy-canvas-node.is-open-slot {
+  border-style: dashed;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in oklab, var(--yor-copper) 10%, transparent), transparent 36%),
+    color-mix(in oklab, var(--background) 92%, transparent);
+  opacity: 0.78;
+  cursor: default;
+}
+
+.genealogy-canvas-node-orb {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid rgba(245, 200, 66, 0.36);
+  border-radius: 999px;
+  background: linear-gradient(145deg, #1a1210, #a65f33 48%, #f1b943);
+  color: #fff8e8;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 10px 24px rgba(194, 123, 70, 0.22);
+}
+
+.genealogy-canvas-node-main,
+.genealogy-canvas-node-stats {
+  min-width: 0;
+}
+
+.genealogy-canvas-node-title {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.genealogy-canvas-node-title strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 0.88rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.genealogy-canvas-node-main p {
+  margin-top: 5px;
+  color: var(--muted-foreground);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.genealogy-canvas-node-stats {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.genealogy-canvas-node-stats span {
+  border: 1px solid color-mix(in oklab, var(--border) 72%, var(--yor-copper) 28%);
+  border-radius: 999px;
+  padding: 6px 7px;
+  background: color-mix(in oklab, var(--yor-copper) 8%, transparent);
+  color: var(--muted-foreground);
+  font-size: 0.64rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.genealogy-canvas-note {
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
 .hero-immersion {
   position: relative;
   min-height: 100vh;
@@ -7602,6 +7846,11 @@ a {
     animation: public-mobile-pop 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
+  .ops-mobile-bottom-popover.is-closing {
+    pointer-events: none;
+    animation: ops-mobile-pop-down 210ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
   .dark .ops-mobile-bottom-popover {
     background:
       radial-gradient(circle at 78% 0%, rgba(245, 200, 66, 0.12), transparent 36%),
@@ -7673,8 +7922,112 @@ a {
   }
 }
 
+@keyframes ops-mobile-pop-down {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(22px) scale(0.96);
+  }
+}
+
 @media (max-width: 430px) {
   .ops-mobile-bottom-links {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 821px) {
+  .rank-roadmap-strip {
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 820px) {
+  .rank-roadmap-strip {
+    min-height: 335px;
+  }
+
+  .rank-roadmap-scroll {
+    grid-auto-columns: minmax(238px, 78vw);
+    overscroll-behavior-x: contain;
+  }
+}
+
+@media (max-width: 1024px) {
+  .genealogy-canvas-toolbar {
+    align-items: stretch;
+  }
+
+  .genealogy-canvas-hint,
+  .genealogy-canvas-actions {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .genealogy-canvas-viewport {
+    min-height: 520px;
+    border-radius: 22px;
+  }
+
+  .genealogy-canvas {
+    min-width: 980px;
+    margin: 42px auto 72px;
+  }
+
+  .genealogy-canvas-children {
+    gap: 38px;
+  }
+
+  .genealogy-canvas-node {
+    width: 214px;
+    min-height: 128px;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 540px) {
+  .genealogy-canvas-toolbar {
+    padding: 10px;
+  }
+
+  .genealogy-canvas-viewport {
+    min-height: 500px;
+  }
+
+  .genealogy-canvas {
+    min-width: 860px;
+    margin-top: 34px;
+  }
+
+  .genealogy-canvas-children {
+    grid-template-columns: repeat(2, minmax(196px, 1fr));
+    gap: 30px;
+  }
+
+  .genealogy-canvas-node {
+    width: 188px;
+    min-height: 120px;
+    border-radius: 18px;
+  }
+
+  .genealogy-canvas-node-orb {
+    width: 38px;
+    height: 38px;
+  }
+
+  .genealogy-canvas-node-title strong {
+    font-size: 0.8rem;
+  }
+
+  .genealogy-canvas-node-main p {
+    font-size: 0.68rem;
+  }
+
+  .genealogy-canvas-node-stats span {
+    padding: 5px;
+    font-size: 0.58rem;
   }
 }

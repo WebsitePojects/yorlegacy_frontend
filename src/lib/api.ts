@@ -21,7 +21,7 @@ import type { RegistrationReadiness } from '../types/auth';
 import type { PageContent } from '../types/content';
 import type { RegistrationPreview, RegistrationSubmitResponse } from '../types/registration';
 
-export const DEFAULT_API_BASE_URL = '';
+export const DEFAULT_API_BASE_URL = 'https://cz9c2qnq-8787.asse.devtunnels.ms';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, '');
 

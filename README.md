@@ -11,13 +11,17 @@ npm run dev -- --host 127.0.0.1 --port 4273
 
 Copy `.env.example` to `.env` only if you intentionally want to override the backend URL.
 
-The frontend now uses same-origin `/api` requests by default.
+The frontend now points at the current forwarded backend API by default.
 
-For local development, Vite proxies `/api` to the backend target configured in [vite.config.ts](C:\Users\Win10\Desktop\YorLegacyMLM\yor_frontend\vite.config.ts).
+For same-origin local development, clear `VITE_API_BASE_URL` and Vite can proxy `/api` to the backend target configured in [vite.config.ts](C:\Users\Win10\Desktop\YorLegacyMLM\yor_frontend\vite.config.ts).
 
-You usually do not need `VITE_API_BASE_URL` at all.
+The committed default API target is the current forwarded backend tunnel:
 
-Only set `VITE_API_BASE_URL` if you intentionally want the browser to call a different API origin directly.
+```text
+https://cz9c2qnq-8787.asse.devtunnels.ms
+```
+
+Set `VITE_API_BASE_URL` only when you intentionally want the browser to call a different API origin directly. Trailing slashes are normalized in `src/lib/api.ts`, so both `https://example.com` and `https://example.com/` are safe.
 
 ## Verify
 
