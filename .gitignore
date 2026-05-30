@@ -6,3 +6,5 @@ dist
 *.tsbuildinfo
 qa-screens/
 test-results/
+docs/*.local.md
+docs/LOCAL_*.md

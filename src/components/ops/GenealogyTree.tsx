@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Maximize2, Minus, Move, Plus, RotateCcw } from 'lucide-react';
-import { useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react';
+import { Maximize2, Minimize2, Minus, Move, Plus, RotateCcw } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent as ReactWheelEvent } from 'react';
 import type { GenealogyTreeNode } from '../../types/auth';
 
 type GenealogyTreeProps = {
@@ -14,7 +14,13 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
   const canvasRoot = useMemo(() => toCanvasNode(root, 0, 'root'), [root]);
   const [scale, setScale] = useState(0.92);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isActive, setIsActive] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ pointerId: number; x: number; y: number; offsetX: number; offsetY: number } | null>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchDistanceRef = useRef<number | null>(null);
 
   function clampScale(nextScale: number) {
     return Math.min(1.35, Math.max(0.52, Number(nextScale.toFixed(2))));
@@ -29,17 +35,92 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
     setOffset({ x: 0, y: 0 });
   }
 
-  function handleWheel(event: WheelEvent<HTMLDivElement>) {
-    if (!event.ctrlKey && Math.abs(event.deltaY) < Math.abs(event.deltaX)) {
+  useEffect(() => {
+    function handlePointerAway(event: Event) {
+      if (!shellRef.current?.contains(event.target as Node)) {
+        setIsActive(false);
+      }
+    }
+
+    function handleFullscreenChange() {
+      setIsFullscreen(document.fullscreenElement === shellRef.current);
+    }
+
+    document.addEventListener('pointerdown', handlePointerAway);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerAway);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const { body, documentElement } = document;
+    const previousBodyOverflow = body.style.overflow;
+    const previousDocumentOverflow = documentElement.style.overflow;
+
+    if (isActive) {
+      body.style.overflow = 'hidden';
+      documentElement.style.overflow = 'hidden';
+    }
+
+    return () => {
+      body.style.overflow = previousBodyOverflow;
+      documentElement.style.overflow = previousDocumentOverflow;
+    };
+  }, [isActive]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+
+    if (!viewport) {
+      return;
+    }
+
+    const handleNativeWheel = (event: globalThis.WheelEvent) => {
+      if (!isActive) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      updateScale(event.deltaY > 0 ? -0.06 : 0.06);
+    };
+
+    viewport.addEventListener('wheel', handleNativeWheel, { passive: false });
+
+    return () => {
+      viewport.removeEventListener('wheel', handleNativeWheel);
+    };
+  }, [isActive]);
+
+  function handleWheel(event: ReactWheelEvent<HTMLDivElement>) {
+    if (!isActive) {
       return;
     }
 
     event.preventDefault();
+    event.stopPropagation();
     updateScale(event.deltaY > 0 ? -0.06 : 0.06);
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
-    if (event.button !== 0) {
+    setIsActive(true);
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (event.pointerType === 'mouse' && event.button !== 0) {
+      return;
+    }
+
+    if (pointersRef.current.size > 1) {
+      const [first, second] = Array.from(pointersRef.current.values());
+      pinchDistanceRef.current = Math.hypot(second.x - first.x, second.y - first.y);
+      dragRef.current = null;
       return;
     }
 
@@ -54,6 +135,22 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (pointersRef.current.has(event.pointerId)) {
+      pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    if (pointersRef.current.size > 1) {
+      const [first, second] = Array.from(pointersRef.current.values());
+      const nextDistance = Math.hypot(second.x - first.x, second.y - first.y);
+
+      if (pinchDistanceRef.current != null) {
+        updateScale((nextDistance - pinchDistanceRef.current) / 240);
+      }
+
+      pinchDistanceRef.current = nextDistance;
+      return;
+    }
+
     const drag = dragRef.current;
 
     if (!drag || drag.pointerId !== event.pointerId) {
@@ -67,17 +164,34 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
   }
 
   function handlePointerEnd(event: PointerEvent<HTMLDivElement>) {
+    pointersRef.current.delete(event.pointerId);
+    if (pointersRef.current.size < 2) {
+      pinchDistanceRef.current = null;
+    }
     if (dragRef.current?.pointerId === event.pointerId) {
       dragRef.current = null;
     }
   }
 
+  async function toggleFullscreen() {
+    if (!shellRef.current) {
+      return;
+    }
+
+    if (document.fullscreenElement === shellRef.current) {
+      await document.exitFullscreen();
+      return;
+    }
+
+    await shellRef.current.requestFullscreen();
+  }
+
   return (
-    <div className="genealogy-canvas-shell">
+    <div ref={shellRef} className={cn('genealogy-canvas-shell', isActive && 'is-active', isFullscreen && 'is-fullscreen')}>
       <div className="genealogy-canvas-toolbar" aria-label="Binary tree canvas controls">
         <span className="genealogy-canvas-hint">
           <Move className="size-3.5" />
-          Drag canvas, scroll to zoom
+          {isActive ? 'Canvas engaged: drag and scroll to zoom' : 'Click the canvas to engage controls'}
         </span>
         <div className="genealogy-canvas-actions">
           <button type="button" onClick={() => updateScale(-0.08)} aria-label="Zoom out">
@@ -90,16 +204,26 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
           <button type="button" onClick={resetCanvas} aria-label="Reset tree view">
             <RotateCcw className="size-4" />
           </button>
+          <button type="button" onClick={() => void toggleFullscreen()} aria-label={isFullscreen ? 'Exit fullscreen' : 'Open fullscreen'}>
+            {isFullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+          </button>
         </div>
       </div>
       <div
+        ref={viewportRef}
         className="genealogy-canvas-viewport"
         onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
+        onClick={() => setIsActive(true)}
       >
+        {!isActive ? (
+          <div className="genealogy-canvas-overlay">
+            <p>Click or touch the tree to engage drag, zoom, and fullscreen controls. Click anywhere outside when you want normal page scrolling again.</p>
+          </div>
+        ) : null}
         <div
           className="genealogy-canvas"
           style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})` }}
@@ -110,9 +234,6 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
             selectedNodeId={selectedNodeId}
           />
         </div>
-      </div>
-      <div className="genealogy-canvas-note">
-        Yor uses the base binary placement view: left and right business legs, open slots, and point visibility without adding an extreme-left/extreme-right safety-net rule.
       </div>
     </div>
   );
@@ -194,30 +315,30 @@ function BinaryBranch({
               {source.username.slice(0, 2).toUpperCase()}
             </div>
             <div className="genealogy-canvas-node-main">
+              <Badge variant="outline">{source.packageTier}</Badge>
               <div className="genealogy-canvas-node-title">
                 <strong>{source.username}</strong>
-                <Badge variant="outline">{source.packageTier}</Badge>
-                <Badge variant="secondary">{source.accountStateLabel}</Badge>
               </div>
               <p>{source.fullName}</p>
             </div>
             <div className="genealogy-canvas-node-stats">
               <span>L {source.leftPoints}</span>
               <span>R {source.rightPoints}</span>
-              <span>{source.directReferrals} direct</span>
+              <span>{source.directReferrals} D</span>
             </div>
+            <div className="genealogy-canvas-node-status">{source.accountStateLabel}</div>
           </>
         ) : (
           <>
             <div className="genealogy-canvas-node-orb">
-              <Maximize2 className="size-4" />
+              <Plus className="size-4" />
             </div>
             <div className="genealogy-canvas-node-main">
+              <Badge variant="warning">{node.side}</Badge>
               <div className="genealogy-canvas-node-title">
-                <strong>Register Me</strong>
-                <Badge variant="warning">{node.side}</Badge>
+                <strong>Available Slot</strong>
               </div>
-              <p>Available {node.side} placement slot</p>
+              <p>Ready for the next placement</p>
             </div>
           </>
         )}

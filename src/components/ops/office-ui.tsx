@@ -54,6 +54,7 @@ type OfficeSidebarProps = {
   footerLinks?: Array<{ label: string; href: string; external?: boolean }>;
   expanded: boolean;
   onSignOut?: () => void;
+  onPrefetchModule?: (moduleId: string) => void;
   onExpandedChange: (nextExpanded: boolean) => void;
 };
 
@@ -66,7 +67,8 @@ export function OfficeSidebar({
   footerLinks = [],
   expanded,
   onSignOut,
-  onExpandedChange
+  onExpandedChange,
+  onPrefetchModule
 }: OfficeSidebarProps) {
   const grouped = useMemo(() => groupModules(modules), [modules]);
   const sidebarWidth = expanded ? '300px' : '72px';
@@ -119,6 +121,8 @@ export function OfficeSidebar({
                               : 'border-transparent hover:border-[var(--border)] hover:bg-[var(--accent)]'
                           )}
                           onClick={() => onExpandedChange(true)}
+                          onMouseEnter={() => onPrefetchModule?.(module.id)}
+                          onFocus={() => onPrefetchModule?.(module.id)}
                         >
                           <div className="flex items-start gap-3">
                             <span className="ops-sidebar-item-icon mt-0.5">{renderIcon(getModuleIcon(module.id), 'size-4')}</span>
@@ -213,11 +217,13 @@ export function OfficeSidebar({
 export function MobileOfficeNav({
   basePath,
   currentModuleId,
-  modules
+  modules,
+  onPrefetchModule
 }: {
   basePath: '/member' | '/admin' | '/cashier' | '/bod';
   currentModuleId: string;
   modules: OperationalModule[];
+  onPrefetchModule?: (moduleId: string) => void;
 }) {
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
   const [closingGroup, setClosingGroup] = useState<string | null>(null);
@@ -279,6 +285,9 @@ export function MobileOfficeNav({
                 to={module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`}
                 className={cn(currentModuleId === module.id && 'is-active')}
                 onClick={closeActiveGroup}
+                onMouseEnter={() => onPrefetchModule?.(module.id)}
+                onFocus={() => onPrefetchModule?.(module.id)}
+                onTouchStart={() => onPrefetchModule?.(module.id)}
               >
                 <span className="ops-mobile-bottom-link-icon">{renderIcon(getModuleIcon(module.id), 'size-4')}</span>
                 <span>{module.label}</span>
@@ -369,7 +378,6 @@ export function ModuleTableCard({
         <div className="space-y-1">
           <CardTitle>{heading}</CardTitle>
           <CardDescription>{subtitle ?? module.description}</CardDescription>
-          <p className="text-xs text-[var(--muted-foreground)]">Reference: {module.legacyReference}</p>
         </div>
         <div className="ops-module-table-metrics flex flex-wrap gap-2">
           {module.metrics.map((metric) => (

@@ -30,7 +30,7 @@ export const bonusRouteContent: Record<
     kicker: 'Retail Privilege',
     spotlight: '40% Lifetime Discount',
     metrics: [
-      { label: 'Product Line', value: 'Yor Perfume', note: 'Men and women variants in the public deck.' },
+      { label: 'Product Line', value: 'Yor Fragrance Collection', note: 'Men and women fragrance variants in the public deck.' },
       { label: 'Core Hook', value: 'Retail Margin', note: 'Starter income begins with direct product movement.' },
       { label: 'Member Posture', value: 'Lifetime Access', note: 'Presented as the first visible income stream.' }
     ],

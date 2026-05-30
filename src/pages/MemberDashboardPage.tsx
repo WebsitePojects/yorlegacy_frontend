@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowRight, GitBranch, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useFeedback } from '@/components/feedback/FeedbackProvider';
 import { ProtectedOfficeFrame } from '@/components/layout/ProtectedOfficeFrame';
 import { GenealogyTree } from '../components/ops/GenealogyTree';
+import { readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
 import {
   DataListCard,
   GatedActionsCard,
@@ -43,7 +44,11 @@ const customMemberModuleIds = new Set([
   'transactions',
   'activation-codes',
   'upgrade-registration',
-  'genealogy'
+  'genealogy',
+  'get-five-bonus',
+  'lifestyle-rewards',
+  'unilevel-rank-progress',
+  'global-bonus-eligibility'
 ]);
 
 const memberIncomeRouteMap: Record<string, { memberModuleId: string; publicHref: string }> = {
@@ -67,11 +72,9 @@ function getVisibleMemberMetrics(moduleId: string, metrics: MemberOfficeData['me
   }
 
   if (
-    moduleId === 'genealogy' ||
     moduleId === 'salesmatch-bonus' ||
     moduleId === 'binary-cycle-bonus' ||
-    moduleId === 'unilevel-rank-progress' ||
-    moduleId === 'global-bonus-eligibility'
+    moduleId === 'lifestyle-rewards'
   ) {
     return metrics.filter((metric) => {
       const label = metric.label.toLowerCase();
@@ -81,6 +84,27 @@ function getVisibleMemberMetrics(moduleId: string, metrics: MemberOfficeData['me
 
   return [];
 }
+
+function countSubtreeNodes(node: GenealogyCenter['root'] | undefined): number {
+  if (!node) {
+    return 0;
+  }
+
+  return 1 + node.children.reduce((total, child) => total + countSubtreeNodes(child), 0);
+}
+
+type MemberModuleBundle = {
+  summary: DashboardSummary;
+  office: MemberOfficeData;
+  mvpDashboard: MemberMvpDashboardData;
+  activeModule: OperationalModule;
+  activationCodes: MemberActivationCodeCenter | null;
+  walletDetail: MemberWalletDetail | null;
+  transactions: MemberTransactionSummary[];
+  transactionDetail: MemberTransactionDetail | null;
+  registrationReadiness: RegistrationReadiness | null;
+  binaryTree: GenealogyCenter | null;
+};
 
 export function MemberDashboardPage() {
   const {
@@ -118,7 +142,112 @@ export function MemberDashboardPage() {
   const [transferTarget, setTransferTarget] = useState('');
   const [maintenanceCode, setMaintenanceCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isContentLoading, setIsContentLoading] = useState(true);
   const [reloadNonce, setReloadNonce] = useState(0);
+
+  const applyMemberBundle = useCallback(
+    (bundle: MemberModuleBundle) => {
+      setSummary(bundle.summary);
+      setOffice(bundle.office);
+      setMvpDashboard(bundle.mvpDashboard);
+      setActiveModule(bundle.activeModule);
+      setActivationCodes(bundle.activationCodes);
+      setWalletDetail(bundle.walletDetail);
+      setTransactions(bundle.transactions);
+      setTransactionDetail(bundle.transactionDetail);
+      setRegistrationReadiness(bundle.registrationReadiness);
+      setBinaryTree(bundle.binaryTree);
+      setSelectedTreeNodeId(bundle.binaryTree?.root.nodeId ?? null);
+
+      if (bundle.walletDetail) {
+        setEncashAmount(bundle.walletDetail.preview.requestedAmount);
+      }
+
+      if (bundle.activationCodes) {
+        setSelectedCode(bundle.activationCodes.inventory[0]?.code ?? '');
+        setMaintenanceCode(bundle.activationCodes.inventory[0]?.code ?? '');
+        setTransferTarget(bundle.activationCodes.transferTargets[0]?.username ?? '');
+      }
+    },
+    []
+  );
+
+  const buildMemberBundle = useCallback(
+    async (targetModuleId: string): Promise<MemberModuleBundle> => {
+      const [nextSummary, nextOffice, nextMvpDashboard, nextModule] = await Promise.all([
+        getMemberSummary(),
+        getMemberOffice(),
+        getMemberMvpDashboard(),
+        getMemberModule(targetModuleId)
+      ]);
+
+      let activationCodes: MemberActivationCodeCenter | null = null;
+      let walletDetail: MemberWalletDetail | null = null;
+      let transactions: MemberTransactionSummary[] = [];
+      let transactionDetail: MemberTransactionDetail | null = null;
+      let registrationReadiness: RegistrationReadiness | null = null;
+      let binaryTree: GenealogyCenter | null = null;
+
+      if (targetModuleId === 'wallet') {
+        walletDetail = await getMemberWalletDetail();
+      }
+
+      if (targetModuleId === 'activation-codes') {
+        activationCodes = await getMemberActivationCodes();
+      }
+
+      if (targetModuleId === 'transactions') {
+        const nextTransactions = await getMemberTransactions();
+        transactions = nextTransactions.transactions;
+
+        if (transactions[0]) {
+          transactionDetail = await getMemberTransactionDetail(transactions[0].id);
+        }
+      }
+
+      if (targetModuleId === 'upgrade-registration') {
+        registrationReadiness = await getMemberRegistrationReadiness();
+      }
+
+      if (targetModuleId === 'genealogy') {
+        binaryTree = await getMemberBinaryTree();
+      }
+
+      return {
+        summary: nextSummary,
+        office: nextOffice,
+        mvpDashboard: nextMvpDashboard,
+        activeModule: nextModule,
+        activationCodes,
+        walletDetail,
+        transactions,
+        transactionDetail,
+        registrationReadiness,
+        binaryTree
+      };
+    },
+    [
+      getMemberActivationCodes,
+      getMemberBinaryTree,
+      getMemberModule,
+      getMemberMvpDashboard,
+      getMemberOffice,
+      getMemberRegistrationReadiness,
+      getMemberSummary,
+      getMemberTransactionDetail,
+      getMemberTransactions,
+      getMemberWalletDetail
+    ]
+  );
+
+  const memberCacheKey = useCallback((targetModuleId: string) => `member:${targetModuleId}`, []);
+
+  const prefetchModule = useCallback(
+    (targetModuleId: string) => {
+      void warmOfficeCache(memberCacheKey(targetModuleId), () => buildMemberBundle(targetModuleId));
+    },
+    [buildMemberBundle, memberCacheKey]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -126,6 +255,7 @@ export function MemberDashboardPage() {
     async function loadMemberModule() {
       try {
         setError(null);
+        setIsContentLoading(true);
         setActivationCodes(null);
         setWalletDetail(null);
         setTransactions([]);
@@ -134,76 +264,25 @@ export function MemberDashboardPage() {
         setBinaryTree(null);
         setSelectedTreeNodeId(null);
 
-        const [nextSummary, nextOffice, nextMvpDashboard, nextModule] = await Promise.all([
-          getMemberSummary(),
-          getMemberOffice(),
-          getMemberMvpDashboard(),
-          getMemberModule(moduleId)
-        ]);
+        const cached = readOfficeCache<MemberModuleBundle>(memberCacheKey(moduleId));
+
+        if (cached && !cancelled) {
+          applyMemberBundle(cached.data);
+          setIsContentLoading(false);
+        }
+
+        const nextBundle = await warmOfficeCache(memberCacheKey(moduleId), () => buildMemberBundle(moduleId));
 
         if (cancelled) {
           return;
         }
 
-        setSummary(nextSummary);
-        setOffice(nextOffice);
-        setMvpDashboard(nextMvpDashboard);
-        setActiveModule(nextModule);
-
-        if (moduleId === 'wallet') {
-          const nextWalletDetail = await getMemberWalletDetail();
-          if (cancelled) {
-            return;
-          }
-          setWalletDetail(nextWalletDetail);
-          setEncashAmount(nextWalletDetail.preview.requestedAmount);
-        }
-
-        if (moduleId === 'activation-codes') {
-          const nextActivationCodes = await getMemberActivationCodes();
-          if (cancelled) {
-            return;
-          }
-          setActivationCodes(nextActivationCodes);
-          setSelectedCode(nextActivationCodes.inventory[0]?.code ?? '');
-          setMaintenanceCode(nextActivationCodes.inventory[0]?.code ?? '');
-          setTransferTarget(nextActivationCodes.transferTargets[0]?.username ?? '');
-        }
-
-        if (moduleId === 'transactions') {
-          const nextTransactions = await getMemberTransactions();
-          if (cancelled) {
-            return;
-          }
-          setTransactions(nextTransactions.transactions);
-
-          if (nextTransactions.transactions[0]) {
-            const nextTransactionDetail = await getMemberTransactionDetail(nextTransactions.transactions[0].id);
-            if (!cancelled) {
-              setTransactionDetail(nextTransactionDetail);
-            }
-          }
-        }
-
-        if (moduleId === 'upgrade-registration') {
-          const nextRegistrationReadiness = await getMemberRegistrationReadiness();
-          if (cancelled) {
-            return;
-          }
-          setRegistrationReadiness(nextRegistrationReadiness);
-        }
-
-        if (moduleId === 'genealogy') {
-          const nextBinaryTree = await getMemberBinaryTree();
-          if (cancelled) {
-            return;
-          }
-          setBinaryTree(nextBinaryTree);
-          setSelectedTreeNodeId(nextBinaryTree.root.nodeId);
-        }
+        applyMemberBundle(nextBundle);
+        setIsContentLoading(false);
       } catch (cause) {
         if (!cancelled) {
           setError(cause instanceof Error ? cause.message : 'Unable to load member dashboard');
+          setIsContentLoading(false);
         }
       }
     }
@@ -214,16 +293,9 @@ export function MemberDashboardPage() {
       cancelled = true;
     };
   }, [
-    getMemberActivationCodes,
-    getMemberBinaryTree,
-    getMemberModule,
-    getMemberMvpDashboard,
-    getMemberOffice,
-    getMemberRegistrationReadiness,
-    getMemberSummary,
-    getMemberTransactionDetail,
-    getMemberTransactions,
-    getMemberWalletDetail,
+    applyMemberBundle,
+    buildMemberBundle,
+    memberCacheKey,
     moduleId,
     reloadNonce
   ]);
@@ -383,6 +455,14 @@ export function MemberDashboardPage() {
   }
 
   const selectedTreeNode = binaryTree?.nodes.find((node) => node.nodeId === selectedTreeNodeId) ?? null;
+  const treeLeftRoot = binaryTree?.root.children.find((child) => child.placement === 'left');
+  const treeRightRoot = binaryTree?.root.children.find((child) => child.placement === 'right');
+  const leftAccountCount = countSubtreeNodes(treeLeftRoot);
+  const rightAccountCount = countSubtreeNodes(treeRightRoot);
+  const matchedPoints = binaryTree ? Math.min(binaryTree.root.leftPoints, binaryTree.root.rightPoints) : 0;
+  const strongLegCarry = binaryTree ? Math.max(binaryTree.root.leftPoints, binaryTree.root.rightPoints) - matchedPoints : 0;
+  const weakLegCarry = binaryTree ? Math.min(binaryTree.root.leftPoints, binaryTree.root.rightPoints) - matchedPoints : 0;
+  const matchedSalesmatch = activeModule?.table.rows[0]?.salesmatch ?? 'PHP 0.00';
   const branchNotes = activeModule?.gatedActions.length ? activeModule.gatedActions : office?.gatedActions ?? [];
   const modulePathById = useMemo(
     () => new Map((office?.modules ?? []).map((module) => [module.id, module.path])),
@@ -463,6 +543,9 @@ export function MemberDashboardPage() {
       sidebarSubheading={office?.profile.fullName ?? 'Protected member office'}
       modules={office?.modules ?? []}
       headerBadge="Member Office"
+      isContentLoading={isContentLoading}
+      loadingLabel={activeModule?.label ?? 'Loading member workspace'}
+      onPrefetchModule={prefetchModule}
       summaryCard={summaryCard}
       footerLinks={[
         { label: 'Public registration page', href: '/register' },
@@ -840,7 +923,7 @@ export function MemberDashboardPage() {
           ) : null}
 
           {moduleId === 'genealogy' && binaryTree ? (
-            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]">
+            <section className="member-detail-grid grid gap-4">
               <Card className="border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Placement Network View</CardTitle>
@@ -854,13 +937,28 @@ export function MemberDashboardPage() {
                   />
                 </CardContent>
               </Card>
+              <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                <Card className="border-[var(--border)] bg-[var(--card)]">
+                  <CardHeader>
+                    <CardTitle>Tree Performance</CardTitle>
+                    <CardDescription>Keep the binary summary close to the active canvas so placement review, matched-point context, and current carry-forward stay together.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <DataPoint label="Accounts On Left" value={leftAccountCount} />
+                    <DataPoint label="Accounts On Right" value={rightAccountCount} />
+                    <DataPoint label="Matched Points" value={matchedPoints} />
+                    <DataPoint label="SMB Total" value={String(matchedSalesmatch)} />
+                    <DataPoint label="Strong Leg Carry" value={strongLegCarry} />
+                    <DataPoint label="Weak Leg Carry" value={weakLegCarry} />
+                  </CardContent>
+                </Card>
               {selectedTreeNode ? (
                 <Card className="border-[var(--border)] bg-[var(--card)]">
                   <CardHeader>
                     <CardTitle>Node Focus</CardTitle>
                     <CardDescription>Use this panel to verify slot availability before registration.</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-5">
                     <DataPoint label="Username" value={selectedTreeNode.username} />
                     <DataPoint label="Package" value={selectedTreeNode.packageTier} />
                     <DataPoint label="Placement" value={selectedTreeNode.placement} />
@@ -871,6 +969,141 @@ export function MemberDashboardPage() {
                   </CardContent>
                 </Card>
               ) : null}
+              </section>
+            </section>
+          ) : null}
+
+          {moduleId === 'get-five-bonus' && activeModule ? (
+            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader>
+                  <CardTitle>Same-Package Direct Progress</CardTitle>
+                  <CardDescription>Track how many direct signups on your current package are already counted toward the next Get Yor Five release.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <DataPoint label="Current Package" value={String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '-')} />
+                  <DataPoint label="Qualified Directs" value={String(activeModule.table.rows[0]?.directSamePackage ?? 0)} />
+                  <DataPoint label="Claimable Groups" value={String(activeModule.table.rows[0]?.completedGroups ?? 0)} />
+                  <DataPoint label="Target" value={String(activeModule.table.rows[0]?.target ?? 5)} />
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                      <span className="text-[var(--muted-foreground)]">Milestone progress</span>
+                      <strong className="text-[var(--foreground)]">
+                        {Number(activeModule.table.rows[0]?.remainingToNextGroup ?? 0) === 0
+                          ? 'ready to release'
+                          : `${activeModule.table.rows[0]?.remainingToNextGroup ?? 0} remaining`}
+                      </strong>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-full bg-[var(--muted)]">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[var(--yor-copper)] to-[var(--yor-gold)]"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            (
+                              Number(activeModule.table.rows[0]?.remainingToNextGroup ?? 0) === 0 &&
+                              Number(activeModule.table.rows[0]?.directSamePackage ?? 0) > 0
+                                ? 1
+                                : (Number(activeModule.table.rows[0]?.directSamePackage ?? 0) %
+                                    Number(activeModule.table.rows[0]?.target ?? 5)) /
+                                  Number(activeModule.table.rows[0]?.target ?? 5)
+                            ) * 100
+                          )}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader>
+                  <CardTitle>Release Logic</CardTitle>
+                  <CardDescription>Get Yor Five stays tied to five direct signups on the same package tier so the milestone matches the published Yor compensation story.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ReportTableView table={activeModule.table} />
+                </CardContent>
+              </Card>
+            </section>
+          ) : null}
+
+          {moduleId === 'lifestyle-rewards' && activeModule ? (
+            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+              <DataListCard
+                title="Lifestyle Reward Monitor"
+                rows={[
+                  { label: 'Package', value: String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '-') },
+                  { label: 'Repeat Purchase Target', value: String(activeModule.table.rows[0]?.repeatPurchaseTarget ?? '-') },
+                  { label: 'Current Repeat Purchase', value: String(activeModule.table.rows[0]?.currentRepeatPurchase ?? '-') },
+                  { label: 'Progress', value: String(activeModule.table.rows[0]?.progressPercent ?? '-') },
+                  { label: 'Projected Reward', value: String(activeModule.table.rows[0]?.projectedReward ?? '-') }
+                ]}
+              />
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader>
+                  <CardTitle>Reward Status</CardTitle>
+                  <CardDescription>Operational lifestyle tracking follows the Yor 3% repeat-purchase framing and shows whether the lifestyle wallet threshold is already building or ready.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <DataPoint label="Threshold Status" value={String(activeModule.table.rows[0]?.thresholdStatus ?? '-')} />
+                  <ReportTableView table={activeModule.table} />
+                </CardContent>
+              </Card>
+            </section>
+          ) : null}
+
+          {moduleId === 'unilevel-rank-progress' && activeModule ? (
+            <section className="member-detail-grid grid gap-4">
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader>
+                  <CardTitle>Potential Income Ladder</CardTitle>
+                  <CardDescription>The public Yor deck presents a potential-income story that scales up to PHP 11 billion across the ten-level ladder.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3">
+                  {activeModule.table.rows.map((row, index) => (
+                    <div key={`${row.level}-${index}`} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted-foreground)]">Level {String(row.level)}</p>
+                          <h3 className="text-lg font-semibold text-[var(--foreground)]">{String(row.potential)}</h3>
+                        </div>
+                        <Badge variant="outline">{String(row.percent)}</Badge>
+                      </div>
+                      <p className="mt-2 text-sm text-[var(--muted-foreground)]">{String(row.requiredPV)}</p>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--muted)]">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[var(--yor-copper)] to-[var(--yor-gold)]"
+                          style={{ width: `${Math.min(100, 18 + index * 12)}%` }}
+                        />
+                      </div>
+                      <p className="mt-2 text-xs uppercase tracking-[0.18em] text-[var(--muted-foreground)]">{String(row.status)}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </section>
+          ) : null}
+
+          {moduleId === 'global-bonus-eligibility' && activeModule ? (
+            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+              <DataListCard
+                title="Global Bonus Gate"
+                rows={[
+                  { label: 'Package', value: String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '-') },
+                  { label: 'Qualification', value: String(activeModule.table.rows[0]?.qualification ?? '-') },
+                  { label: 'Pool', value: String(activeModule.table.rows[0]?.pool ?? '-') },
+                  { label: 'Status', value: String(activeModule.table.rows[0]?.status ?? '-') }
+                ]}
+              />
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader>
+                  <CardTitle>Maintenance Window</CardTitle>
+                  <CardDescription>Only VIP members should see this page, and the review should stay anchored to maintenance continuity plus the yearly global pool language.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ReportTableView table={activeModule.table} />
+                </CardContent>
+              </Card>
             </section>
           ) : null}
 

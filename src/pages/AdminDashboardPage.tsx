@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useFeedback } from '@/components/feedback/FeedbackProvider';
@@ -7,6 +7,7 @@ import {
   resolveOfficeBasePath
 } from '@/components/layout/ProtectedOfficeFrame';
 import { GenealogyTree } from '../components/ops/GenealogyTree';
+import { readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
 import {
   DataListCard,
   GatedActionsCard,
@@ -48,12 +49,26 @@ function getVisibleAdminMetrics(moduleId: string, metrics: AdminOfficeData['metr
     return metrics;
   }
 
-  if (moduleId === 'binary-placement-tree' || moduleId === 'sponsor-tree') {
-    return metrics.filter((metric) => metric.label.toLowerCase().includes('direct referral'));
-  }
-
   return [];
 }
+
+function countSubtreeNodes(node: GenealogyCenter['root'] | undefined): number {
+  if (!node) {
+    return 0;
+  }
+
+  return 1 + node.children.reduce((total, child) => total + countSubtreeNodes(child), 0);
+}
+
+type AdminModuleBundle = {
+  summary: DashboardSummary;
+  office: AdminOfficeData;
+  mvpDashboard: AdminMvpDashboardData;
+  activeModule: OperationalModule;
+  activationCodes: AdminActivationCodeCenter | null;
+  encashments: AdminEncashmentCenter | null;
+  genealogyTree: GenealogyCenter | null;
+};
 
 export function AdminDashboardPage() {
   const {
@@ -85,7 +100,83 @@ export function AdminDashboardPage() {
   const [codeBatchPackageTier, setCodeBatchPackageTier] = useState('Standard');
   const [codeBatchAssignedTo, setCodeBatchAssignedTo] = useState('YOR0001');
   const [error, setError] = useState<string | null>(null);
+  const [isContentLoading, setIsContentLoading] = useState(true);
   const [reloadNonce, setReloadNonce] = useState(0);
+
+  const applyAdminBundle = useCallback((bundle: AdminModuleBundle) => {
+    setSummary(bundle.summary);
+    setOffice(bundle.office);
+    setMvpDashboard(bundle.mvpDashboard);
+    setActiveModule(bundle.activeModule);
+    setActivationCodes(bundle.activationCodes);
+    setEncashments(bundle.encashments);
+    setGenealogyTree(bundle.genealogyTree);
+    setSelectedTreeNodeId(bundle.genealogyTree?.root.nodeId ?? null);
+  }, []);
+
+  const buildAdminBundle = useCallback(
+    async (targetModuleId: string, rootUsername: string): Promise<AdminModuleBundle> => {
+      const [nextSummary, nextOffice, nextMvpDashboard, nextModule] = await Promise.all([
+        getAdminSummary(),
+        getAdminOffice(),
+        getAdminMvpDashboard(),
+        getAdminModule(targetModuleId)
+      ]);
+
+      let activationCodes: AdminActivationCodeCenter | null = null;
+      let encashments: AdminEncashmentCenter | null = null;
+      let genealogyTree: GenealogyCenter | null = null;
+
+      if (targetModuleId === 'activation-codes') {
+        activationCodes = await getAdminActivationCodes();
+      }
+
+      if (targetModuleId === 'encashment-reports') {
+        encashments = await getAdminEncashments();
+      }
+
+      if (targetModuleId === 'binary-placement-tree' || targetModuleId === 'sponsor-tree') {
+        genealogyTree =
+          targetModuleId === 'sponsor-tree'
+            ? await getAdminSponsorTree(rootUsername)
+            : await getAdminBinaryTree(rootUsername);
+      }
+
+      return {
+        summary: nextSummary,
+        office: nextOffice,
+        mvpDashboard: nextMvpDashboard,
+        activeModule: nextModule,
+        activationCodes,
+        encashments,
+        genealogyTree
+      };
+    },
+    [
+      getAdminActivationCodes,
+      getAdminBinaryTree,
+      getAdminEncashments,
+      getAdminModule,
+      getAdminMvpDashboard,
+      getAdminOffice,
+      getAdminSponsorTree,
+      getAdminSummary
+    ]
+  );
+
+  const adminCacheKey = useCallback(
+    (targetModuleId: string, rootUsername: string) => `admin:${officeBasePath}:${targetModuleId}:${rootUsername.toUpperCase()}`,
+    [officeBasePath]
+  );
+
+  const prefetchModule = useCallback(
+    (targetModuleId: string) => {
+      void warmOfficeCache(adminCacheKey(targetModuleId, treeRootUsername), () =>
+        buildAdminBundle(targetModuleId, treeRootUsername)
+      );
+    },
+    [adminCacheKey, buildAdminBundle, treeRootUsername]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -93,55 +184,31 @@ export function AdminDashboardPage() {
     async function loadAdminModule() {
       try {
         setError(null);
+        setIsContentLoading(true);
         setActivationCodes(null);
         setEncashments(null);
         setGenealogyTree(null);
         setSelectedTreeNodeId(null);
+        const cacheKey = adminCacheKey(moduleId, treeRootUsername);
+        const cached = readOfficeCache<AdminModuleBundle>(cacheKey);
 
-        const [nextSummary, nextOffice, nextMvpDashboard, nextModule] = await Promise.all([
-          getAdminSummary(),
-          getAdminOffice(),
-          getAdminMvpDashboard(),
-          getAdminModule(moduleId)
-        ]);
+        if (cached && !cancelled) {
+          applyAdminBundle(cached.data);
+          setIsContentLoading(false);
+        }
+
+        const nextBundle = await warmOfficeCache(cacheKey, () => buildAdminBundle(moduleId, treeRootUsername));
 
         if (cancelled) {
           return;
         }
 
-        setSummary(nextSummary);
-        setOffice(nextOffice);
-        setMvpDashboard(nextMvpDashboard);
-        setActiveModule(nextModule);
-
-        if (moduleId === 'activation-codes') {
-          const nextActivationCodes = await getAdminActivationCodes();
-          if (!cancelled) {
-            setActivationCodes(nextActivationCodes);
-          }
-        }
-
-        if (moduleId === 'encashment-reports') {
-          const nextEncashments = await getAdminEncashments();
-          if (!cancelled) {
-            setEncashments(nextEncashments);
-          }
-        }
-
-        if (moduleId === 'binary-placement-tree' || moduleId === 'sponsor-tree') {
-          const nextTree =
-            moduleId === 'sponsor-tree'
-              ? await getAdminSponsorTree(treeRootUsername)
-              : await getAdminBinaryTree(treeRootUsername);
-
-          if (!cancelled) {
-            setGenealogyTree(nextTree);
-            setSelectedTreeNodeId(nextTree.root.nodeId);
-          }
-        }
+        applyAdminBundle(nextBundle);
+        setIsContentLoading(false);
       } catch (cause) {
         if (!cancelled) {
           setError(cause instanceof Error ? cause.message : 'Unable to load admin dashboard');
+          setIsContentLoading(false);
         }
       }
     }
@@ -152,14 +219,9 @@ export function AdminDashboardPage() {
       cancelled = true;
     };
   }, [
-    getAdminActivationCodes,
-    getAdminBinaryTree,
-    getAdminEncashments,
-    getAdminModule,
-    getAdminMvpDashboard,
-    getAdminOffice,
-    getAdminSponsorTree,
-    getAdminSummary,
+    adminCacheKey,
+    applyAdminBundle,
+    buildAdminBundle,
     moduleId,
     reloadNonce,
     treeRootUsername
@@ -229,6 +291,13 @@ export function AdminDashboardPage() {
 
   const selectedTreeNode =
     genealogyTree?.nodes.find((node) => node.nodeId === selectedTreeNodeId) ?? null;
+  const treeLeftRoot = genealogyTree?.root.children.find((child) => child.placement === 'left');
+  const treeRightRoot = genealogyTree?.root.children.find((child) => child.placement === 'right');
+  const leftAccountCount = countSubtreeNodes(treeLeftRoot);
+  const rightAccountCount = countSubtreeNodes(treeRightRoot);
+  const matchedPoints = genealogyTree ? Math.min(genealogyTree.root.leftPoints, genealogyTree.root.rightPoints) : 0;
+  const strongLegCarry = genealogyTree ? Math.max(genealogyTree.root.leftPoints, genealogyTree.root.rightPoints) - matchedPoints : 0;
+  const weakLegCarry = genealogyTree ? Math.min(genealogyTree.root.leftPoints, genealogyTree.root.rightPoints) - matchedPoints : 0;
   const quickLinks = useMemo(() => {
     const quickLinkMap: Record<string, { title: string; body: string }> = {
       'member-management': {
@@ -316,6 +385,9 @@ export function AdminDashboardPage() {
       sidebarSubheading={office?.profile.officeTitle ?? 'Operations office'}
       modules={office?.modules ?? []}
       headerBadge={office?.profile.officeTitle ?? 'Admin Office'}
+      isContentLoading={isContentLoading}
+      loadingLabel={activeModule?.label ?? 'Loading office workspace'}
+      onPrefetchModule={prefetchModule}
       summaryCard={summaryCard}
       footerLinks={[
         { label: 'Open public site', href: '/' },
@@ -499,7 +571,7 @@ export function AdminDashboardPage() {
           ) : null}
 
           {(moduleId === 'binary-placement-tree' || moduleId === 'sponsor-tree') && genealogyTree ? (
-            <section className="ops-admin-tree-grid grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+            <section className="ops-admin-tree-grid grid gap-4">
               <Card className="ops-admin-tree-card border-[var(--border)] bg-[var(--card)] xl:col-span-2">
                 <CardHeader className="ops-admin-tree-header gap-4 md:flex-row md:items-end md:justify-between">
                   <div>
@@ -527,21 +599,37 @@ export function AdminDashboardPage() {
                   />
                 </CardContent>
               </Card>
-              {selectedTreeNode ? (
-                <Card className="ops-admin-tree-detail-card border-[var(--border)] bg-[var(--card)]">
+              <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                <Card className="border-[var(--border)] bg-[var(--card)]">
                   <CardHeader>
-                    <CardTitle>Node Focus</CardTitle>
-                    <CardDescription>Searchable admin node detail with package, state, and point context.</CardDescription>
+                    <CardTitle>Tree Summary</CardTitle>
+                    <CardDescription>Operational network view with left/right account totals, matched-point context, and carry-forward visibility.</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <DataPoint label="Username" value={selectedTreeNode.username} />
-                    <DataPoint label="Package" value={selectedTreeNode.packageTier} />
-                    <DataPoint label="Placement" value={selectedTreeNode.placement} />
-                    <DataPoint label="Account State" value={selectedTreeNode.accountStateLabel} />
-                    <DataPoint label="Direct Referrals" value={selectedTreeNode.directReferrals} />
+                  <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <DataPoint label="Accounts On Left" value={leftAccountCount} />
+                    <DataPoint label="Accounts On Right" value={rightAccountCount} />
+                    <DataPoint label="Matched Points" value={matchedPoints} />
+                    <DataPoint label="Tree Type" value={genealogyTree.treeType} />
+                    <DataPoint label="Strong Leg Carry" value={strongLegCarry} />
+                    <DataPoint label="Weak Leg Carry" value={weakLegCarry} />
                   </CardContent>
                 </Card>
-              ) : null}
+                {selectedTreeNode ? (
+                  <Card className="ops-admin-tree-detail-card border-[var(--border)] bg-[var(--card)]">
+                    <CardHeader>
+                      <CardTitle>Node Focus</CardTitle>
+                      <CardDescription>Searchable admin node detail with package, state, and point context.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                      <DataPoint label="Username" value={selectedTreeNode.username} />
+                      <DataPoint label="Package" value={selectedTreeNode.packageTier} />
+                      <DataPoint label="Placement" value={selectedTreeNode.placement} />
+                      <DataPoint label="Account State" value={selectedTreeNode.accountStateLabel} />
+                      <DataPoint label="Direct Referrals" value={selectedTreeNode.directReferrals} />
+                    </CardContent>
+                  </Card>
+                ) : null}
+              </section>
             </section>
           ) : null}
 

@@ -13,9 +13,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://cz9c2qnq-8787.asse.devtunnels.ms',
+        target: 'http://127.0.0.1:8787',
         changeOrigin: true,
-        secure: true
+        secure: false
       }
     }
   },

@@ -7,7 +7,11 @@ export const pageAssets = {
   registrationBackdrop: '/assets/yor/branding/login-bg.png',
   authBackdrop: '/assets/yor/branding/login-bg.png',
   visionBanner: '/assets/yor/vision-banner.jpg',
+  visionBannerPortrait: '/assets/yor/vision-banner-portrait.jpg',
+  visionNew: '/assets/yor/vision-new.jpg',
+  visionNewImage: '/assets/yor/vision-new-image.jpg',
   visionPoster: '/assets/yor/vision-poster.jpg',
+  visionBox: '/assets/yor/vision-new-image.jpg',
   bag: '/assets/yor/bag.jpg'
 } as const;
 
@@ -244,6 +248,21 @@ export const collectionProducts = [
     accent: 'For Women'
   }
 ];
+
+export const featuredCollectionShowcase = {
+  eyebrow: 'Featured Product',
+  title: 'Yor Vision Ocular Wellness Feature',
+  summary:
+    'A dedicated feature block for Yor Vision as its own product story, separate from the fragrance collection and positioned as a branded wellness presentation piece.',
+  points: [
+    'Uses the approved Yor Vision banner, poster, and box imagery without mislabeling them as perfume assets.',
+    'Keeps the fragrance lineup clean while still giving Yor Vision a premium visual stage of its own.',
+    'Lets the products page present both the public perfume lineup and a distinct featured product story.'
+  ],
+  primaryImage: pageAssets.visionBanner,
+  secondaryImage: pageAssets.visionPoster,
+  tertiaryImage: pageAssets.visionNewImage
+} as const;
 
 export const homePreviewRoutes = [
   {

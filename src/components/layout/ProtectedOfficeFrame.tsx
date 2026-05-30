@@ -12,7 +12,7 @@ import { ModeToggle } from '@/components/mode-toggle';
 import { MobileOfficeNav, OfficeSidebar } from '@/components/ops/office-ui';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { YorBrandMark } from '@/components/branding/YorBrandMark';
 import {
   DropdownMenu,
@@ -35,6 +35,9 @@ type ProtectedOfficeFrameProps = PropsWithChildren<{
   sidebarSubheading: string;
   modules: OperationalModule[];
   headerBadge: string;
+  isContentLoading?: boolean;
+  loadingLabel?: string;
+  onPrefetchModule?: (moduleId: string) => void;
   summaryCard?: {
     label: string;
     value: string | number;
@@ -118,6 +121,9 @@ export function ProtectedOfficeFrame({
   sidebarSubheading,
   modules,
   headerBadge,
+  isContentLoading = false,
+  loadingLabel = 'Loading office module',
+  onPrefetchModule,
   summaryCard,
   footerLinks = [],
   children
@@ -140,6 +146,7 @@ export function ProtectedOfficeFrame({
     return stored ? stored === 'open' : false;
   });
   const [scrollElevated, setScrollElevated] = useState(false);
+  const [prefetchedModules, setPrefetchedModules] = useState<Set<string>>(() => new Set());
   const stageRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -160,6 +167,32 @@ export function ProtectedOfficeFrame({
       }
     });
   }, [location.pathname]);
+
+  useEffect(() => {
+    setPrefetchedModules((current) => {
+      if (!current.has(currentModuleId)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.delete(currentModuleId);
+      return next;
+    });
+  }, [currentModuleId]);
+
+  function handlePrefetchModule(moduleId: string) {
+    if (!onPrefetchModule || moduleId === currentModuleId || prefetchedModules.has(moduleId)) {
+      return;
+    }
+
+    setPrefetchedModules((current) => {
+      const next = new Set(current);
+      next.add(moduleId);
+      return next;
+    });
+
+    onPrefetchModule(moduleId);
+  }
 
   async function handleSignOut() {
     const confirmed = await confirmAction({
@@ -280,6 +313,7 @@ export function ProtectedOfficeFrame({
           footerLinks={footerLinks}
           expanded={sidebarExpanded}
           onSignOut={() => void handleSignOut()}
+          onPrefetchModule={handlePrefetchModule}
           onExpandedChange={setSidebarExpanded}
         />
 
@@ -313,10 +347,32 @@ export function ProtectedOfficeFrame({
           </Card>
 
           <div className="ops-mobile-nav-shell lg:hidden">
-            <MobileOfficeNav basePath={basePath} currentModuleId={currentModuleId} modules={modules} />
+            <MobileOfficeNav
+              basePath={basePath}
+              currentModuleId={currentModuleId}
+              modules={modules}
+              onPrefetchModule={handlePrefetchModule}
+            />
           </div>
 
-          {children}
+          {isContentLoading ? (
+            <Card className="ops-content-loader-card border-[var(--border)] bg-[var(--card)]">
+              <CardContent className="ops-content-loader-body">
+                <Badge variant="outline">Loading</Badge>
+                <div className="ops-content-loader-copy">
+                  <h2>{loadingLabel}</h2>
+                  <p>The content area is refreshing with the latest protected-office data.</p>
+                </div>
+                <div className="ops-content-loader-pulse" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            children
+          )}
         </main>
       </div>
     </section>
