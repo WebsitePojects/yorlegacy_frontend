@@ -548,8 +548,7 @@ function getModuleIcon(moduleId: string) {
     'global-bonus-eligibility': Globe2,
     'member-management': Users,
     'account-shadow-management': Shield,
-    'sponsor-tree': Users,
-    'binary-placement-tree': GitBranch,
+    'account-genealogy': GitBranch,
     'payment-verification': BadgeCheck,
     'package-rule-matrix': Table2,
     'direct-referral-reports': BadgeDollarSign,
@@ -561,6 +560,12 @@ function getModuleIcon(moduleId: string) {
     'wallet-ledger': WalletCards,
     'system-health': Activity,
     'encashment-reports': Banknote,
+    'finance-accounting': ReceiptText,
+    'cd-accounts': BadgeCheck,
+    'voucher-management': KeyRound,
+    rankings: Medal,
+    'global-bonus': Globe2,
+    'get-five-package-claims': Sparkles,
     'audit-status': FileBadge
   };
 

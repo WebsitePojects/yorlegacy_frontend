@@ -944,6 +944,241 @@ a {
   text-transform: uppercase;
 }
 
+/* Yor protected-office parity overrides */
+
+html {
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--yor-amber) 10%, transparent), transparent 22%),
+    radial-gradient(circle at bottom right, color-mix(in oklab, var(--yor-copper) 12%, transparent), transparent 24%),
+    linear-gradient(180deg, color-mix(in oklab, var(--background) 98%, black 2%) 0%, var(--background) 100%);
+}
+
+.ops-shell {
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 65% 0%, color-mix(in oklab, var(--yor-gold) 6%, transparent), transparent 26%),
+    linear-gradient(180deg, color-mix(in oklab, var(--background) 98%, black 2%) 0%, var(--background) 100%);
+}
+
+.ops-shell-header {
+  inset: 0 0 auto;
+  min-height: 74px;
+  padding: 14px 24px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 82%, var(--yor-copper) 18%);
+  border-radius: 0;
+  background: color-mix(in oklab, var(--background) 88%, transparent);
+  box-shadow: none;
+  backdrop-filter: blur(18px);
+}
+
+.ops-shell-header.is-scrolled {
+  transform: none;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
+}
+
+.ops-shell-body {
+  gap: 0;
+  padding: 74px 0 0;
+}
+
+.ops-content-stage {
+  height: calc(100dvh - 74px);
+  padding: 24px 28px 56px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ops-stage-hero {
+  padding: 0 0 18px;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 78%, var(--yor-copper) 22%);
+}
+
+.ops-stage-hero-header {
+  display: flex;
+}
+
+.ops-stage-title {
+  margin: 0;
+  font-size: clamp(1.7rem, 2vw, 2.1rem);
+  line-height: 1.1;
+}
+
+.ops-stage-description {
+  margin: 0;
+}
+
+.ops-stage-summary-card {
+  border-radius: 18px;
+}
+
+.ops-content-shell {
+  position: relative;
+  padding-top: 18px;
+}
+
+.ops-content-loader-card {
+  position: absolute;
+  inset: 18px 0 0;
+  z-index: 20;
+  border-radius: 24px;
+  border: 1px solid color-mix(in oklab, var(--border) 76%, var(--yor-copper) 24%);
+  backdrop-filter: blur(18px) saturate(112%);
+  background: color-mix(in oklab, var(--background) 78%, transparent);
+}
+
+.ops-sidebar-shell {
+  gap: 0;
+  height: calc(100dvh - 74px);
+  border-right: 1px solid color-mix(in oklab, var(--border) 82%, var(--yor-copper) 18%);
+  background: color-mix(in oklab, var(--background) 92%, transparent);
+}
+
+.ops-sidebar-rail,
+.ops-sidebar-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ops-sidebar-rail {
+  width: 78px;
+  min-width: 78px;
+  padding: 14px 10px;
+  border-right: 1px solid color-mix(in oklab, var(--border) 80%, var(--yor-copper) 20%);
+}
+
+.ops-sidebar-panel {
+  padding: 18px 14px 22px;
+}
+
+.ops-sidebar-collapsed .ops-sidebar-panel {
+  border-right: 0;
+}
+
+.ops-sidebar-panel-header {
+  padding: 0 4px 10px;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 75%, var(--yor-copper) 25%);
+}
+
+.ops-sidebar-toggle {
+  border-radius: 14px;
+}
+
+.ops-sidebar-item-icon {
+  border-radius: 10px;
+}
+
+.ops-mobile-nav-shell {
+  margin-bottom: 14px;
+}
+
+.genealogy-canvas-shell {
+  gap: 10px;
+}
+
+.genealogy-canvas-toolbar {
+  padding: 10px 12px;
+  border-radius: 18px;
+}
+
+.genealogy-canvas-viewport {
+  min-height: clamp(420px, 58dvh, 680px);
+  border-radius: 24px;
+  overscroll-behavior: auto;
+}
+
+.genealogy-canvas {
+  min-width: 1320px;
+  margin: 24px auto 24px;
+}
+
+.genealogy-canvas-overlay {
+  backdrop-filter: blur(10px);
+  background: color-mix(in oklab, var(--background) 26%, transparent);
+}
+
+.genealogy-canvas-branch {
+  gap: 28px;
+}
+
+.genealogy-canvas-children {
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 48px;
+}
+
+.genealogy-canvas-children::before {
+  left: 16%;
+  right: 16%;
+}
+
+.genealogy-canvas-node {
+  width: 208px;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+  padding: 14px 16px 16px;
+  border-radius: 999px;
+  align-content: start;
+}
+
+.genealogy-canvas-node.is-open-slot {
+  aspect-ratio: 1 / 1;
+  color: #fff7ea;
+}
+
+.genealogy-canvas-node.is-open-slot .genealogy-canvas-node-main p,
+.genealogy-canvas-node.is-open-slot .genealogy-canvas-node-title strong {
+  color: #fff7ea;
+}
+
+.light .genealogy-canvas-node.is-open-slot,
+:root:not(.dark) .genealogy-canvas-node.is-open-slot {
+  color: #2f1d10;
+}
+
+.light .genealogy-canvas-node.is-open-slot .genealogy-canvas-node-main p,
+.light .genealogy-canvas-node.is-open-slot .genealogy-canvas-node-title strong,
+:root:not(.dark) .genealogy-canvas-node.is-open-slot .genealogy-canvas-node-main p,
+:root:not(.dark) .genealogy-canvas-node.is-open-slot .genealogy-canvas-node-title strong {
+  color: #2f1d10;
+}
+
+.genealogy-canvas-node-main p {
+  min-height: 2.1em;
+}
+
+.genealogy-canvas-node-status {
+  letter-spacing: 0.16em;
+}
+
+@media (max-width: 1024px) {
+  .ops-shell-header {
+    padding-inline: 16px;
+  }
+
+  .ops-content-stage {
+    padding: 16px 16px 88px;
+  }
+
+  .genealogy-canvas {
+    min-width: 1080px;
+    margin: 20px auto;
+  }
+}
+
 .genealogy-canvas-shell {
   display: grid;
   gap: 14px;
@@ -1041,6 +1276,11 @@ a {
   box-shadow: 0 0 0 1px color-mix(in oklab, var(--yor-copper) 22%, transparent), 0 20px 60px rgba(0, 0, 0, 0.18);
   cursor: grab;
   touch-action: none;
+}
+
+.genealogy-canvas-shell.is-active .genealogy-canvas-overlay {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .genealogy-canvas-shell.is-active .genealogy-canvas-viewport:active {
@@ -1154,10 +1394,18 @@ a {
 .genealogy-canvas-node.is-open-slot {
   border-style: solid;
   background:
-    radial-gradient(circle at 50% 0%, rgba(245, 200, 66, 0.16), transparent 36%),
-    linear-gradient(180deg, rgba(28, 20, 18, 0.95), rgba(61, 35, 21, 0.84));
-  box-shadow: 0 0 0 2px rgba(245, 200, 66, 0.18), 0 22px 58px rgba(180, 103, 52, 0.16);
-  cursor: default;
+    radial-gradient(circle at 50% 16%, rgba(255, 234, 155, 0.34), transparent 38%),
+    linear-gradient(180deg, rgba(52, 41, 22, 0.98), rgba(94, 61, 26, 0.9));
+  border-color: color-mix(in oklab, var(--yor-gold) 62%, var(--border));
+  box-shadow: 0 0 0 2px rgba(245, 200, 66, 0.24), 0 22px 58px rgba(180, 103, 52, 0.22);
+  cursor: pointer;
+}
+
+.genealogy-canvas-node.is-open-slot .genealogy-canvas-node-orb {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.28), transparent 32%),
+    linear-gradient(145deg, #0e1711, #1d7a53 48%, #d9f99d);
+  color: #f8ffe8;
 }
 
 .genealogy-canvas-node-orb {
@@ -1232,14 +1480,39 @@ a {
 }
 
 .ops-content-loader-card {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
+  z-index: 2;
+  display: flex;
+  min-height: 280px;
+  align-items: center;
+  backdrop-filter: blur(16px) saturate(112%);
+  background: color-mix(in srgb, var(--background) 72%, transparent);
 }
 
 .ops-content-loader-body {
   display: grid;
   gap: 16px;
   place-items: start;
+  width: 100%;
   padding: 28px;
+}
+
+.ops-content-shell {
+  position: relative;
+  min-height: 280px;
+}
+
+.ops-content-shell-stage {
+  transition: filter 180ms ease, opacity 180ms ease, transform 180ms ease;
+}
+
+.ops-content-shell.is-loading .ops-content-shell-stage {
+  filter: blur(10px);
+  opacity: 0.32;
+  pointer-events: none;
+  transform: scale(0.995);
 }
 
 .ops-content-loader-copy h2 {

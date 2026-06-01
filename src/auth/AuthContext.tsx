@@ -11,6 +11,7 @@ import {
   fetchAdminActivationCodes,
   fetchAdminBinaryTree,
   fetchAdminEncashments,
+  fetchAdminMemberManagement,
   fetchAdminSummary,
   fetchAdminOffice,
   fetchAdminMvpDashboard,
@@ -24,6 +25,7 @@ import {
   fetchMemberMvpDashboard,
   fetchMemberOffice,
   fetchMemberRegistrationReadiness,
+  fetchMemberShadowAccounts,
   fetchMemberSummary,
   fetchMemberTransactionDetail,
   fetchMemberTransactions,
@@ -32,15 +34,23 @@ import {
   loginUser,
   logoutUser,
   previewMemberEncashment,
+  releaseAdminActivationCodes,
+  reviewAdminActivationCodes,
+  reviewAdminEncashment,
   resetAdminSandbox,
   submitMemberEncashment,
+  transferAdminActivationCodes,
   transferMemberActivationCodes,
+  updateAdminMemberProfile,
+  updateAdminMemberStatus,
+  updateAdminMemberName,
   upgradeMemberActivationCode,
   useMaintenanceCode
 } from '../lib/api';
 import type {
   AdminActivationCodeCenter,
   AdminEncashmentCenter,
+  AdminMemberManagementCenter,
   AdminOfficeData,
   AdminMvpDashboardData,
   AppRole,
@@ -51,6 +61,7 @@ import type {
   MemberActivationCodeCenter,
   MemberOfficeData,
   MemberMvpDashboardData,
+  ShadowAccountCenter,
   MemberTransactionDetail,
   MemberTransactionSummary,
   MemberWalletDetail,
@@ -90,11 +101,54 @@ type AuthContextValue = AuthState & {
   getMemberTransactions: () => Promise<{ moneyMode: 'playground' | 'sandbox'; transactions: MemberTransactionSummary[] }>;
   getMemberTransactionDetail: (transactionId: string) => Promise<MemberTransactionDetail>;
   getMemberRegistrationReadiness: () => Promise<RegistrationReadiness>;
-  getMemberBinaryTree: () => Promise<GenealogyCenter>;
+  getMemberBinaryTree: (rootUsername?: string) => Promise<GenealogyCenter>;
+  getMemberShadowAccounts: (ownerUsername?: string) => Promise<ShadowAccountCenter>;
   getAdminActivationCodes: () => Promise<AdminActivationCodeCenter>;
-  generateActivationCodes: (payload: { quantity: number; packageTier?: string; assignedTo?: string }) => Promise<GatedActionResponse>;
+  generateActivationCodes: (payload: { quantity: number; packageTier?: string; assignedTo?: string; accountType?: string }) => Promise<GatedActionResponse>;
+  releaseActivationCodes: (codes: string[]) => Promise<GatedActionResponse>;
+  transferAdminCodes: (payload: { targetUsername: string; codes: string[] }) => Promise<GatedActionResponse>;
+  reviewActivationCodes: (payload: {
+    codes: string[];
+    action: 'mark-paid' | 'mark-external-paid' | 'mark-lost' | 'restore';
+    remarks?: string;
+  }) => Promise<GatedActionResponse>;
   getAdminEncashments: () => Promise<AdminEncashmentCenter>;
   approveEncashment: (encashmentId: string) => Promise<GatedActionResponse>;
+  reviewEncashment: (
+    encashmentId: string,
+    payload: {
+      action: 'queue' | 'mark-paid' | 'cancel' | 'edit';
+      method?: string;
+      fee?: number;
+      tax?: number;
+      cdDeduction?: number;
+      remarks?: string;
+    }
+  ) => Promise<GatedActionResponse>;
+  getAdminMemberManagement: (payload?: {
+    query?: string;
+    username?: string;
+    page?: number;
+    pageSize?: number;
+  }) => Promise<AdminMemberManagementCenter>;
+  updateMemberName: (username: string, fullName: string) => Promise<GatedActionResponse>;
+  updateMemberProfile: (
+    username: string,
+    payload: {
+      firstName: string;
+      lastName: string;
+      middleName?: string;
+      password?: string;
+      payoutOption?: string;
+      payoutDetails?: string;
+      address?: string;
+      contactNumber?: string;
+    }
+  ) => Promise<GatedActionResponse>;
+  updateMemberStatus: (
+    username: string,
+    status: 'active' | 'pending' | 'frozen' | 'suspended'
+  ) => Promise<GatedActionResponse>;
   resetSandbox: () => Promise<GatedActionResponse>;
   getAdminBinaryTree: (rootUsername?: string) => Promise<GenealogyCenter>;
   getAdminSponsorTree: (rootUsername?: string) => Promise<GenealogyCenter>;
@@ -183,11 +237,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
     getMemberTransactionDetail: fetchMemberTransactionDetail,
     getMemberRegistrationReadiness: fetchMemberRegistrationReadiness,
     getMemberBinaryTree: fetchMemberBinaryTree,
+    getMemberShadowAccounts: fetchMemberShadowAccounts,
     getAdminActivationCodes: fetchAdminActivationCodes,
-    generateActivationCodes: ({ quantity, packageTier, assignedTo }) =>
-      generateAdminActivationCodes(quantity, packageTier, assignedTo),
+    generateActivationCodes: ({ quantity, packageTier, assignedTo, accountType }) =>
+      generateAdminActivationCodes(quantity, packageTier, assignedTo, accountType),
+    releaseActivationCodes: releaseAdminActivationCodes,
+    transferAdminCodes: transferAdminActivationCodes,
+    reviewActivationCodes: reviewAdminActivationCodes,
     getAdminEncashments: fetchAdminEncashments,
     approveEncashment: approveAdminEncashment,
+    reviewEncashment: reviewAdminEncashment,
+    getAdminMemberManagement: fetchAdminMemberManagement,
+    updateMemberName: updateAdminMemberName,
+    updateMemberProfile: updateAdminMemberProfile,
+    updateMemberStatus: updateAdminMemberStatus,
     resetSandbox: resetAdminSandbox,
     getAdminBinaryTree: fetchAdminBinaryTree,
     getAdminSponsorTree: fetchAdminSponsorTree

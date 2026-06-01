@@ -2,28 +2,33 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Maximize2, Minimize2, Minus, Move, Plus, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent as ReactWheelEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { GenealogyTreeNode } from '../../types/auth';
 
 type GenealogyTreeProps = {
   root: GenealogyTreeNode;
   onSelect?: (nodeId: string) => void;
   selectedNodeId?: string | null;
+  onNavigateToNode?: (username: string) => void;
 };
 
-export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeProps) {
+const DEFAULT_SCALE = 0.78;
+
+export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode }: GenealogyTreeProps) {
   const canvasRoot = useMemo(() => toCanvasNode(root, 0, 'root'), [root]);
-  const [scale, setScale] = useState(0.92);
+  const navigate = useNavigate();
+  const [scale, setScale] = useState(DEFAULT_SCALE);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isActive, setIsActive] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const dragRef = useRef<{ pointerId: number; x: number; y: number; offsetX: number; offsetY: number } | null>(null);
+  const dragRef = useRef<{ pointerId: number; x: number; y: number; offsetX: number; offsetY: number; dragging: boolean } | null>(null);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const pinchDistanceRef = useRef<number | null>(null);
 
   function clampScale(nextScale: number) {
-    return Math.min(1.35, Math.max(0.52, Number(nextScale.toFixed(2))));
+    return Math.min(1.45, Math.max(0.42, Number(nextScale.toFixed(2))));
   }
 
   function updateScale(delta: number) {
@@ -31,7 +36,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
   }
 
   function resetCanvas() {
-    setScale(0.92);
+    setScale(DEFAULT_SCALE);
     setOffset({ x: 0, y: 0 });
   }
 
@@ -54,26 +59,6 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
-
-  useEffect(() => {
-    if (typeof document === 'undefined') {
-      return;
-    }
-
-    const { body, documentElement } = document;
-    const previousBodyOverflow = body.style.overflow;
-    const previousDocumentOverflow = documentElement.style.overflow;
-
-    if (isActive) {
-      body.style.overflow = 'hidden';
-      documentElement.style.overflow = 'hidden';
-    }
-
-    return () => {
-      body.style.overflow = previousBodyOverflow;
-      documentElement.style.overflow = previousDocumentOverflow;
-    };
-  }, [isActive]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -110,12 +95,12 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
-    setIsActive(true);
-    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-
     if (event.pointerType === 'mouse' && event.button !== 0) {
       return;
     }
+
+    setIsActive(true);
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     if (pointersRef.current.size > 1) {
       const [first, second] = Array.from(pointersRef.current.values());
@@ -130,7 +115,8 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
       x: event.clientX,
       y: event.clientY,
       offsetX: offset.x,
-      offsetY: offset.y
+      offsetY: offset.y,
+      dragging: false
     };
   }
 
@@ -157,6 +143,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
       return;
     }
 
+    drag.dragging = true;
     setOffset({
       x: drag.offsetX + event.clientX - drag.x,
       y: drag.offsetY + event.clientY - drag.y
@@ -170,6 +157,12 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
     }
     if (dragRef.current?.pointerId === event.pointerId) {
       dragRef.current = null;
+    }
+  }
+
+  function handleViewportLeave() {
+    if (pointersRef.current.size === 0) {
+      setIsActive(false);
     }
   }
 
@@ -217,10 +210,29 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
+        onPointerLeave={handleViewportLeave}
         onClick={() => setIsActive(true)}
       >
         {!isActive ? (
-          <div className="genealogy-canvas-overlay">
+          <div
+            className="genealogy-canvas-overlay"
+            role="button"
+            tabIndex={0}
+            onPointerDown={(event) => {
+              event.stopPropagation();
+              setIsActive(true);
+            }}
+            onClick={(event) => {
+              event.stopPropagation();
+              setIsActive(true);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                setIsActive(true);
+              }
+            }}
+          >
             <p>Click or touch the tree to engage drag, zoom, and fullscreen controls. Click anywhere outside when you want normal page scrolling again.</p>
           </div>
         ) : null}
@@ -232,6 +244,15 @@ export function GenealogyTree({ root, onSelect, selectedNodeId }: GenealogyTreeP
             node={canvasRoot}
             onSelect={onSelect}
             selectedNodeId={selectedNodeId}
+            onNavigateToNode={onNavigateToNode}
+            onOpenSlot={(slot) => {
+              const params = new URLSearchParams({
+                ref: slot.parentReferralCode ?? slot.parentUsername,
+                sponsor: slot.parentUsername,
+                preferredSide: slot.side
+              });
+              navigate(`/register?${params.toString()}`);
+            }}
           />
         </div>
       </div>
@@ -245,19 +266,18 @@ type CanvasNode = {
   level: number;
   source?: GenealogyTreeNode;
   isOpenSlot?: boolean;
+  parentUsername?: string;
+  parentReferralCode?: string;
   children: CanvasNode[];
 };
 
 function toCanvasNode(node: GenealogyTreeNode, level: number, side: 'root' | 'left' | 'right'): CanvasNode {
   const leftChild = node.children.find((child) => child.placement === 'left');
   const rightChild = node.children.find((child) => child.placement === 'right');
-  const maxDepth = 3;
   const children: CanvasNode[] = [];
 
-  if (level < maxDepth) {
-    children.push(leftChild ? toCanvasNode(leftChild, level + 1, 'left') : toOpenSlot(node, level + 1, 'left'));
-    children.push(rightChild ? toCanvasNode(rightChild, level + 1, 'right') : toOpenSlot(node, level + 1, 'right'));
-  }
+  children.push(leftChild ? toCanvasNode(leftChild, level + 1, 'left') : toOpenSlot(node, level + 1, 'left'));
+  children.push(rightChild ? toCanvasNode(rightChild, level + 1, 'right') : toOpenSlot(node, level + 1, 'right'));
 
   return {
     key: node.nodeId,
@@ -274,6 +294,8 @@ function toOpenSlot(parent: GenealogyTreeNode, level: number, side: 'left' | 'ri
     side,
     level,
     isOpenSlot: true,
+    parentUsername: parent.username,
+    parentReferralCode: parent.referralCode,
     children: []
   };
 }
@@ -281,11 +303,15 @@ function toOpenSlot(parent: GenealogyTreeNode, level: number, side: 'left' | 'ri
 function BinaryBranch({
   node,
   onSelect,
-  selectedNodeId
+  selectedNodeId,
+  onNavigateToNode,
+  onOpenSlot
 }: {
   node: CanvasNode;
   onSelect?: (nodeId: string) => void;
   selectedNodeId?: string | null;
+  onNavigateToNode?: (username: string) => void;
+  onOpenSlot?: (slot: { parentUsername: string; parentReferralCode?: string; side: 'left' | 'right' }) => void;
 }) {
   const source = node.source;
   const isSelected = source ? selectedNodeId === source.nodeId : false;
@@ -304,10 +330,19 @@ function BinaryBranch({
           event.stopPropagation();
           if (source) {
             onSelect?.(source.nodeId);
+            onNavigateToNode?.(source.username);
+            return;
+          }
+
+          if (node.isOpenSlot && node.parentUsername && node.side !== 'root') {
+            onOpenSlot?.({
+              parentUsername: node.parentUsername,
+              parentReferralCode: node.parentReferralCode,
+              side: node.side
+            });
           }
         }}
         onPointerDown={(event) => event.stopPropagation()}
-        disabled={!source}
       >
         {source ? (
           <>
@@ -338,7 +373,7 @@ function BinaryBranch({
               <div className="genealogy-canvas-node-title">
                 <strong>Available Slot</strong>
               </div>
-              <p>Ready for the next placement</p>
+              <p>{node.parentUsername ? `${node.parentUsername} ${node.side} leg` : 'Ready for the next placement'}</p>
             </div>
           </>
         )}
@@ -352,6 +387,8 @@ function BinaryBranch({
               node={child}
               onSelect={onSelect}
               selectedNodeId={selectedNodeId}
+              onNavigateToNode={onNavigateToNode}
+              onOpenSlot={onOpenSlot}
             />
           ))}
         </div>

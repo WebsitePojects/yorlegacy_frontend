@@ -2,6 +2,7 @@ import { fallbackContent } from '../data/fallbackContent';
 import type {
   AdminActivationCodeCenter,
   AdminEncashmentCenter,
+  AdminMemberManagementCenter,
   AdminOfficeData,
   AdminMvpDashboardData,
   AppRole,
@@ -12,6 +13,7 @@ import type {
   MemberActivationCodeCenter,
   MemberOfficeData,
   MemberMvpDashboardData,
+  ShadowAccountCenter,
   MemberTransactionDetail,
   MemberTransactionSummary,
   MemberWalletDetail,
@@ -204,8 +206,14 @@ export function fetchMemberRegistrationReadiness(): Promise<RegistrationReadines
   return fetchJson('/api/member/registration-readiness', { method: 'GET' });
 }
 
-export function fetchMemberBinaryTree(): Promise<GenealogyCenter> {
-  return fetchJson('/api/member/genealogy/binary-tree', { method: 'GET' });
+export function fetchMemberBinaryTree(rootUsername?: string): Promise<GenealogyCenter> {
+  const suffix = rootUsername ? `?rootUsername=${encodeURIComponent(rootUsername)}` : '';
+  return fetchJson(`/api/member/genealogy/binary-tree${suffix}`, { method: 'GET' });
+}
+
+export function fetchMemberShadowAccounts(ownerUsername?: string): Promise<ShadowAccountCenter> {
+  const suffix = ownerUsername ? `?ownerUsername=${encodeURIComponent(ownerUsername)}` : '';
+  return fetchJson(`/api/member/shadow-accounts${suffix}`, { method: 'GET' });
 }
 
 export function fetchAdminActivationCodes(): Promise<AdminActivationCodeCenter> {
@@ -215,11 +223,40 @@ export function fetchAdminActivationCodes(): Promise<AdminActivationCodeCenter> 
 export function generateAdminActivationCodes(
   quantity: number,
   packageTier?: string,
-  assignedTo?: string
+  assignedTo?: string,
+  accountType?: string
 ): Promise<GatedActionResponse> {
   return fetchJson('/api/admin/activation-codes/generate', {
     method: 'POST',
-    body: JSON.stringify({ quantity, packageTier, assignedTo })
+    body: JSON.stringify({ quantity, packageTier, assignedTo, accountType })
+  });
+}
+
+export function releaseAdminActivationCodes(codes: string[]): Promise<GatedActionResponse> {
+  return fetchJson('/api/admin/activation-codes/release', {
+    method: 'POST',
+    body: JSON.stringify({ codes })
+  });
+}
+
+export function transferAdminActivationCodes(payload: {
+  targetUsername: string;
+  codes: string[];
+}): Promise<GatedActionResponse> {
+  return fetchJson('/api/admin/activation-codes/transfer', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function reviewAdminActivationCodes(payload: {
+  codes: string[];
+  action: 'mark-paid' | 'mark-external-paid' | 'mark-lost' | 'restore';
+  remarks?: string;
+}): Promise<GatedActionResponse> {
+  return fetchJson('/api/admin/activation-codes/review', {
+    method: 'POST',
+    body: JSON.stringify(payload)
   });
 }
 
@@ -233,9 +270,90 @@ export function approveAdminEncashment(encashmentId: string): Promise<GatedActio
   });
 }
 
+export function reviewAdminEncashment(
+  encashmentId: string,
+  payload: {
+    action: 'queue' | 'mark-paid' | 'cancel' | 'edit';
+    method?: string;
+    fee?: number;
+    tax?: number;
+    cdDeduction?: number;
+    remarks?: string;
+  }
+): Promise<GatedActionResponse> {
+  return fetchJson(`/api/admin/encashments/${encodeURIComponent(encashmentId)}/review`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function fetchAdminMemberManagement(payload?: {
+  query?: string;
+  username?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<AdminMemberManagementCenter> {
+  const params = new URLSearchParams();
+
+  if (payload?.query?.trim()) {
+    params.set('query', payload.query.trim());
+  }
+
+  if (payload?.username?.trim()) {
+    params.set('username', payload.username.trim());
+  }
+
+  if (payload?.page) {
+    params.set('page', String(payload.page));
+  }
+
+  if (payload?.pageSize) {
+    params.set('pageSize', String(payload.pageSize));
+  }
+
+  const suffix = params.size ? `?${params.toString()}` : '';
+  return fetchJson(`/api/admin/members${suffix}`, { method: 'GET' });
+}
+
 export function resetAdminSandbox(): Promise<GatedActionResponse> {
   return fetchJson('/api/admin/sandbox/reset', {
     method: 'POST'
+  });
+}
+
+export function updateAdminMemberName(username: string, fullName: string): Promise<GatedActionResponse> {
+  return fetchJson(`/api/admin/members/${encodeURIComponent(username)}/change-name`, {
+    method: 'POST',
+    body: JSON.stringify({ fullName })
+  });
+}
+
+export function updateAdminMemberProfile(
+  username: string,
+  payload: {
+    firstName: string;
+    lastName: string;
+    middleName?: string;
+    password?: string;
+    payoutOption?: string;
+    payoutDetails?: string;
+    address?: string;
+    contactNumber?: string;
+  }
+): Promise<GatedActionResponse> {
+  return fetchJson(`/api/admin/members/${encodeURIComponent(username)}/profile`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateAdminMemberStatus(
+  username: string,
+  status: 'active' | 'pending' | 'frozen' | 'suspended'
+): Promise<GatedActionResponse> {
+  return fetchJson(`/api/admin/members/${encodeURIComponent(username)}/status`, {
+    method: 'POST',
+    body: JSON.stringify({ status })
   });
 }
 

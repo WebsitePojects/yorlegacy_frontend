@@ -137,6 +137,7 @@ export function MemberDashboardPage() {
   const [registrationReadiness, setRegistrationReadiness] = useState<RegistrationReadiness | null>(null);
   const [binaryTree, setBinaryTree] = useState<GenealogyCenter | null>(null);
   const [selectedTreeNodeId, setSelectedTreeNodeId] = useState<string | null>(null);
+  const [treeRootUsername, setTreeRootUsername] = useState('');
   const [encashAmount, setEncashAmount] = useState(5000);
   const [selectedCode, setSelectedCode] = useState('');
   const [transferTarget, setTransferTarget] = useState('');
@@ -173,7 +174,7 @@ export function MemberDashboardPage() {
   );
 
   const buildMemberBundle = useCallback(
-    async (targetModuleId: string): Promise<MemberModuleBundle> => {
+    async (targetModuleId: string, rootUsername: string): Promise<MemberModuleBundle> => {
       const [nextSummary, nextOffice, nextMvpDashboard, nextModule] = await Promise.all([
         getMemberSummary(),
         getMemberOffice(),
@@ -210,7 +211,7 @@ export function MemberDashboardPage() {
       }
 
       if (targetModuleId === 'genealogy') {
-        binaryTree = await getMemberBinaryTree();
+        binaryTree = await getMemberBinaryTree(rootUsername.trim() || undefined);
       }
 
       return {
@@ -240,13 +241,16 @@ export function MemberDashboardPage() {
     ]
   );
 
-  const memberCacheKey = useCallback((targetModuleId: string) => `member:${targetModuleId}`, []);
+  const memberCacheKey = useCallback(
+    (targetModuleId: string, rootUsername: string) => `member:${targetModuleId}:${rootUsername.toUpperCase()}`,
+    []
+  );
 
   const prefetchModule = useCallback(
     (targetModuleId: string) => {
-      void warmOfficeCache(memberCacheKey(targetModuleId), () => buildMemberBundle(targetModuleId));
+      void warmOfficeCache(memberCacheKey(targetModuleId, treeRootUsername), () => buildMemberBundle(targetModuleId, treeRootUsername));
     },
-    [buildMemberBundle, memberCacheKey]
+    [buildMemberBundle, memberCacheKey, treeRootUsername]
   );
 
   useEffect(() => {
@@ -256,22 +260,15 @@ export function MemberDashboardPage() {
       try {
         setError(null);
         setIsContentLoading(true);
-        setActivationCodes(null);
-        setWalletDetail(null);
-        setTransactions([]);
-        setTransactionDetail(null);
-        setRegistrationReadiness(null);
-        setBinaryTree(null);
-        setSelectedTreeNodeId(null);
 
-        const cached = readOfficeCache<MemberModuleBundle>(memberCacheKey(moduleId));
+        const cached = readOfficeCache<MemberModuleBundle>(memberCacheKey(moduleId, treeRootUsername));
 
         if (cached && !cancelled) {
           applyMemberBundle(cached.data);
           setIsContentLoading(false);
         }
 
-        const nextBundle = await warmOfficeCache(memberCacheKey(moduleId), () => buildMemberBundle(moduleId));
+        const nextBundle = await warmOfficeCache(memberCacheKey(moduleId, treeRootUsername), () => buildMemberBundle(moduleId, treeRootUsername));
 
         if (cancelled) {
           return;
@@ -297,7 +294,8 @@ export function MemberDashboardPage() {
     buildMemberBundle,
     memberCacheKey,
     moduleId,
-    reloadNonce
+    reloadNonce,
+    treeRootUsername
   ]);
 
   async function handlePreviewEncashment() {
@@ -925,15 +923,23 @@ export function MemberDashboardPage() {
           {moduleId === 'genealogy' && binaryTree ? (
             <section className="member-detail-grid grid gap-4">
               <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Placement Network View</CardTitle>
-                  <CardDescription>Review left and right slots before you hand a sponsor or registrant a placement recommendation.</CardDescription>
+                <CardHeader className="gap-4 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <CardTitle>Placement Network View</CardTitle>
+                    <CardDescription>Review left and right slots before you hand a sponsor or registrant a placement recommendation.</CardDescription>
+                  </div>
+                  {treeRootUsername ? (
+                    <Button type="button" variant="outline" onClick={() => setTreeRootUsername('')}>
+                      Return To My Tree
+                    </Button>
+                  ) : null}
                 </CardHeader>
                 <CardContent>
                   <GenealogyTree
                     root={binaryTree.root}
                     selectedNodeId={selectedTreeNodeId}
                     onSelect={setSelectedTreeNodeId}
+                    onNavigateToNode={setTreeRootUsername}
                   />
                 </CardContent>
               </Card>

@@ -12,7 +12,6 @@ import { ModeToggle } from '@/components/mode-toggle';
 import { MobileOfficeNav, OfficeSidebar } from '@/components/ops/office-ui';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { YorBrandMark } from '@/components/branding/YorBrandMark';
 import {
   DropdownMenu,
@@ -321,15 +320,15 @@ export function ProtectedOfficeFrame({
           const target = event.currentTarget;
           setScrollElevated(target.scrollTop > 8);
         }}>
-          <Card className="ops-stage-hero-card overflow-hidden border-[var(--border)] bg-[var(--card)]">
-            <CardHeader className="ops-stage-hero-header gap-4 md:flex-row md:items-start md:justify-between">
+          <section className="ops-stage-hero">
+            <div className="ops-stage-hero-header gap-4 md:flex-row md:items-start md:justify-between">
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline">{headerBadge}</Badge>
                 </div>
                 <div className="space-y-1">
-                  <CardTitle className="text-2xl">{moduleLabel}</CardTitle>
-                  <CardDescription className="max-w-3xl leading-6">{moduleDescription}</CardDescription>
+                  <h1 className="ops-stage-title text-2xl">{moduleLabel}</h1>
+                  <p className="ops-stage-description max-w-3xl leading-6 text-[var(--muted-foreground)]">{moduleDescription}</p>
                 </div>
               </div>
               {summaryCard ? (
@@ -343,8 +342,8 @@ export function ProtectedOfficeFrame({
                   ) : null}
                 </div>
               ) : null}
-            </CardHeader>
-          </Card>
+            </div>
+          </section>
 
           <div className="ops-mobile-nav-shell lg:hidden">
             <MobileOfficeNav
@@ -355,24 +354,25 @@ export function ProtectedOfficeFrame({
             />
           </div>
 
-          {isContentLoading ? (
-            <Card className="ops-content-loader-card border-[var(--border)] bg-[var(--card)]">
-              <CardContent className="ops-content-loader-body">
-                <Badge variant="outline">Loading</Badge>
-                <div className="ops-content-loader-copy">
-                  <h2>{loadingLabel}</h2>
-                  <p>The content area is refreshing with the latest protected-office data.</p>
+          <div className={cn('ops-content-shell', isContentLoading && 'is-loading')} aria-busy={isContentLoading}>
+            <div className="ops-content-shell-stage">{children}</div>
+            {isContentLoading ? (
+              <div className="ops-content-loader-card">
+                <div className="ops-content-loader-body">
+                  <Badge variant="outline">Loading</Badge>
+                  <div className="ops-content-loader-copy">
+                    <h2>{loadingLabel}</h2>
+                    <p>The content area is refreshing with the latest protected-office data.</p>
+                  </div>
+                  <div className="ops-content-loader-pulse" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
                 </div>
-                <div className="ops-content-loader-pulse" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            children
-          )}
+              </div>
+            ) : null}
+          </div>
         </main>
       </div>
     </section>

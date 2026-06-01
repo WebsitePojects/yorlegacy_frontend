@@ -109,6 +109,58 @@ export type AdminOfficeData = {
   notices: string[];
 };
 
+export type MemberAccountStatus = 'active' | 'pending' | 'frozen' | 'suspended';
+
+export type AdminMemberDirectoryRow = {
+  username: string;
+  fullName: string;
+  packageTier: string;
+  accountStatus: MemberAccountStatus;
+  stockist: boolean;
+  sponsorCode: string;
+  directReferrals: number;
+  walletAvailable: string;
+  cdBalance: string;
+  lastActivity: string;
+  actions: string[];
+};
+
+export type AdminMemberProfile = {
+  username: string;
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  middleName: string;
+  packageTier: string;
+  accountStatus: MemberAccountStatus;
+  stockist: boolean;
+  referralCode: string;
+  sponsorCode: string;
+  email: string;
+  phone: string;
+  address: string;
+  payoutOption: string;
+  payoutDetails: string;
+  directReferrals: number;
+  walletAvailable: string;
+  walletPending: string;
+  cdBalance: string;
+  lastActivity: string;
+  actions: string[];
+};
+
+export type AdminMemberManagementCenter = {
+  moneyMode: MoneyMode;
+  query: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  rows: AdminMemberDirectoryRow[];
+  selectedMember: AdminMemberProfile | null;
+  actionNotes: string[];
+};
+
 export type IncomeSimulationSummary = {
   streamId: string;
   label: string;
@@ -149,6 +201,7 @@ export type MemberActivationCodeCenter = {
   inventory: Array<{
     id: string;
     code: string;
+    accountType: string;
     packageTier: string;
     assignedTo: string;
     status: string;
@@ -261,9 +314,12 @@ export type GenealogyTreeNode = {
   nodeId: string;
   username: string;
   fullName: string;
+  referralCode: string;
   packageTier: string;
   placement: 'root' | 'left' | 'right';
   status: string;
+  depth: number;
+  tracePath: string;
   binaryPoints: number;
   directReferrals: number;
   leftPoints: number;
@@ -289,9 +345,12 @@ export type AdminActivationCodeCenter = {
   inventory: Array<{
     id: string;
     code: string;
+    accountType: string;
     packageTier: string;
     assignedTo: string;
     status: string;
+    paymentStatus: 'unpaid' | 'paid' | 'externally-paid';
+    remarks: string;
     generatedAt: string;
     transferable: boolean;
     releasable: boolean;
@@ -299,9 +358,17 @@ export type AdminActivationCodeCenter = {
   metrics: {
     totalCodes: number;
     availableCodes: number;
+    unreleasedCodes: number;
     usedCodes: number;
+    lostCodes: number;
+    paidCodes: number;
   };
   auditTrail: AuditEvent[];
+  transferTargets: Array<{
+    username: string;
+    fullName: string;
+    packageTier: string;
+  }>;
   hints: string[];
 };
 
@@ -313,10 +380,12 @@ export type AdminEncashmentCenter = {
     member: string;
     gross: string;
     fee: string;
+    tax: string;
     cdDeduction: string;
     net: string;
     method: string;
     status: string;
+    remarks: string;
   }>;
   totals: {
     gross: number;
@@ -324,4 +393,19 @@ export type AdminEncashmentCenter = {
     awaitingReview: number;
   };
   processNotes: string[];
+};
+
+export type ShadowAccountCenter = {
+  moneyMode: MoneyMode;
+  owner: string;
+  accounts: Array<{
+    id: string;
+    owner: string;
+    state: string;
+    placement: 'left' | 'right';
+    walletEnabled: boolean;
+    unilevelEnabled: boolean;
+    binaryCycleEnabled: boolean;
+    note: string;
+  }>;
 };
