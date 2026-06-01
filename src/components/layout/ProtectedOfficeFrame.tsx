@@ -360,15 +360,19 @@ export function ProtectedOfficeFrame({
               <div className="ops-content-loader-card">
                 <div className="ops-content-loader-body">
                   <Badge variant="outline">Loading</Badge>
-                  <div className="ops-content-loader-copy">
-                    <h2>{loadingLabel}</h2>
-                    <p>The content area is refreshing with the latest protected-office data.</p>
-                  </div>
-                  <div className="ops-content-loader-pulse" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
+                </div>
+                <div className="ops-content-loader-copy">
+                  <h2>{loadingLabel}</h2>
+                  <p>The content area is refreshing with the latest protected-office data.</p>
+                </div>
+                <div className="ops-content-loader-pulse" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+                <div className="ops-content-loader-brand">
+                  <YorBrandMark className="ops-content-loader-logo" />
+                  <span>YOR Office</span>
                 </div>
               </div>
             ) : null}

@@ -1581,6 +1581,21 @@ body {
   transform: scale(0.995);
 }
 
+.ops-content-loader-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.ops-content-loader-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
 .ops-content-loader-copy h2 {
   font-size: clamp(1.35rem, 2vw, 1.9rem);
   font-weight: 700;
@@ -6216,6 +6231,19 @@ body {
   object-fit: contain;
 }
 
+.site-logo-mark {
+  display: block;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  filter: none;
+  object-fit: contain;
+  padding: 0;
+}
+
 .site-footer-mark.yor-brand-mark--round {
   width: 54px;
   height: 54px;
@@ -7642,6 +7670,20 @@ body {
     font-weight: 900;
     letter-spacing: 0.18em;
     text-transform: uppercase;
+  }
+
+  .public-mobile-nav-popover-title {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .public-mobile-nav-popover-logo {
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    object-fit: contain;
   }
 
   .public-mobile-nav-popover-head button {
