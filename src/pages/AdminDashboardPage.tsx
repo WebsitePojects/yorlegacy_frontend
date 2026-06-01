@@ -363,6 +363,16 @@ export function AdminDashboardPage() {
   );
 
   useEffect(() => {
+    if (user?.role !== 'cashier' || officeBasePath !== '/cashier') {
+      return;
+    }
+
+    if (moduleId !== 'activation-codes') {
+      navigate('/cashier/activation-codes', { replace: true });
+    }
+  }, [moduleId, navigate, officeBasePath, user?.role]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadAdminModule() {
@@ -846,6 +856,7 @@ export function AdminDashboardPage() {
   const showModuleTable = Boolean(activeModule && !customAdminModuleIds.has(moduleId));
   const currentOpsRole = office?.profile.accessScope ?? user?.role ?? 'admin';
   const canGenerateCodes = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
+  const canReviewCodeStates = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
   const canApproveEncashment = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
   const canResetSandbox = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
   const canChangeMemberStatus = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
@@ -1068,14 +1079,16 @@ export function AdminDashboardPage() {
                       ) : adminTransferTarget ? (
                         <p className="mt-3 text-sm text-[var(--muted-foreground)]">No member match yet for that username.</p>
                       ) : null}
-                      <label className="mt-3 grid gap-2 text-sm">
-                        <span className="font-medium text-[var(--muted-foreground)]">Review remarks</span>
-                        <Input
-                          value={codeReviewRemarks}
-                          onChange={(event) => setCodeReviewRemarks(event.target.value)}
-                          placeholder="Lost-code reason, paid reference, or external settlement note"
-                        />
-                      </label>
+                      {canReviewCodeStates ? (
+                        <label className="mt-3 grid gap-2 text-sm">
+                          <span className="font-medium text-[var(--muted-foreground)]">Review remarks</span>
+                          <Input
+                            value={codeReviewRemarks}
+                            onChange={(event) => setCodeReviewRemarks(event.target.value)}
+                            placeholder="Lost-code reason, paid reference, or external settlement note"
+                          />
+                        </label>
+                      ) : null}
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={handleReleaseCodes}>
                           Release
@@ -1086,18 +1099,22 @@ export function AdminDashboardPage() {
                         <Button type="button" variant="outline" disabled={!selectedAdminCodes.length || !adminTransferTarget} onClick={handleReleaseAndTransferCodes}>
                           Release + Transfer
                         </Button>
-                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('mark-paid')}>
-                          Mark Paid
-                        </Button>
-                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('mark-external-paid')}>
-                          Mark External Paid
-                        </Button>
-                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('mark-lost')}>
-                          Mark Lost
-                        </Button>
-                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('restore')}>
-                          Restore
-                        </Button>
+                        {canReviewCodeStates ? (
+                          <>
+                            <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('mark-paid')}>
+                              Mark Paid
+                            </Button>
+                            <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('mark-external-paid')}>
+                              Mark External Paid
+                            </Button>
+                            <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('mark-lost')}>
+                              Mark Lost
+                            </Button>
+                            <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('restore')}>
+                              Restore
+                            </Button>
+                          </>
+                        ) : null}
                       </div>
                     </div>
                   </CardContent>
