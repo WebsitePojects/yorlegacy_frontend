@@ -49,8 +49,8 @@ export const bonusRouteContent: Record<
     kicker: 'Reward Structure',
     spotlight: 'Personally Sponsor And Earn',
     metrics: [
-      { label: 'Classic', value: 'PHP 200', accent: 'muted' },
-      { label: 'Basic', value: 'PHP 1,000', accent: 'primary' },
+      { label: 'Basic', value: 'PHP 200', accent: 'muted' },
+      { label: 'Classic', value: 'PHP 1,000', accent: 'primary' },
       { label: 'Standard', value: 'PHP 5,000', accent: 'primary' },
       { label: 'Business', value: 'PHP 7,000', accent: 'primary' },
       { label: 'VIP', value: 'PHP 15,000', accent: 'tertiary' }
@@ -105,13 +105,13 @@ export const bonusRouteContent: Record<
     ]
   },
   'earn/get-five': {
-    kicker: 'Legacy Rewards',
-    spotlight: 'Five Directs Unlock A Bonus',
+    kicker: 'Package Claim Logic',
+    spotlight: 'Five Directs Unlock A Same-Package Claim',
     metrics: [
-      { label: 'Classic', value: 'PHP 1,000', accent: 'primary' },
-      { label: 'Standard', value: 'PHP 5,000', accent: 'primary' },
-      { label: 'Business', value: 'PHP 10,000', accent: 'primary' },
-      { label: 'VIP', value: 'PHP 30,000', accent: 'tertiary' }
+      { label: 'Classic', value: 'PHP 5,998', accent: 'primary' },
+      { label: 'Standard', value: 'PHP 25,998', accent: 'primary' },
+      { label: 'Business', value: 'PHP 50,998', accent: 'primary' },
+      { label: 'VIP', value: 'PHP 159,998', accent: 'tertiary' }
     ],
     insights: [
       {
@@ -119,8 +119,8 @@ export const bonusRouteContent: Record<
         body: 'The public rule is not simply about recruiting five people. It is specifically about building five direct signups on the same package tier.'
       },
       {
-        title: 'The mechanic is repeatable',
-        body: 'The page should present the bonus as a recurring milestone, which is why the export uses a visual equation instead of a single isolated reward card.'
+        title: 'The package amount is the visible claim value',
+        body: 'The current compensation-plan presentation and exported slide point to package-tied claim amounts, so this page should show the same-package claim value rather than a separate legacy bonus table.'
       }
     ]
   },
@@ -220,7 +220,7 @@ function renderBonusVisual(content: PageContent) {
           <div className="bonus-avatar bonus-avatar-main">YOU</div>
           <div className="bonus-line bonus-line-vertical" />
           <div className="bonus-tier-row">
-            {['Classic', 'Basic', 'Standard', 'Business', 'VIP'].map((tier) => (
+            {['Basic', 'Classic', 'Standard', 'Business', 'VIP'].map((tier) => (
               <div key={tier} className="bonus-tier-node">
                 <div className="bonus-tier-dot" />
                 <span>{tier}</span>

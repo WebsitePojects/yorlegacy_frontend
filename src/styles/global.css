@@ -8546,3 +8546,91 @@ body {
     font-size: 0.58rem;
   }
 }
+
+/* Office shell overrides for the current Yor admin/member pass */
+@media (min-width: 1024px) {
+  .ops-shell {
+    background:
+      radial-gradient(circle at top right, color-mix(in oklab, var(--yor-amber) 8%, transparent), transparent 32%),
+      linear-gradient(180deg, color-mix(in oklab, var(--background) 97%, black 3%) 0%, var(--background) 100%);
+  }
+
+  .ops-shell-header {
+    inset: 0 0 auto;
+    min-height: 72px;
+    padding: 14px 22px;
+    border: 0;
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 78%, var(--yor-copper) 22%);
+    border-radius: 0;
+    background: color-mix(in oklab, var(--background) 84%, transparent);
+    backdrop-filter: blur(16px);
+    box-shadow: none;
+  }
+
+  .ops-shell-header.is-scrolled {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .ops-shell-body {
+    gap: 0;
+    height: 100dvh;
+    padding: 72px 0 0;
+  }
+
+  .ops-sidebar-shell {
+    gap: 0;
+  }
+
+  .ops-sidebar-rail,
+  .ops-sidebar-panel {
+    border: 0;
+    border-right: 1px solid color-mix(in oklab, var(--border) 78%, var(--yor-copper) 22%);
+    border-radius: 0;
+    background: color-mix(in oklab, var(--background) 96%, black 4%);
+    box-shadow: none;
+  }
+
+  .ops-sidebar-rail {
+    width: 64px;
+    padding: 14px 8px;
+  }
+
+  .ops-sidebar-panel {
+    padding: 18px 14px 22px;
+  }
+
+  .ops-content-stage {
+    padding: 24px 28px 44px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .ops-metric-grid {
+    gap: 14px;
+  }
+
+  .ops-metric-card,
+  .ops-quicklink-card,
+  .ops-admin-queue-card,
+  .ops-module-table-card,
+  .ops-admin-table-card,
+  .ops-admin-control-card,
+  .ops-admin-process-card,
+  .ops-admin-tree-card,
+  .ops-admin-security-card {
+    border-radius: 18px;
+    background: color-mix(in oklab, var(--card) 93%, black 7%);
+  }
+
+  .ops-metric-card .text-2xl {
+    font-size: 2.15rem;
+    line-height: 1;
+  }
+
+  .ops-admin-page > .ops-metric-grid:first-child .ops-metric-card {
+    min-height: 148px;
+  }
+}

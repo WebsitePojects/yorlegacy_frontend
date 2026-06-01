@@ -28,7 +28,8 @@ import type {
   MemberTransactionSummary,
   MemberWalletDetail,
   OperationalModule,
-  RegistrationReadiness
+  RegistrationReadiness,
+  ShadowAccountCenter
 } from '../types/auth';
 
 const formatCurrency = (value: number): string =>
@@ -45,11 +46,19 @@ const customMemberModuleIds = new Set([
   'activation-codes',
   'upgrade-registration',
   'genealogy',
+  'account-shadow-management',
   'get-five-bonus',
   'lifestyle-rewards',
   'unilevel-rank-progress',
   'global-bonus-eligibility'
 ]);
+
+const getYorFivePackageClaimMap: Record<string, string> = {
+  Classic: 'PHP 5,998',
+  Standard: 'PHP 25,998',
+  Business: 'PHP 50,998',
+  VIP: 'PHP 159,998'
+};
 
 const memberIncomeRouteMap: Record<string, { memberModuleId: string; publicHref: string }> = {
   'direct-selling': { memberModuleId: 'product-orders', publicHref: '/earn/direct-selling' },
@@ -104,6 +113,7 @@ type MemberModuleBundle = {
   transactionDetail: MemberTransactionDetail | null;
   registrationReadiness: RegistrationReadiness | null;
   binaryTree: GenealogyCenter | null;
+  shadowAccounts: ShadowAccountCenter | null;
 };
 
 export function MemberDashboardPage() {
@@ -114,6 +124,7 @@ export function MemberDashboardPage() {
     getMemberMvpDashboard,
     getMemberOffice,
     getMemberRegistrationReadiness,
+    getMemberShadowAccounts,
     getMemberSummary,
     getMemberTransactionDetail,
     getMemberTransactions,
@@ -136,6 +147,7 @@ export function MemberDashboardPage() {
   const [transactionDetail, setTransactionDetail] = useState<MemberTransactionDetail | null>(null);
   const [registrationReadiness, setRegistrationReadiness] = useState<RegistrationReadiness | null>(null);
   const [binaryTree, setBinaryTree] = useState<GenealogyCenter | null>(null);
+  const [shadowAccounts, setShadowAccounts] = useState<ShadowAccountCenter | null>(null);
   const [selectedTreeNodeId, setSelectedTreeNodeId] = useState<string | null>(null);
   const [treeRootUsername, setTreeRootUsername] = useState('');
   const [encashAmount, setEncashAmount] = useState(5000);
@@ -158,6 +170,7 @@ export function MemberDashboardPage() {
       setTransactionDetail(bundle.transactionDetail);
       setRegistrationReadiness(bundle.registrationReadiness);
       setBinaryTree(bundle.binaryTree);
+      setShadowAccounts(bundle.shadowAccounts);
       setSelectedTreeNodeId(bundle.binaryTree?.root.nodeId ?? null);
 
       if (bundle.walletDetail) {
@@ -188,6 +201,7 @@ export function MemberDashboardPage() {
       let transactionDetail: MemberTransactionDetail | null = null;
       let registrationReadiness: RegistrationReadiness | null = null;
       let binaryTree: GenealogyCenter | null = null;
+      let shadowAccounts: ShadowAccountCenter | null = null;
 
       if (targetModuleId === 'wallet') {
         walletDetail = await getMemberWalletDetail();
@@ -214,6 +228,10 @@ export function MemberDashboardPage() {
         binaryTree = await getMemberBinaryTree(rootUsername.trim() || undefined);
       }
 
+      if (targetModuleId === 'account-shadow-management') {
+        shadowAccounts = await getMemberShadowAccounts();
+      }
+
       return {
         summary: nextSummary,
         office: nextOffice,
@@ -224,7 +242,8 @@ export function MemberDashboardPage() {
         transactions,
         transactionDetail,
         registrationReadiness,
-        binaryTree
+        binaryTree,
+        shadowAccounts
       };
     },
     [
@@ -234,6 +253,7 @@ export function MemberDashboardPage() {
       getMemberMvpDashboard,
       getMemberOffice,
       getMemberRegistrationReadiness,
+      getMemberShadowAccounts,
       getMemberSummary,
       getMemberTransactionDetail,
       getMemberTransactions,
@@ -504,6 +524,10 @@ export function MemberDashboardPage() {
   const showStatusRail = moduleId === 'dashboard' || moduleId === 'account-details';
   const showDashboardActions = moduleId === 'dashboard' && (mvpDashboard?.moneyMode ?? 'playground') !== 'sandbox' && branchNotes.length > 0;
   const visibleMetrics = office ? getVisibleMemberMetrics(moduleId, office.metrics) : [];
+  const getYorFiveRewardValue = String(
+    getYorFivePackageClaimMap[String(activeModule?.table.rows[0]?.package ?? office?.profile.packageTier ?? '')] ??
+      'Pending published package-claim value'
+  );
   const summaryCard =
     moduleId === 'dashboard' || moduleId === 'wallet' || moduleId === 'account-details'
       ? {
@@ -984,10 +1008,11 @@ export function MemberDashboardPage() {
               <Card className="border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Same-Package Direct Progress</CardTitle>
-                  <CardDescription>Track how many direct signups on your current package are already counted toward the next Get Yor Five release.</CardDescription>
+                  <CardDescription>Track how many direct signups on your current package are already counted toward the next Get Yor Five package claim.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <DataPoint label="Current Package" value={String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '-')} />
+                  <DataPoint label="Published Package Claim" value={getYorFiveRewardValue} />
                   <DataPoint label="Qualified Directs" value={String(activeModule.table.rows[0]?.directSamePackage ?? 0)} />
                   <DataPoint label="Claimable Groups" value={String(activeModule.table.rows[0]?.completedGroups ?? 0)} />
                   <DataPoint label="Target" value={String(activeModule.table.rows[0]?.target ?? 5)} />
@@ -1023,8 +1048,68 @@ export function MemberDashboardPage() {
               </Card>
               <Card className="border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
-                  <CardTitle>Release Logic</CardTitle>
-                  <CardDescription>Get Yor Five stays tied to five direct signups on the same package tier so the milestone matches the published Yor compensation story.</CardDescription>
+                  <CardTitle>Published Package Values</CardTitle>
+                  <CardDescription>Get Yor Five stays tied to five direct signups on the same package tier, and the public package-claim amounts follow the compensation-plan presentation instead of the older placeholder bonus table.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {Object.entries(getYorFivePackageClaimMap).map(([tier, value]) => (
+                      <div key={tier} className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">{tier}</p>
+                        <p className="mt-3 text-xl font-semibold text-[var(--foreground)]">{value}</p>
+                        <p className="mt-2 text-sm text-[var(--muted-foreground)]">Claim unlocks after every five direct signups on the same package.</p>
+                      </div>
+                    ))}
+                  </div>
+                  <ReportTableView table={activeModule.table} />
+                </CardContent>
+              </Card>
+            </section>
+          ) : null}
+
+          {moduleId === 'account-shadow-management' && activeModule && shadowAccounts ? (
+            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader>
+                  <CardTitle>Shadow Account Logic</CardTitle>
+                  <CardDescription>Reserved slots stay visible here so members and admins can tell whether the left and right shadow positions are inactive placeholders or activated shadow accounts.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <DataPoint label="Owner" value={shadowAccounts.owner} />
+                  <DataPoint label="Shadow Slots" value={shadowAccounts.accounts.length} />
+                  <DataPoint label="Active Shadow Path" value={shadowAccounts.accounts.some((account) => account.walletEnabled) ? 'Visible' : 'Reserved only'} />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {shadowAccounts.accounts.map((account) => (
+                      <div key={account.id} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <Badge variant={account.walletEnabled ? 'success' : 'outline'}>{account.placement}</Badge>
+                          <Badge variant={account.state.includes('reserved') ? 'warning' : 'outline'}>{account.state}</Badge>
+                        </div>
+                        <p className="mt-4 text-lg font-semibold text-[var(--foreground)]">{account.id}</p>
+                        <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{account.note}</p>
+                        <div className="mt-4 grid gap-2 text-sm text-[var(--muted-foreground)]">
+                          <div className="flex items-center justify-between gap-2">
+                            <span>Wallet</span>
+                            <strong className="text-[var(--foreground)]">{account.walletEnabled ? 'Enabled' : 'Disabled'}</strong>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span>Unilevel</span>
+                            <strong className="text-[var(--foreground)]">{account.unilevelEnabled ? 'Enabled' : 'Disabled'}</strong>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span>Binary Cycle</span>
+                            <strong className="text-[var(--foreground)]">{account.binaryCycleEnabled ? 'Enabled' : 'Disabled'}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader>
+                  <CardTitle>Shadow State Table</CardTitle>
+                  <CardDescription>This page keeps the transcript-style shadow-account explanation separate from the live binary tree so inactive open slots are easier to understand.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ReportTableView table={activeModule.table} />

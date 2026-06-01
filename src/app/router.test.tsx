@@ -197,8 +197,8 @@ describe('routes', () => {
     expect(
       await screen.findByRole('heading', { name: /encashment reports/i })
     ).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: /^approve$/i })).toBeInTheDocument();
-    expect(await screen.findByText(/process notes/i)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /mark paid/i })).toBeInTheDocument();
+    expect(await screen.findByText(/selected request/i)).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: /encashment queue/i })).toBeInTheDocument();
   });
 

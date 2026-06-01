@@ -845,8 +845,8 @@ export function AdminDashboardPage() {
   const branchNotes = activeModule?.gatedActions.length ? activeModule.gatedActions : office?.gatedActions ?? [];
   const showModuleTable = Boolean(activeModule && !customAdminModuleIds.has(moduleId));
   const currentOpsRole = office?.profile.accessScope ?? user?.role ?? 'admin';
-  const canGenerateCodes = currentOpsRole !== 'cashier';
-  const canApproveEncashment = currentOpsRole !== 'cashier';
+  const canGenerateCodes = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
+  const canApproveEncashment = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
   const canResetSandbox = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
   const canChangeMemberStatus = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
   const showSecurityRail = moduleId === 'dashboard';
@@ -958,129 +958,181 @@ export function AdminDashboardPage() {
           {showModuleTable && activeModule ? <ModuleTableCard module={activeModule} /> : null}
 
           {moduleId === 'activation-codes' && activationCodes ? (
-            <section className="ops-admin-activation-grid grid gap-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-              <DataListCard
-                title="Code Metrics"
-                rows={[
-                  { label: 'Total Codes', value: activationCodes.metrics.totalCodes },
-                  { label: 'Released', value: activationCodes.metrics.availableCodes },
-                  { label: 'Awaiting Release', value: activationCodes.metrics.unreleasedCodes },
-                  { label: 'Used', value: activationCodes.metrics.usedCodes }
-                ]}
-              />
-              <Card className="ops-admin-control-card border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Code Workflow</CardTitle>
-                  <CardDescription>
-                    {activationCodes.moneyMode === 'sandbox'
-                      ? 'Generated codes enter as unreleased, then staff can release and transfer them before a member uses them for registration.'
-                      : 'Batch generation stays easy to review while final inventory writes remain in protected playground mode.'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {canGenerateCodes ? (
-                    <div className="ops-admin-form-grid grid gap-3 sm:grid-cols-4">
-                      <label className="grid gap-2 text-sm">
-                        <span className="font-medium text-[var(--muted-foreground)]">Quantity</span>
-                        <Input
-                          type="number"
-                          value={codeBatchQuantity}
-                          onChange={(event) => setCodeBatchQuantity(Number(event.target.value))}
-                        />
-                      </label>
-                      <label className="grid gap-2 text-sm">
-                        <span className="font-medium text-[var(--muted-foreground)]">Package</span>
-                        <select
-                          className="flex h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                          value={codeBatchPackageTier}
-                          onChange={(event) => setCodeBatchPackageTier(event.target.value)}
-                        >
-                          <option value="Classic">Classic</option>
-                          <option value="Basic">Basic</option>
-                          <option value="Standard">Standard</option>
-                          <option value="Business">Business</option>
-                          <option value="VIP">VIP</option>
-                        </select>
-                      </label>
-                      <label className="grid gap-2 text-sm">
-                        <span className="font-medium text-[var(--muted-foreground)]">Account Type</span>
-                        <select
-                          className="flex h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                          value={codeBatchAccountType}
-                          onChange={(event) => setCodeBatchAccountType(event.target.value)}
-                        >
-                          <option value="PD">PD</option>
-                          <option value="CD">CD</option>
-                          <option value="FS">FS</option>
-                        </select>
-                      </label>
-                      <label className="grid gap-2 text-sm">
-                        <span className="font-medium text-[var(--muted-foreground)]">Assign To Optional</span>
-                        <Input
-                          value={codeBatchAssignedTo}
-                          onChange={(event) => setCodeBatchAssignedTo(event.target.value.toUpperCase())}
-                          placeholder="Leave blank for pool"
-                        />
-                      </label>
-                    </div>
-                  ) : null}
-                  <label className="grid gap-2 text-sm">
-                    <span className="font-medium text-[var(--muted-foreground)]">Transfer To</span>
-                    <Input
-                      value={adminTransferTarget}
-                      onChange={(event) => setAdminTransferTarget(event.target.value.toUpperCase())}
-                      placeholder="Search username to transfer codes"
-                    />
-                  </label>
-                  <div className="flex flex-wrap gap-3">
+            <section className="ops-admin-activation-grid grid gap-4">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                <DataPoint label="Tracked Codes" value={activationCodes.metrics.totalCodes} />
+                <DataPoint label="Released" value={activationCodes.metrics.availableCodes} />
+                <DataPoint label="Awaiting Release" value={activationCodes.metrics.unreleasedCodes} />
+                <DataPoint label="Paid" value={activationCodes.metrics.paidCodes} />
+                <DataPoint label="Lost Codes" value={activationCodes.metrics.lostCodes} />
+                <DataPoint label="Used" value={activationCodes.metrics.usedCodes} />
+              </div>
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+                <Card className="ops-admin-control-card border-[var(--border)] bg-[var(--card)]">
+                  <CardHeader>
+                    <CardTitle>General Code Generation</CardTitle>
+                    <CardDescription>
+                      {activationCodes.moneyMode === 'sandbox'
+                        ? 'General codes stay in the unassigned pool by default, then operations can release, settle, transfer, or mark them lost from the table workflow.'
+                        : 'General code generation remains review-first while final writes stay in protected playground mode.'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     {canGenerateCodes ? (
-                      <Button className="ops-admin-primary-action" type="button" onClick={handleGenerateCodes}>
-                        Generate Batch
-                      </Button>
-                    ) : null}
-                    <Button
-                      className="ops-admin-primary-action"
-                      type="button"
-                      variant="outline"
-                      disabled={!selectedAdminCodes.length}
-                      onClick={handleReleaseCodes}
-                    >
-                      Release Selected
-                    </Button>
-                    <Button
-                      className="ops-admin-primary-action"
-                      type="button"
-                      variant="outline"
-                      disabled={!selectedAdminCodes.length || !adminTransferTarget}
-                      onClick={handleTransferCodes}
-                    >
-                      Transfer Selected
-                    </Button>
-                    <Button
-                      className="ops-admin-primary-action"
-                      type="button"
-                      variant="outline"
-                      disabled={!selectedAdminCodes.length || !adminTransferTarget}
-                      onClick={handleReleaseAndTransferCodes}
-                    >
-                      Release + Transfer
-                    </Button>
-                  </div>
-                  <div className="ops-admin-audit-box space-y-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-                    <p className="text-sm font-medium text-[var(--foreground)]">Audit Trail</p>
+                      <>
+                        <div className="grid gap-3 sm:grid-cols-4">
+                          <label className="grid gap-2 text-sm">
+                            <span className="font-medium text-[var(--muted-foreground)]">Quantity</span>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={codeBatchQuantity}
+                              onChange={(event) => setCodeBatchQuantity(Number(event.target.value))}
+                            />
+                          </label>
+                          <label className="grid gap-2 text-sm">
+                            <span className="font-medium text-[var(--muted-foreground)]">Package</span>
+                            <select
+                              className="flex h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                              value={codeBatchPackageTier}
+                              onChange={(event) => setCodeBatchPackageTier(event.target.value)}
+                            >
+                              <option value="Basic">Basic</option>
+                              <option value="Classic">Classic</option>
+                              <option value="Standard">Standard</option>
+                              <option value="Business">Business</option>
+                              <option value="VIP">VIP</option>
+                            </select>
+                          </label>
+                          <label className="grid gap-2 text-sm">
+                            <span className="font-medium text-[var(--muted-foreground)]">Account Type</span>
+                            <select
+                              className="flex h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                              value={codeBatchAccountType}
+                              onChange={(event) => setCodeBatchAccountType(event.target.value)}
+                            >
+                              <option value="PD">PD</option>
+                              <option value="CD">CD</option>
+                              <option value="FS">FS</option>
+                            </select>
+                          </label>
+                          <label className="grid gap-2 text-sm">
+                            <span className="font-medium text-[var(--muted-foreground)]">Optional Tagged User</span>
+                            <Input
+                              value={codeBatchAssignedTo}
+                              onChange={(event) => setCodeBatchAssignedTo(event.target.value.toUpperCase())}
+                              placeholder="Leave blank for general pool"
+                            />
+                          </label>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                          <Button className="ops-admin-primary-action" type="button" onClick={handleGenerateCodes}>
+                            Generate General Codes
+                          </Button>
+                          <p className="text-sm text-[var(--muted-foreground)]">
+                            Admin and superadmin can generate. Cashier stays on release, transfer, and correction workflows only.
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-4 text-sm text-[var(--muted-foreground)]">
+                        This role can review, release, transfer, and correct codes, but general code generation is admin-side only.
+                      </div>
+                    )}
+
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
+                      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                        <label className="grid gap-2 text-sm">
+                          <span className="font-medium text-[var(--muted-foreground)]">Search codes or owners</span>
+                          <Input
+                            value={codeSearchQuery}
+                            onChange={(event) => setCodeSearchQuery(event.target.value.toUpperCase())}
+                            placeholder="Code, username, package, paid state, remarks"
+                          />
+                        </label>
+                        <label className="grid gap-2 text-sm">
+                          <span className="font-medium text-[var(--muted-foreground)]">Transfer target username</span>
+                          <Input
+                            value={adminTransferTarget}
+                            onChange={(event) => setAdminTransferTarget(event.target.value.toUpperCase())}
+                            placeholder="Search username to transfer selected codes"
+                          />
+                        </label>
+                      </div>
+                      {selectedTransferTargetPreview ? (
+                        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--border)] px-3 py-2 text-sm">
+                          <Badge variant="outline">{selectedTransferTargetPreview.username}</Badge>
+                          <span className="text-[var(--foreground)]">{selectedTransferTargetPreview.fullName}</span>
+                          <span className="text-[var(--muted-foreground)]">{selectedTransferTargetPreview.packageTier}</span>
+                        </div>
+                      ) : adminTransferTarget ? (
+                        <p className="mt-3 text-sm text-[var(--muted-foreground)]">No member match yet for that username.</p>
+                      ) : null}
+                      <label className="mt-3 grid gap-2 text-sm">
+                        <span className="font-medium text-[var(--muted-foreground)]">Review remarks</span>
+                        <Input
+                          value={codeReviewRemarks}
+                          onChange={(event) => setCodeReviewRemarks(event.target.value)}
+                          placeholder="Lost-code reason, paid reference, or external settlement note"
+                        />
+                      </label>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={handleReleaseCodes}>
+                          Release
+                        </Button>
+                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length || !adminTransferTarget} onClick={handleTransferCodes}>
+                          Transfer
+                        </Button>
+                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length || !adminTransferTarget} onClick={handleReleaseAndTransferCodes}>
+                          Release + Transfer
+                        </Button>
+                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('mark-paid')}>
+                          Mark Paid
+                        </Button>
+                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('mark-external-paid')}>
+                          Mark External Paid
+                        </Button>
+                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('mark-lost')}>
+                          Mark Lost
+                        </Button>
+                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('restore')}>
+                          Restore
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-[var(--border)] bg-[var(--card)]">
+                  <CardHeader>
+                    <CardTitle>Audit Trail</CardTitle>
+                    <CardDescription>Recent inventory actions stay visible so admin can verify release, transfer, lost-code, and payment-state changes.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                     {activationCodes.auditTrail.map((event) => (
-                      <div key={`${event.occurredAt}-${event.action}`} className="ops-admin-audit-row flex items-start justify-between gap-4 text-sm">
-                        <span className="text-[var(--foreground)]">{event.action}</span>
-                        <span className="text-right text-[var(--muted-foreground)]">{event.actor}</span>
+                      <div key={`${event.occurredAt}-${event.action}`} className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm">
+                        <div className="flex items-start justify-between gap-4">
+                          <span className="text-[var(--foreground)]">{event.action}</span>
+                          <span className="text-right text-[var(--muted-foreground)]">{event.actor}</span>
+                        </div>
+                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">{event.occurredAt}</p>
                       </div>
                     ))}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="ops-admin-table-card border-[var(--border)] bg-[var(--card)] xl:col-span-2">
+                  </CardContent>
+                </Card>
+              </div>
+              <DataListCard
+                title="Code Workflow Notes"
+                rows={[
+                  { label: 'Filtered Rows', value: filteredActivationInventory.length },
+                  { label: 'Selected Codes', value: selectedAdminCodes.length },
+                  { label: 'Transfer Target', value: selectedTransferTargetPreview?.username ?? adminTransferTarget ?? 'None' },
+                  { label: 'Settlement Note', value: codeReviewRemarks || 'No remarks yet' }
+                ]}
+              />
+              <Card className="ops-admin-table-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Activation Code Inventory</CardTitle>
-                  <CardDescription>Shows who owns a code, which ones are released, and which paths are ready for the next registration or transfer step.</CardDescription>
+                  <CardDescription>Search-first inventory with settlement state, lost-code handling, and table-driven release or transfer actions.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="ops-code-table overflow-hidden rounded-xl border border-[var(--border)]">
@@ -1099,7 +1151,7 @@ export function AdminDashboardPage() {
                       </Button>
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="w-full min-w-[860px] text-sm">
+                      <table className="w-full min-w-[1220px] text-sm">
                         <thead>
                           <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
                             <th className="w-16 px-4 py-3">Action</th>
@@ -1108,13 +1160,15 @@ export function AdminDashboardPage() {
                             <th className="px-4 py-3">Package</th>
                             <th className="px-4 py-3">Owner</th>
                             <th className="px-4 py-3">Status</th>
+                            <th className="px-4 py-3">Payment</th>
+                            <th className="px-4 py-3">Remarks</th>
                             <th className="px-4 py-3">Generated</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {activationCodes.inventory.map((item) => {
+                          {filteredActivationInventory.map((item) => {
                             const isSelected = selectedAdminCodes.includes(item.code);
-                            const isLocked = item.status === 'used';
+                            const isLocked = item.status === 'used' || item.status === 'lost';
 
                             return (
                               <tr
@@ -1145,10 +1199,16 @@ export function AdminDashboardPage() {
                                 <td className="px-4 py-3">{item.packageTier}</td>
                                 <td className="px-4 py-3">{item.assignedTo}</td>
                                 <td className="px-4 py-3">
-                                  <Badge variant={item.status === 'available' ? 'success' : item.status === 'unreleased' ? 'warning' : 'outline'}>
+                                  <Badge variant={item.status === 'available' ? 'success' : item.status === 'unreleased' || item.status === 'lost' ? 'warning' : 'outline'}>
                                     {item.status}
                                   </Badge>
                                 </td>
+                                <td className="px-4 py-3">
+                                  <Badge variant={item.paymentStatus === 'paid' ? 'success' : item.paymentStatus === 'externally-paid' ? 'warning' : 'outline'}>
+                                    {item.paymentStatus}
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3 text-[var(--muted-foreground)]">{item.remarks || '-'}</td>
                                 <td className="px-4 py-3 text-[var(--muted-foreground)]">{item.generatedAt}</td>
                               </tr>
                             );
@@ -1409,61 +1469,177 @@ export function AdminDashboardPage() {
           ) : null}
 
           {moduleId === 'encashment-reports' && encashments ? (
-            <section className="ops-admin-encashment-grid grid gap-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-              <DataListCard
-                title="Queue Totals"
-                rows={[
-                  { label: 'Gross', value: formatCurrency(encashments.totals.gross) },
-                  { label: 'Net', value: formatCurrency(encashments.totals.net) },
-                  { label: 'Awaiting Review', value: encashments.totals.awaitingReview }
-                ]}
-              />
-              <Card className="ops-admin-process-card border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Process Notes</CardTitle>
-                  <CardDescription>
-                    {encashments.moneyMode === 'sandbox'
-                      ? 'Money movement now writes into the local branch queue and can be approved end to end.'
-                      : 'Money movement is visible and testable in protected playground mode while policy evidence remains under review.'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm leading-6 text-[var(--muted-foreground)]">
-                  {encashments.processNotes.map((note) => (
-                    <p key={note}>{note}</p>
-                  ))}
-                </CardContent>
-              </Card>
-              <Card className="ops-admin-table-card border-[var(--border)] bg-[var(--card)] xl:col-span-2">
+            <section className="ops-admin-encashment-grid grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+              <Card className="ops-admin-table-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Encashment Queue</CardTitle>
-                  <CardDescription>Operational payout queue with a real approve path and branch-only sandbox persistence.</CardDescription>
+                  <CardDescription>Searchless queue review with gross, deductions, net payable, remarks, and paid-state control kept in one operator surface.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {encashments.encashments.map((item) => (
-                    <div key={item.id} className="ops-admin-encashment-item rounded-xl border border-[var(--border)] p-4">
-                      <div className="ops-admin-encashment-row flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="font-medium text-[var(--foreground)]">{item.member}</p>
-                          <p className="text-sm text-[var(--muted-foreground)]">
-                            {item.id} / {item.method}
-                          </p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <DataPoint label="Gross Total" value={formatCurrency(encashments.totals.gross)} />
+                    <DataPoint label="Net Total" value={formatCurrency(encashments.totals.net)} />
+                    <DataPoint label="Awaiting Review" value={encashments.totals.awaitingReview} />
+                  </div>
+                  <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[900px] text-sm">
+                        <thead>
+                          <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                            <th className="px-4 py-3">Member</th>
+                            <th className="px-4 py-3">Reference</th>
+                            <th className="px-4 py-3">Method</th>
+                            <th className="px-4 py-3">Gross</th>
+                            <th className="px-4 py-3">Net</th>
+                            <th className="px-4 py-3">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {encashments.encashments.map((item) => {
+                            const selected = selectedEncashment?.id === item.id;
+                            return (
+                              <tr
+                                key={item.id}
+                                className={cn(
+                                  'cursor-pointer border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30',
+                                  selected && 'bg-[var(--muted)]/40'
+                                )}
+                                onClick={() => handleSelectEncashment(item.id)}
+                              >
+                                <td className="px-4 py-3 font-medium text-[var(--foreground)]">{item.member}</td>
+                                <td className="px-4 py-3 font-mono text-[var(--yor-copper-soft)]">{item.id}</td>
+                                <td className="px-4 py-3">{item.method}</td>
+                                <td className="px-4 py-3">{item.gross}</td>
+                                <td className="px-4 py-3">{item.net}</td>
+                                <td className="px-4 py-3">
+                                  <Badge variant={/paid/i.test(item.status) ? 'success' : /cancel/i.test(item.status) ? 'warning' : 'outline'}>
+                                    {item.status}
+                                  </Badge>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div className="grid gap-2 text-sm text-[var(--muted-foreground)]">
+                    {encashments.processNotes.map((note) => (
+                      <p key={note}>{note}</p>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="ops-admin-process-card border-[var(--border)] bg-[var(--card)]">
+                <CardHeader>
+                  <CardTitle>Selected Request</CardTitle>
+                  <CardDescription>
+                    {encashments.moneyMode === 'sandbox'
+                      ? 'Admins and superadmins can edit deductions, queue, cancel, leave remarks, and mark requests paid inside the branch sandbox.'
+                      : 'This review panel mirrors the final settlement workflow while writes stay protected.'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {selectedEncashment ? (
+                    <>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <DataPoint label="Member" value={selectedEncashment.member} />
+                        <DataPoint label="Status" value={selectedEncashment.status} />
+                        <DataPoint label="Gross" value={selectedEncashment.gross} />
+                        <DataPoint label="Net" value={selectedEncashment.net} />
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="grid gap-2 text-sm">
+                          <span className="font-medium text-[var(--muted-foreground)]">Payout Method</span>
+                          <Input
+                            value={encashmentDraft.method}
+                            onChange={(event) => handleEncashmentDraftField('method', event.target.value)}
+                          />
+                        </label>
+                        <label className="grid gap-2 text-sm">
+                          <span className="font-medium text-[var(--muted-foreground)]">Fee</span>
+                          <Input
+                            value={encashmentDraft.fee}
+                            onChange={(event) => handleEncashmentDraftField('fee', event.target.value)}
+                          />
+                        </label>
+                        <label className="grid gap-2 text-sm">
+                          <span className="font-medium text-[var(--muted-foreground)]">Tax</span>
+                          <Input
+                            value={encashmentDraft.tax}
+                            onChange={(event) => handleEncashmentDraftField('tax', event.target.value)}
+                          />
+                        </label>
+                        <label className="grid gap-2 text-sm">
+                          <span className="font-medium text-[var(--muted-foreground)]">CD Deduction</span>
+                          <Input
+                            value={encashmentDraft.cdDeduction}
+                            onChange={(event) => handleEncashmentDraftField('cdDeduction', event.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <label className="grid gap-2 text-sm">
+                        <span className="font-medium text-[var(--muted-foreground)]">Remarks</span>
+                        <Input
+                          value={encashmentDraft.remarks}
+                          onChange={(event) => handleEncashmentDraftField('remarks', event.target.value)}
+                          placeholder="Reason for hold, payout note, correction reference"
+                        />
+                      </label>
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                        <div className="grid gap-2 text-sm text-[var(--muted-foreground)]">
+                          <div className="flex items-center justify-between gap-3">
+                            <span>Gross</span>
+                            <strong className="text-[var(--foreground)]">{selectedEncashment.gross}</strong>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span>Fee</span>
+                            <strong className="text-[var(--foreground)]">{formatCurrency(parseMoneyValue(encashmentDraft.fee))}</strong>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span>Tax</span>
+                            <strong className="text-[var(--foreground)]">{formatCurrency(parseMoneyValue(encashmentDraft.tax))}</strong>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span>CD Deduction</span>
+                            <strong className="text-[var(--foreground)]">{formatCurrency(parseMoneyValue(encashmentDraft.cdDeduction))}</strong>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-2">
+                            <span>Computed Net</span>
+                            <strong className="text-[var(--foreground)]">
+                              {formatCurrency(
+                                Math.max(
+                                  0,
+                                  parseMoneyValue(selectedEncashment.gross) -
+                                    parseMoneyValue(encashmentDraft.fee) -
+                                    parseMoneyValue(encashmentDraft.tax) -
+                                    parseMoneyValue(encashmentDraft.cdDeduction)
+                                )
+                              )}
+                            </strong>
+                          </div>
                         </div>
-                        <div className="text-sm text-[var(--muted-foreground)]">
-                          Gross {item.gross} / Net {item.net}
-                        </div>
-                        <Button
-                          className="ops-admin-inline-action"
-                          type="button"
-                          variant="outline"
-                          aria-label="Approve"
-                          disabled={!canApproveEncashment}
-                          onClick={() => handleApproveEncashment(item.id)}
-                        >
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" disabled={!canApproveEncashment} onClick={() => void handleReviewEncashment('edit')}>
+                          Save Changes
+                        </Button>
+                        <Button type="button" variant="outline" disabled={!canApproveEncashment} onClick={() => void handleReviewEncashment('queue')}>
+                          Queue
+                        </Button>
+                        <Button type="button" variant="outline" disabled={!canApproveEncashment} onClick={() => void handleReviewEncashment('cancel')}>
+                          Cancel
+                        </Button>
+                        <Button type="button" disabled={!canApproveEncashment} onClick={() => void handleReviewEncashment('mark-paid')}>
                           Mark Paid
                         </Button>
                       </div>
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-5 text-sm text-[var(--muted-foreground)]">
+                      Select an encashment row to review gross, net, deductions, remarks, and settlement actions.
                     </div>
-                  ))}
+                  )}
                 </CardContent>
               </Card>
             </section>

@@ -286,8 +286,8 @@ export function RegistrationPageView({ content: _content }: { content: PageConte
                     value={form.packageTier}
                     onChange={(event) => setForm((current) => ({ ...current, packageTier: event.target.value }))}
                   >
-                    <option value="classic">Classic</option>
                     <option value="basic">Basic</option>
+                    <option value="classic">Classic</option>
                     <option value="standard">Standard</option>
                     <option value="business">Business</option>
                     <option value="vip">VIP</option>

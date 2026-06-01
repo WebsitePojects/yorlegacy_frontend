@@ -37,14 +37,14 @@ export const founderHighlights = [
 
 export const packageTiers = [
   {
-    name: 'Classic',
+    name: 'Basic',
     label: 'Entry Package',
     price: 'PHP 1,998',
     pv: 'PV-5',
     features: ['40% lifetime discount', 'Direct selling access', 'Value-for-money starter entry']
   },
   {
-    name: 'Basic',
+    name: 'Classic',
     label: 'Growth Package',
     price: 'PHP 5,998',
     pv: 'PV-10',
@@ -104,7 +104,7 @@ export const earnCards = [
     href: '/earn/get-five',
     number: '5',
     title: 'Get Yor Five Bonus',
-    body: 'Every five direct signups on the same package tier unlock a milestone bonus.'
+    body: 'Every five direct signups on the same package tier unlock a same-package Get Yor Five claim.'
   },
   {
     href: '/earn/lifestyle-rewards',

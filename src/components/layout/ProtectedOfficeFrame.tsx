@@ -138,11 +138,11 @@ export function ProtectedOfficeFrame({
   const shellStorageKey = `yor-office-shell:${basePath}:${user?.role ?? 'guest'}`;
   const [sidebarExpanded, setSidebarExpanded] = useState(() => {
     if (typeof window === 'undefined') {
-      return false;
+      return true;
     }
 
     const stored = window.localStorage.getItem(shellStorageKey);
-    return stored ? stored === 'open' : false;
+    return stored ? stored === 'open' : true;
   });
   const [scrollElevated, setScrollElevated] = useState(false);
   const [prefetchedModules, setPrefetchedModules] = useState<Set<string>>(() => new Set());
