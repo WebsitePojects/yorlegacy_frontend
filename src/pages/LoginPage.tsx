@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Menu } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useFeedback } from '@/components/feedback/FeedbackProvider';
@@ -141,13 +141,6 @@ export function LoginPage() {
         <div className="yor-auth-form-shell">
           <div className="yor-auth-form-mask" />
           <div className="yor-auth-form-card">
-            <div className="yor-auth-form-topbar">
-              <span className="yor-auth-dot" />
-              <button className="yor-auth-menu-button" type="button" aria-label="Decorative menu">
-                <Menu size={18} />
-              </button>
-            </div>
-
             <div className="yor-auth-form-head">
               <span className="eyebrow">Protected Sign In</span>
               <h2>Member and office login</h2>

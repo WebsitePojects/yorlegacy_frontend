@@ -4,7 +4,6 @@ import {
   ArrowRight,
   ChevronDown,
   Check,
-  Phone,
   Mail,
   Award,
   Globe
@@ -27,6 +26,43 @@ if (!import.meta.env.TEST) {
   gsap.registerPlugin(ScrollTrigger);
 }
 
+const sceneDefinitions = [
+  { id: 1, count: 120, path: '/assets/scene1_hero' },
+  { id: 2, count: 150, path: '/assets/scene2_complan' },
+  { id: 3, count: 150, path: '/assets/scene3_networks' }
+] as const;
+
+function getExperienceProfile() {
+  if (typeof window === 'undefined') {
+    return { frameStep: 2, isLite: false };
+  }
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+  const isSmallViewport = window.matchMedia('(max-width: 768px)').matches;
+  const isLite = reducedMotion || isCoarsePointer || isSmallViewport;
+
+  if (reducedMotion) {
+    return { frameStep: 12, isLite };
+  }
+
+  return { frameStep: isLite ? 6 : 2, isLite };
+}
+
+function createSceneFrameUrls(scene: (typeof sceneDefinitions)[number], frameStep: number) {
+  const urls: string[] = [];
+
+  for (let frame = 1; frame <= scene.count; frame += frameStep) {
+    urls.push(`${scene.path}/ezgif-frame-${String(frame).padStart(3, '0')}.png`);
+  }
+
+  if (!urls.includes(`${scene.path}/ezgif-frame-${String(scene.count).padStart(3, '0')}.png`)) {
+    urls.push(`${scene.path}/ezgif-frame-${String(scene.count).padStart(3, '0')}.png`);
+  }
+
+  return urls;
+}
+
 export function HomeExperiencePage({ content }: { content: PageContent }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -38,6 +74,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
   const [activeSection, setActiveSection] = useState(0);
   const [activeOverlay, setActiveOverlay] = useState<string | null>(null);
   const [activeAccordion, setActiveAccordion] = useState<number>(0);
+  const [liteExperience, setLiteExperience] = useState(false);
 
   // Fetch page contents dynamically for overlay sheets
   const { data: founderData } = usePageContent('founder');
@@ -54,10 +91,13 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
 
   // Track currently drawn frame to prevent double rendering
   const lastDrawnScene = useRef<number>(1);
-  const lastDrawnFrame = useRef<number>(0);
+  const lastDrawnFrame = useRef<number>(-1);
+  const pendingDraw = useRef<number | null>(null);
+  const pendingScene = useRef<number>(1);
+  const pendingFrame = useRef<number>(0);
 
   // Mathematical "object-fit: cover" rendering on 2D canvas context
-  const drawFrame = useCallback((sceneId: number, frameIndex: number) => {
+  const drawFrame = useCallback((sceneId: number, frameIndex: number, force = false) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -73,6 +113,10 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
     }
 
     if (!img || !img.complete) return;
+
+    if (!force && lastDrawnScene.current === sceneId && lastDrawnFrame.current === frameIndex) {
+      return;
+    }
 
     lastDrawnScene.current = sceneId;
     lastDrawnFrame.current = frameIndex;
@@ -102,47 +146,86 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
     ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
   }, []);
 
+  const scheduleDrawFrame = useCallback((sceneId: number, frameIndex: number) => {
+    pendingScene.current = sceneId;
+    pendingFrame.current = frameIndex;
+
+    if (pendingDraw.current !== null) {
+      return;
+    }
+
+    pendingDraw.current = window.requestAnimationFrame(() => {
+      pendingDraw.current = null;
+      drawFrame(pendingScene.current, pendingFrame.current);
+    });
+  }, [drawFrame]);
+
   // Preloader Engine
   useEffect(() => {
+    const { frameStep, isLite } = getExperienceProfile();
+    setLiteExperience(isLite);
+
+    let cancelled = false;
     let loadedCount = 0;
-    const totalFrames = 120 + 150 + 150; // 420 frames in total
+    let progressFrame: number | null = null;
+    const frameUrlGroups = sceneDefinitions.map((scene) => createSceneFrameUrls(scene, frameStep));
+    const totalFrames = frameUrlGroups.reduce((total, urls) => total + urls.length, 0);
+
+    const queueProgressUpdate = () => {
+      if (progressFrame !== null) {
+        return;
+      }
+
+      progressFrame = window.requestAnimationFrame(() => {
+        progressFrame = null;
+        setProgress(Math.round((loadedCount / totalFrames) * 100));
+      });
+    };
 
     const preloadImage = (src: string): Promise<HTMLImageElement> => {
       return new Promise((resolve) => {
         const img = new Image();
+        img.decoding = 'async';
         img.src = src;
         img.onload = () => {
           loadedCount++;
-          setProgress(Math.round((loadedCount / totalFrames) * 100));
+          queueProgressUpdate();
           resolve(img);
         };
         img.onerror = () => {
           loadedCount++;
-          setProgress(Math.round((loadedCount / totalFrames) * 100));
+          queueProgressUpdate();
           resolve(img); // Count it so the loader never hangs
         };
       });
     };
 
-    const loadAllAssets = async () => {
-      const scene1Urls = Array.from(
-        { length: 120 },
-        (_, i) => `/assets/scene1_hero/ezgif-frame-${String(i + 1).padStart(3, '0')}.png`
-      );
-      const scene2Urls = Array.from(
-        { length: 150 },
-        (_, i) => `/assets/scene2_complan/ezgif-frame-${String(i + 1).padStart(3, '0')}.png`
-      );
-      const scene3Urls = Array.from(
-        { length: 150 },
-        (_, i) => `/assets/scene3_networks/ezgif-frame-${String(i + 1).padStart(3, '0')}.png`
-      );
+    const loadImageBatch = async (urls: string[], concurrency = 8) => {
+      const images = new Array<HTMLImageElement>(urls.length);
+      let cursor = 0;
 
+      async function worker() {
+        while (!cancelled && cursor < urls.length) {
+          const index = cursor;
+          cursor++;
+          images[index] = await preloadImage(urls[index]);
+        }
+      }
+
+      await Promise.all(Array.from({ length: Math.min(concurrency, urls.length) }, worker));
+      return images;
+    };
+
+    const loadAllAssets = async () => {
       const [s1, s2, s3] = await Promise.all([
-        Promise.all(scene1Urls.map(preloadImage)),
-        Promise.all(scene2Urls.map(preloadImage)),
-        Promise.all(scene3Urls.map(preloadImage))
+        loadImageBatch(frameUrlGroups[0]),
+        loadImageBatch(frameUrlGroups[1]),
+        loadImageBatch(frameUrlGroups[2])
       ]);
+
+      if (cancelled) {
+        return;
+      }
 
       scene1Images.current = s1;
       scene2Images.current = s2;
@@ -151,10 +234,17 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
       // Small visual delay before showing page to ensure complete layout paint
       setTimeout(() => {
         setLoading(false);
-      }, 500);
+      }, 180);
     };
 
     loadAllAssets();
+
+    return () => {
+      cancelled = true;
+      if (progressFrame !== null) {
+        window.cancelAnimationFrame(progressFrame);
+      }
+    };
   }, []);
 
   // Sync route path to overlay state
@@ -190,12 +280,56 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const sizeCanvas = () => {
+      const pixelRatio = liteExperience ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
+      canvas.width = Math.round(window.innerWidth * pixelRatio);
+      canvas.height = Math.round(window.innerHeight * pixelRatio);
+    };
+
     // Set canvas dimensions initially
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    sizeCanvas();
 
     // Draw the initial frame
-    drawFrame(1, 0);
+    drawFrame(1, 0, true);
+
+    if (liteExperience) {
+      const ids = ['scene-hero', 'scene-complan', 'scene-networks'];
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const active = entries.find((entry) => entry.isIntersecting);
+          if (!active) {
+            return;
+          }
+
+          const index = ids.indexOf(active.target.id);
+          const sceneId = index + 1;
+          const sceneImages = [scene1Images.current, scene2Images.current, scene3Images.current][index];
+          const frameIndex = index === 0 ? 0 : Math.max(0, Math.floor((sceneImages.length - 1) * 0.5));
+          setActiveSection(index);
+          drawFrame(sceneId, frameIndex, true);
+        },
+        { threshold: 0.45 }
+      );
+
+      ids.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          observer.observe(el);
+        }
+      });
+
+      const handleLiteResize = () => {
+        sizeCanvas();
+        drawFrame(lastDrawnScene.current, lastDrawnFrame.current, true);
+      };
+
+      window.addEventListener('resize', handleLiteResize);
+
+      return () => {
+        observer.disconnect();
+        window.removeEventListener('resize', handleLiteResize);
+      };
+    }
 
     const ctx = gsap.context(() => {
       // ----------------------------------------------------
@@ -210,13 +344,13 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
           pin: true,
           scrub: 1.5,
           onUpdate: () => {
-            drawFrame(1, Math.floor(heroFrameObj.frame));
+            scheduleDrawFrame(1, Math.floor(heroFrameObj.frame));
           }
         }
       });
 
       tl1.to(heroFrameObj, {
-        frame: 119,
+        frame: Math.max(0, scene1Images.current.length - 1),
         snap: 'frame',
         ease: 'none'
       }, 0);
@@ -237,13 +371,13 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
           pin: true,
           scrub: 1.5,
           onUpdate: () => {
-            drawFrame(2, Math.floor(complanFrameObj.frame));
+            scheduleDrawFrame(2, Math.floor(complanFrameObj.frame));
           }
         }
       });
 
       tl2.to(complanFrameObj, {
-        frame: 149,
+        frame: Math.max(0, scene2Images.current.length - 1),
         snap: 'frame',
         ease: 'none'
       }, 0);
@@ -280,13 +414,13 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
           pin: true,
           scrub: 1.5,
           onUpdate: () => {
-            drawFrame(3, Math.floor(networksFrameObj.frame));
+            scheduleDrawFrame(3, Math.floor(networksFrameObj.frame));
           }
         }
       });
 
       tl3.to(networksFrameObj, {
-        frame: 149,
+        frame: Math.max(0, scene3Images.current.length - 1),
         snap: 'frame',
         ease: 'none'
       }, 0);
@@ -341,18 +475,21 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
 
     // Resize handler
     const handleResize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      drawFrame(lastDrawnScene.current, lastDrawnFrame.current);
+      sizeCanvas();
+      drawFrame(lastDrawnScene.current, lastDrawnFrame.current, true);
     };
 
     window.addEventListener('resize', handleResize);
 
     return () => {
       ctx.revert();
+      if (pendingDraw.current !== null) {
+        window.cancelAnimationFrame(pendingDraw.current);
+        pendingDraw.current = null;
+      }
       window.removeEventListener('resize', handleResize);
     };
-  }, [loading, drawFrame]);
+  }, [loading, drawFrame, liteExperience, scheduleDrawFrame]);
 
   // Smooth scroll to selected section
   const scrollToSection = (index: number) => {
@@ -366,31 +503,37 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
 
   const ranks = [
     {
+      tier: 'manager',
       title: 'Manager',
       target: 'PHP 50,000 Group Sales Volume',
       incentive: 'Exclusive iPhone, Recognition Pin, Leadership Training'
     },
     {
+      tier: 'bronze',
       title: 'Bronze Director',
       target: 'PHP 100,000 Group Sales Volume',
       incentive: 'PHP 100,000 Car Down Payment (Sedan), Achievement Pin, Monthly Override Bonuses'
     },
     {
+      tier: 'silver',
       title: 'Silver Director',
       target: 'PHP 250,000 Group Sales Volume',
       incentive: 'Asian Luxury Cruise & Travel Package, Rank Certificate, Leadership Development Credit'
     },
     {
+      tier: 'gold',
       title: 'Gold Director',
       target: 'PHP 500,000 Group Sales Volume',
       incentive: 'SUV Car Down Payment, Elite Gold Ring, Executive Leadership Council Placement'
     },
     {
+      tier: 'platinum',
       title: 'Platinum Elite',
       target: 'PHP 1,000,000 Group Sales Volume',
       incentive: 'US / Europe Luxury Travel Package, Presidential Circle Access, Cash overrides'
     },
     {
+      tier: 'legacy',
       title: 'Millionaires Circle',
       target: 'PHP 50,000,000+ Lifetime Organizational Volume',
       incentive: 'Luxury Condominium Suite, Hall of Famer permanent status, 2% Global Pool qualifier override'
@@ -398,7 +541,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
   ];
 
   return (
-    <div className="story-landing-page" ref={rootRef}>
+    <div className={`story-landing-page ${liteExperience ? 'is-lite-experience' : ''}`} ref={rootRef}>
       {/* Immersive Loader Screen (Always rendered for smooth CSS opacity transitions) */}
       <div className={`story-loader ${loading ? 'is-loading' : ''}`}>
         <div className="loader-container">
@@ -430,7 +573,6 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
           <NavLink className="story-nav-link" to="/packages">Packages</NavLink>
         </nav>
         <div className="story-header-actions">
-          <a className="story-header-info" href="tel:+639171234567">+63 917 123 4567</a>
           <NavLink className="story-nav-link" to="/login">Portal Login</NavLink>
         </div>
       </header>
@@ -487,7 +629,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
                 <h1 className="split-display">movement</h1>
               </div>
               <div className="split-hero-right">
-                <span className="split-kicker">YOR Vision</span>
+              <span className="split-kicker split-kicker-highlight">YOR Vision</span>
                 <h2>We are</h2>
                 <h1 className="split-display-outline">distinction</h1>
               </div>
@@ -498,9 +640,8 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
               className="home-scroll-indicator"
               onClick={() => scrollToSection(1)}
               type="button"
-              style={{ position: 'absolute', bottom: '6rem', background: 'none', border: 'none', color: '#c5a880', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', zIndex: 15 }}
             >
-              <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.2em', fontWeight: 600 }}>Scroll Down to Start the Journey</span>
+              <span>Scroll Down to Start the Journey</span>
               <ChevronDown size={14} />
             </button>
           </div>
@@ -577,37 +718,37 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
+                    <tr className="package-row package-tier-basic">
                       <td className="package-row-name">Basic
-                        <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 400, marginTop: '0.25rem' }}>PHP 1,998</div>
+                        <div className="package-entry-price">PHP 1,998</div>
                       </td>
                       <td className="package-row-price">PV-5</td>
                       <td className="package-row-referral" style={{ textAlign: 'right' }}>PHP 200</td>
                     </tr>
-                    <tr>
+                    <tr className="package-row package-tier-classic">
                       <td className="package-row-name">Classic
-                        <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 400, marginTop: '0.25rem' }}>PHP 5,998</div>
+                        <div className="package-entry-price">PHP 5,998</div>
                       </td>
                       <td className="package-row-price">PV-10</td>
                       <td className="package-row-referral" style={{ textAlign: 'right' }}>PHP 1,000</td>
                     </tr>
-                    <tr>
+                    <tr className="package-row package-tier-standard">
                       <td className="package-row-name">Standard
-                        <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 400, marginTop: '0.25rem' }}>PHP 25,998</div>
+                        <div className="package-entry-price">PHP 25,998</div>
                       </td>
                       <td className="package-row-price">PV-50</td>
                       <td className="package-row-referral" style={{ textAlign: 'right' }}>PHP 5,000</td>
                     </tr>
-                    <tr>
+                    <tr className="package-row package-tier-business">
                       <td className="package-row-name">Business
-                        <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 400, marginTop: '0.25rem' }}>PHP 50,998</div>
+                        <div className="package-entry-price">PHP 50,998</div>
                       </td>
                       <td className="package-row-price">PV-100</td>
                       <td className="package-row-referral" style={{ textAlign: 'right' }}>PHP 7,000</td>
                     </tr>
-                    <tr>
+                    <tr className="package-row package-tier-vip">
                       <td className="package-row-name">VIP Legacy
-                        <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 400, marginTop: '0.25rem' }}>PHP 159,998</div>
+                        <div className="package-entry-price">PHP 159,998</div>
                       </td>
                       <td className="package-row-price">PV-300</td>
                       <td className="package-row-referral" style={{ textAlign: 'right' }}>PHP 15,000</td>
@@ -629,7 +770,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
         {/* Scene 2: The Vessel of Wealth */}
         <section id="scene-complan" className="story-section">
           <div className="scene-pin-wrapper">
-            <div className="split-hero-container">
+            <div className="split-hero-container earn-scene-heading">
               <div className="split-hero-left complan-split-left">
                 <h2>Compensation</h2>
                 <h1 className="split-display-outline">8 Ways to</h1>
@@ -697,7 +838,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
                 {ranks.map((rank, i) => (
                   <div 
                     key={i} 
-                    className={`accordion-item ${activeAccordion === i ? 'is-active' : ''}`}
+                    className={`accordion-item rank-tier-${rank.tier} ${activeAccordion === i ? 'is-active' : ''}`}
                   >
                     <button 
                       type="button" 
@@ -717,7 +858,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
             </div>
 
             <div className="blocker-right-col product-showcase-wrap">
-              <span className="blocker-kicker">Featured Product variant</span>
+              <span className="blocker-kicker">Featured Product Variant</span>
               
               <div className="product-high-fidelity-card">
                 <div className="product-badge-row">
@@ -733,11 +874,11 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
                   <span className="product-showcase-price">PHP 500 SRP</span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                <div className="product-showcase-image-frame">
                   <img 
                     src="/assets/yor/generated/yor_vision_productpic.jpg" 
                     alt="YOR Vision Drops" 
-                    style={{ maxHeight: '180px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.1))' }}
+                    className="product-showcase-image"
                   />
                 </div>
 
@@ -897,10 +1038,6 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
               <a href="mailto:info@yorinternational.net" className="footer-bottom-link">
                 <Mail size={12} style={{ marginRight: '0.25rem', display: 'inline', verticalAlign: 'middle' }} />
                 info@yorinternational.net
-              </a>
-              <a href="tel:+639171234567" className="footer-bottom-link">
-                <Phone size={12} style={{ marginRight: '0.25rem', display: 'inline', verticalAlign: 'middle' }} />
-                +63 917 123 4567
               </a>
             </div>
           </div>

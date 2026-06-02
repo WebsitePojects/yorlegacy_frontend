@@ -8742,3 +8742,128 @@ body {
     min-height: 148px;
   }
 }
+
+/* Current auth layout refinement: keep the story and form balanced, remove decorative controls. */
+.yor-auth-shell {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.88fr);
+  max-width: 1240px;
+}
+
+.yor-auth-story {
+  justify-content: center;
+  min-height: min(720px, calc(100vh - 188px));
+}
+
+.yor-auth-form-shell {
+  align-items: center;
+  padding: 32px;
+}
+
+.yor-auth-form-mask {
+  inset: 24px;
+  border-radius: 28px;
+}
+
+.yor-auth-form-card {
+  width: min(100%, 480px);
+  padding: 34px;
+}
+
+.yor-auth-form-topbar,
+.yor-auth-dot,
+.yor-auth-menu-button {
+  display: none;
+}
+
+@media (min-width: 560px) and (max-width: 1100px) {
+  .yor-auth-page {
+    padding: 96px 18px 32px;
+  }
+
+  .yor-auth-shell {
+    grid-template-columns: minmax(0, 0.82fr) minmax(300px, 1fr);
+    min-height: auto;
+  }
+
+  .yor-auth-story {
+    min-height: 560px;
+    padding: 30px 24px;
+  }
+
+  .yor-auth-form-shell {
+    padding: 20px;
+  }
+
+  .yor-auth-form-mask {
+    inset: 14px;
+    border-radius: 24px;
+  }
+
+  .yor-auth-form-card {
+    padding: 26px 22px;
+  }
+
+  .yor-auth-title {
+    font-size: clamp(2.35rem, 6vw, 3.7rem);
+  }
+
+  .yor-auth-form-head h2 {
+    font-size: clamp(2rem, 5vw, 3rem);
+  }
+}
+
+@media (max-width: 559px) {
+  .yor-auth-page {
+    min-height: 100svh;
+    padding: 18px 12px;
+    overflow-y: auto;
+  }
+
+  .yor-auth-shell {
+    grid-template-columns: 1fr;
+    border-radius: 24px;
+  }
+
+  .yor-auth-story {
+    min-height: auto;
+    padding: 26px 20px 22px;
+  }
+
+  .yor-auth-story-mark {
+    width: 66px;
+    height: 66px;
+  }
+
+  .yor-auth-title {
+    font-size: clamp(2.25rem, 14vw, 3.2rem);
+    letter-spacing: -0.04em;
+  }
+
+  .yor-auth-copy {
+    font-size: 0.92rem;
+    line-height: 1.58;
+  }
+
+  .yor-auth-form-shell {
+    padding: 0;
+  }
+
+  .yor-auth-form-mask {
+    inset: 0;
+    border-radius: 24px;
+  }
+
+  .yor-auth-form-card {
+    padding: 24px 18px 22px;
+  }
+
+  .yor-auth-form-head h2 {
+    font-size: clamp(1.85rem, 11vw, 2.5rem);
+    letter-spacing: -0.05em;
+  }
+
+  .yor-auth-form-meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
