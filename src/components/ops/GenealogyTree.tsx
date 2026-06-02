@@ -266,6 +266,7 @@ type CanvasNode = {
   level: number;
   source?: GenealogyTreeNode;
   isOpenSlot?: boolean;
+  shadowSlot?: GenealogyTreeNode['shadowSlots']['left'] | GenealogyTreeNode['shadowSlots']['right'];
   parentUsername?: string;
   parentReferralCode?: string;
   children: CanvasNode[];
@@ -294,6 +295,7 @@ function toOpenSlot(parent: GenealogyTreeNode, level: number, side: 'left' | 'ri
     side,
     level,
     isOpenSlot: true,
+    shadowSlot: parent.shadowSlots?.[side],
     parentUsername: parent.username,
     parentReferralCode: parent.referralCode,
     children: []
@@ -324,6 +326,8 @@ function BinaryBranch({
           'genealogy-canvas-node',
           node.side !== 'root' && `is-${node.side}`,
           node.isOpenSlot && 'is-open-slot',
+          node.shadowSlot && 'is-shadow-slot',
+          node.shadowSlot?.state === 'activated_shadow' && 'is-shadow-activated',
           isSelected && 'is-selected'
         )}
         onClick={(event) => {
@@ -369,11 +373,16 @@ function BinaryBranch({
               <Plus className="size-4" />
             </div>
             <div className="genealogy-canvas-node-main">
-              <Badge variant="warning">{node.side}</Badge>
+              <Badge variant={node.shadowSlot?.state === 'activated_shadow' ? 'success' : 'warning'}>
+                {node.side}
+              </Badge>
               <div className="genealogy-canvas-node-title">
-                <strong>Available Slot</strong>
+                <strong>{node.shadowSlot?.label ?? 'Available Slot'}</strong>
               </div>
-              <p>{node.parentUsername ? `${node.parentUsername} ${node.side} leg` : 'Ready for the next placement'}</p>
+              <p>{node.shadowSlot?.note ?? (node.parentUsername ? `${node.parentUsername} ${node.side} leg` : 'Ready for the next placement')}</p>
+            </div>
+            <div className="genealogy-canvas-shadow-state">
+              {node.shadowSlot?.activationStatus ?? 'inactive'}
             </div>
           </>
         )}

@@ -19,35 +19,35 @@ export const routes = [
       },
       {
         path: 'vision',
-        element: <ContentPage slug="vision" />
+        element: <HomePage />
       },
       {
         path: 'mission',
-        element: <ContentPage slug="mission" />
+        element: <HomePage />
       },
       {
         path: 'founder',
-        element: <ContentPage slug="founder" />
+        element: <HomePage />
       },
       {
         path: 'perfume-collection',
-        element: <ContentPage slug="perfume-collection" />
+        element: <HomePage />
       },
       {
         path: 'products',
-        element: <ContentPage slug="perfume-collection" />
+        element: <HomePage />
       },
       {
         path: 'packages',
-        element: <ContentPage slug="packages" />
+        element: <HomePage />
       },
       {
         path: 'register',
-        element: <ContentPage slug="register" />
+        element: <HomePage />
       },
       {
         path: 'thank-you',
-        element: <ContentPage slug="thank-you" />
+        element: <HomePage />
       },
       {
         path: 'earn',
@@ -75,7 +75,7 @@ export const routes = [
       },
       {
         path: 'login',
-        element: <LoginPage />
+        element: <HomePage />
       },
       {
         path: 'member',

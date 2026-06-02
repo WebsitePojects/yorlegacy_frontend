@@ -1401,6 +1401,22 @@ body {
   cursor: pointer;
 }
 
+.genealogy-canvas-node.is-shadow-slot {
+  align-content: center;
+  background:
+    radial-gradient(circle at 50% 14%, rgba(85, 214, 161, 0.22), transparent 24%),
+    radial-gradient(circle at 50% 52%, rgba(245, 200, 66, 0.2), transparent 42%),
+    linear-gradient(180deg, rgba(64, 48, 25, 0.98), rgba(92, 56, 24, 0.92));
+}
+
+.genealogy-canvas-node.is-shadow-activated {
+  border-color: color-mix(in oklab, #56d6a1 62%, var(--yor-gold));
+  background:
+    radial-gradient(circle at 50% 14%, rgba(85, 214, 161, 0.32), transparent 24%),
+    radial-gradient(circle at 50% 52%, rgba(245, 200, 66, 0.2), transparent 42%),
+    linear-gradient(180deg, rgba(23, 70, 50, 0.98), rgba(60, 62, 32, 0.92));
+}
+
 .genealogy-canvas-node.is-open-slot .genealogy-canvas-node-orb {
   background:
     radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.28), transparent 32%),
@@ -1450,6 +1466,56 @@ body {
   color: var(--muted-foreground);
   font-size: 0.68rem;
   line-height: 1.52;
+}
+
+.genealogy-canvas-node.is-shadow-slot .genealogy-canvas-node-title strong {
+  color: #fff45f;
+  font-size: 1.08rem;
+  text-shadow: 0 0 18px rgba(245, 200, 66, 0.34);
+}
+
+.genealogy-canvas-node.is-shadow-slot .genealogy-canvas-node-main p {
+  display: -webkit-box;
+  overflow: hidden;
+  color: rgba(255, 248, 230, 0.76);
+  font-size: 0.62rem;
+  line-height: 1.38;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.genealogy-canvas-shadow-state {
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 950;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: 0 0 24px rgba(0, 0, 0, 0.45);
+}
+
+.light .genealogy-canvas-node.is-shadow-slot,
+:root:not(.dark) .genealogy-canvas-node.is-shadow-slot {
+  background:
+    radial-gradient(circle at 50% 14%, rgba(31, 167, 111, 0.22), transparent 24%),
+    radial-gradient(circle at 50% 52%, rgba(245, 200, 66, 0.2), transparent 42%),
+    linear-gradient(180deg, #fff2ce, #b77c39);
+}
+
+.light .genealogy-canvas-node.is-shadow-slot .genealogy-canvas-node-title strong,
+:root:not(.dark) .genealogy-canvas-node.is-shadow-slot .genealogy-canvas-node-title strong {
+  color: #3d250b;
+  text-shadow: none;
+}
+
+.light .genealogy-canvas-node.is-shadow-slot .genealogy-canvas-node-main p,
+:root:not(.dark) .genealogy-canvas-node.is-shadow-slot .genealogy-canvas-node-main p {
+  color: rgba(61, 37, 11, 0.76);
+}
+
+.light .genealogy-canvas-shadow-state,
+:root:not(.dark) .genealogy-canvas-shadow-state {
+  color: #2a1706;
+  text-shadow: none;
 }
 
 .genealogy-canvas-node-stats {

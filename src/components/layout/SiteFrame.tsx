@@ -115,6 +115,23 @@ export function SiteFrame({ children }: PropsWithChildren) {
     return children;
   }
 
+  const isExperiencePage = [
+    '/',
+    '/vision',
+    '/mission',
+    '/founder',
+    '/products',
+    '/perfume-collection',
+    '/packages',
+    '/register',
+    '/thank-you',
+    '/login'
+  ].includes(location.pathname);
+
+  if (isExperiencePage) {
+    return <div className="public-shell is-homepage">{children}</div>;
+  }
+
   const footerLinks = [
     { label: 'Privacy Policy', href: '/vision' },
     { label: 'Terms of Service', href: '/mission' },

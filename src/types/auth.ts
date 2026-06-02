@@ -328,6 +328,34 @@ export type GenealogyTreeNode = {
     left: boolean;
     right: boolean;
   };
+  shadowSlots: {
+    left: {
+      id: string;
+      owner: string;
+      placement: 'left';
+      state: 'reserved_shadow' | 'activated_shadow';
+      label: string;
+      activationStatus: 'inactive' | 'activated';
+      registrationEnabled: boolean;
+      walletEnabled: boolean;
+      unilevelEnabled: boolean;
+      binaryCycleEnabled: boolean;
+      note: string;
+    };
+    right: {
+      id: string;
+      owner: string;
+      placement: 'right';
+      state: 'reserved_shadow' | 'activated_shadow';
+      label: string;
+      activationStatus: 'inactive' | 'activated';
+      registrationEnabled: boolean;
+      walletEnabled: boolean;
+      unilevelEnabled: boolean;
+      binaryCycleEnabled: boolean;
+      note: string;
+    };
+  };
   accountStateLabel: 'PD' | 'FS' | 'CD - Paid';
   children: GenealogyTreeNode[];
 };

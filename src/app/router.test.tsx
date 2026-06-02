@@ -39,10 +39,8 @@ describe('routes', () => {
       </ThemeProvider>
     );
 
-    expect(await screen.findByRole('link', { name: /home/i })).toBeInTheDocument();
-    expect(
-      await screen.findByRole('heading', { name: /mr\. yoren b\. abihay/i })
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/initializing experience/i)).toBeInTheDocument();
+    expect((await screen.findAllByRole('link', { name: /portal login/i })).length).toBeGreaterThan(0);
   });
 
   it('renders the earn overview route', async () => {

@@ -22,13 +22,14 @@ export function RegistrationPageView({ content: _content }: { content: PageConte
   const { confirmAction, notify } = useFeedback();
   const [searchParams] = useSearchParams();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const initialPreferredSide = searchParams.get('preferredSide') === 'right' ? 'right' : 'left';
   const [form, setForm] = useState({
     fullName: '',
     email: '',
     phone: '',
     sponsorCode: searchParams.get('ref') ?? '',
     packageTier: 'standard',
-    preferredSide: 'left' as 'left' | 'right',
+    preferredSide: initialPreferredSide as 'left' | 'right',
     password: '',
     confirmPassword: '',
     termsAccepted: false
@@ -43,7 +44,7 @@ export function RegistrationPageView({ content: _content }: { content: PageConte
   );
 
   useEffect(() => {
-    if (!form.sponsorCode) {
+    if (!form.sponsorCode || !form.password || !passwordsMatch) {
       return;
     }
 
