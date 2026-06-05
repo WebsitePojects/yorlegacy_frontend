@@ -1,6 +1,6 @@
 export const pageAssets = {
   roundLogo: '/assets/yor/branding/yor-logo-round.png',
-  showcaseLogo: '/assets/yor/branding/yor-logo-showcase.jpg',
+  showcaseLogo: '/assets/yor/branding/yor-logo-showcase.png',
   coverSkyline: '/assets/yor/branding/login-bg.png',
   founderPortrait: '/assets/yor/generated/yor-founder-portrait-ai.png',
   founderBackdrop: '/assets/yor/generated/yor-founder-generated.png',
@@ -39,6 +39,7 @@ export const packageTiers = [
   {
     name: 'Basic',
     label: 'Entry Package',
+    tone: 'metal-basic',
     price: 'PHP 1,998',
     pv: 'PV-5',
     features: ['40% lifetime discount', 'Direct selling access', 'Value-for-money starter entry']
@@ -46,6 +47,7 @@ export const packageTiers = [
   {
     name: 'Classic',
     label: 'Growth Package',
+    tone: 'metal-classic',
     price: 'PHP 5,998',
     pv: 'PV-10',
     features: ['Direct referral bonus', 'Get Yor Five qualification', 'Repeat purchase rewards']
@@ -53,6 +55,7 @@ export const packageTiers = [
   {
     name: 'Standard',
     label: 'Momentum Package',
+    tone: 'metal-standard',
     price: 'PHP 25,998',
     pv: 'PV-50',
     featured: true,
@@ -61,6 +64,7 @@ export const packageTiers = [
   {
     name: 'Business',
     label: 'Leadership Package',
+    tone: 'metal-business',
     price: 'PHP 50,998',
     pv: 'PV-100',
     features: ['Stronger weekly earning ceiling', 'Lifestyle reward upside', 'Rank and incentive momentum']
@@ -68,6 +72,7 @@ export const packageTiers = [
   {
     name: 'VIP',
     label: 'Legacy Package',
+    tone: 'metal-vip',
     price: 'PHP 159,998',
     pv: 'PV-300',
     vip: true,
@@ -251,14 +256,19 @@ export const collectionProducts = [
 
 export const featuredCollectionShowcase = {
   eyebrow: 'Featured Product',
-  title: 'Yor Vision Ocular Wellness Feature',
+  title: 'Yor Vision Mineral Drops',
   summary:
-    'A dedicated feature block for Yor Vision as its own product story, separate from the fragrance collection and positioned as a branded wellness presentation piece.',
+    'A dedicated wellness feature for Yor Vision with a tighter premium layout, practical benefit framing, and cleaner focus on the flagship bottle itself.',
+  featureHeading: 'Why people love Yor Vision mineral drops',
+  featureLead: 'A portable mineral-drop format built for simple daily wellness routines and hydration-focused support.',
   points: [
-    'Uses the approved Yor Vision banner, poster, and box imagery without mislabeling them as perfume assets.',
-    'Keeps the fragrance lineup clean while still giving Yor Vision a premium visual stage of its own.',
-    'Lets the products page present both the public perfume lineup and a distinct featured product story.'
+    'Refreshing hydration-focused support',
+    'Convenient and easy to use',
+    'Designed for everyday wellness routines',
+    'Lifestyle-centered wellness positioning',
+    'Portable and practical for modern users'
   ],
+  disclaimer: 'This product is not intended to diagnose, treat, cure, or prevent any disease.',
   primaryImage: pageAssets.visionBanner,
   secondaryImage: pageAssets.visionPoster,
   tertiaryImage: pageAssets.visionNewImage

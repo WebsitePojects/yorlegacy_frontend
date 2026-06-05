@@ -127,9 +127,15 @@ export function SiteFrame({ children }: PropsWithChildren) {
     '/thank-you',
     '/login'
   ].includes(location.pathname);
+  const isEarnExperiencePage =
+    location.pathname === '/earn' || location.pathname.startsWith('/earn/');
 
-  if (isExperiencePage) {
-    return <div className="public-shell is-homepage">{children}</div>;
+  if (isExperiencePage || isEarnExperiencePage) {
+    return (
+      <div className={`public-shell ${isExperiencePage ? 'is-homepage' : 'is-earn-experience'}`}>
+        {children}
+      </div>
+    );
   }
 
   const footerLinks = [

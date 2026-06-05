@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import React, { useEffect, useMemo, useState, type ComponentType } from 'react';
 import {
   Activity,
   ArrowLeftRight,
@@ -83,6 +83,14 @@ export function OfficeSidebar({
         {expanded ? (
           <div className="ops-sidebar-panel" aria-hidden={!expanded}>
             <div className="ops-sidebar-panel-header">
+              <NavLink
+                to={basePath}
+                className="ops-sidebar-brand-link"
+                aria-label={`${heading} overview`}
+              >
+                <span className="ops-sidebar-brand-eyebrow">Yor Office</span>
+                <span className="ops-sidebar-brand-name">{heading}</span>
+              </NavLink>
               <button
                 aria-label="Collapse sidebar"
                 aria-expanded={expanded}
@@ -92,13 +100,6 @@ export function OfficeSidebar({
               >
                 <PanelLeftClose className="size-4" />
               </button>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-                  Yor Office
-                </p>
-                <h1 className="text-lg font-semibold text-[var(--foreground)]">{heading}</h1>
-                <p className="text-sm leading-6 text-[var(--muted-foreground)]">{subheading}</p>
-              </div>
             </div>
 
             <div className="space-y-3">
@@ -322,19 +323,28 @@ export function MobileOfficeNav({
 
 export function MetricGrid({ metrics }: { metrics: OperationalMetric[] }) {
   return (
-    <section className="ops-metric-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {metrics.map((metric) => (
-        <Card key={metric.label} className="ops-metric-card border-[var(--border)] bg-[var(--card)]">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-xs uppercase tracking-[0.18em]">{metric.label}</CardDescription>
-            <CardTitle className="text-2xl">{metric.value}</CardTitle>
-          </CardHeader>
-          {metric.detail ? <CardContent className="pt-0 text-sm text-[var(--muted-foreground)]">{metric.detail}</CardContent> : null}
-        </Card>
+    <section className="ops-metric-grid">
+      {metrics.map((metric, i) => (
+        <div key={metric.label} className={`ops-metric-card${i === 0 ? ' is-accent' : ''}`}>
+          <p className="ops-metric-label">{metric.label}</p>
+          <p className="ops-metric-value">{metric.value}</p>
+          {metric.detail ? (
+            <p className="ops-metric-detail">{metric.detail}</p>
+          ) : null}
+        </div>
       ))}
     </section>
   );
 }
+
+const cardAccentPalette = [
+  { bg: 'linear-gradient(135deg, #D98014, #B5600A)', glow: 'rgba(217,128,20,0.38)', light: 'rgba(217,128,20,0.10)' },
+  { bg: 'linear-gradient(135deg, #1A7FC1, #0F5A8C)', glow: 'rgba(26,127,193,0.35)', light: 'rgba(26,127,193,0.10)' },
+  { bg: 'linear-gradient(135deg, #2E9E6B, #1C7A50)', glow: 'rgba(46,158,107,0.35)', light: 'rgba(46,158,107,0.10)' },
+  { bg: 'linear-gradient(135deg, #9B44C2, #7530A0)', glow: 'rgba(155,68,194,0.35)', light: 'rgba(155,68,194,0.10)' },
+  { bg: 'linear-gradient(135deg, #C2445A, #A02B3F)', glow: 'rgba(194,68,90,0.35)', light: 'rgba(194,68,90,0.10)' },
+  { bg: 'linear-gradient(135deg, #C28C14, #9E6B0A)', glow: 'rgba(194,140,20,0.35)', light: 'rgba(194,140,20,0.10)' },
+];
 
 export function QuickLinkGrid({
   links
@@ -342,23 +352,25 @@ export function QuickLinkGrid({
   links: Array<{ title: string; body: string; href: string }>;
 }) {
   return (
-    <section className="ops-quicklink-grid grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      {links.map((link) => (
-        <Card key={link.href} className="ops-quicklink-card border-[var(--border)] bg-[var(--card)]">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">{link.title}</CardTitle>
-            <CardDescription className="leading-6">{link.body}</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <Button asChild variant="outline" className="ops-inline-action w-full justify-between">
-              <Link to={link.href}>
-                Open
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ))}
+    <section className="ops-quicklink-grid">
+      {links.map((link, i) => {
+        const Icon = getModuleIcon(link.href.split('/').pop() ?? '');
+        const accent = cardAccentPalette[i % cardAccentPalette.length];
+        return (
+          <div key={link.href} className="ops-quicklink-card" style={{ '--card-accent-bg': accent.bg, '--card-accent-glow': accent.glow, '--card-accent-light': accent.light } as React.CSSProperties}>
+            <div className="ops-quicklink-card-body">
+              <span className="ops-quicklink-icon-tile">
+                <Icon className="size-4" />
+              </span>
+              <p className="ops-quicklink-title">{link.title}</p>
+              <p className="ops-quicklink-body">{link.body}</p>
+            </div>
+            <Link to={link.href} className="ops-inline-action" aria-label={`Open ${link.title}`}>
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
+        );
+      })}
     </section>
   );
 }
@@ -464,26 +476,37 @@ export function DataListCard({
 
 export function GatedActionsCard({ actions }: { actions: GatedAction[] }) {
   return (
-    <Card className="ops-gated-card border-amber-500/30 bg-amber-500/5">
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="size-4 text-amber-500" />
-          <CardTitle>Sandbox Notes</CardTitle>
-        </div>
-        <CardDescription>These notes explain how the branch-local sandbox behaves so the team can test hard without mistaking it for production.</CardDescription>
-      </CardHeader>
-      <CardContent className="ops-gated-card-content space-y-3">
+    <div className="ops-gated-card" style={{ padding: '20px', borderRadius: 'var(--radius-lg)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+        <ShieldAlert style={{ width: 16, height: 16, color: 'var(--color-primary)', flexShrink: 0 }} />
+        <span style={{ fontFamily: 'var(--font-headline)', fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--office-text)' }}>
+          Sandbox Notes
+        </span>
+        <span className="sandbox-mode-tag">SANDBOX MODE</span>
+      </div>
+      <p style={{ fontSize: 'var(--text-sm)', color: 'var(--office-muted)', marginBottom: '16px', lineHeight: 1.55 }}>
+        These notes explain how the branch-local sandbox behaves so the team can test hard without mistaking it for production.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {actions.map((action) => (
-          <div key={action.label} className="ops-gated-item rounded-lg border border-amber-500/20 bg-[var(--card)] p-3">
-            <p className="font-medium text-[var(--foreground)]">{action.label}</p>
-            <p className="mt-1 text-sm leading-6 text-[var(--muted-foreground)]">{action.reason}</p>
-            <p className="mt-2 text-xs uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">
+          <div
+            key={action.label}
+            style={{
+              padding: '14px',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--office-border-mid)',
+              background: 'var(--office-card)',
+            }}
+          >
+            <p style={{ fontWeight: 600, color: 'var(--office-text)', fontSize: 'var(--text-md)' }}>{action.label}</p>
+            <p style={{ marginTop: '4px', fontSize: 'var(--text-sm)', color: 'var(--office-muted)', lineHeight: 1.55 }}>{action.reason}</p>
+            <p style={{ marginTop: '8px', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--color-primary)' }}>
               Required evidence: {action.requiredEvidence}
             </p>
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
