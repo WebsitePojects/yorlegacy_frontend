@@ -19,35 +19,35 @@ export const routes = [
       },
       {
         path: 'vision',
-        element: <HomePage />
+        element: <ContentPage slug="vision" />
       },
       {
         path: 'mission',
-        element: <HomePage />
+        element: <ContentPage slug="mission" />
       },
       {
         path: 'founder',
-        element: <HomePage />
+        element: <ContentPage slug="founder" />
       },
       {
         path: 'perfume-collection',
-        element: <HomePage />
+        element: <ContentPage slug="perfume-collection" />
       },
       {
         path: 'products',
-        element: <HomePage />
+        element: <ContentPage slug="perfume-collection" />
       },
       {
         path: 'packages',
-        element: <HomePage />
+        element: <ContentPage slug="packages" />
       },
       {
         path: 'register',
-        element: <HomePage />
+        element: <ContentPage slug="register" />
       },
       {
         path: 'thank-you',
-        element: <HomePage />
+        element: <ContentPage slug="thank-you" />
       },
       {
         path: 'earn',

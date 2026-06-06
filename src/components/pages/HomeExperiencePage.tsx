@@ -4,10 +4,11 @@ import {
   ArrowRight,
   ChevronDown,
   Check,
-  Phone,
   Mail,
   Award,
-  Globe
+  Globe,
+  Menu,
+  X
 } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -21,10 +22,111 @@ import { CollectionPageView } from './CollectionPageView';
 import { PackagesPageView } from './PackagesPageView';
 import { RegistrationPageView } from './RegistrationPageView';
 import { LoginPage } from '../../pages/LoginPage';
+import { earnRoutes } from '../../config/navigation';
 import './HomeExperiencePage.css';
 
 if (!import.meta.env.TEST) {
   gsap.registerPlugin(ScrollTrigger);
+}
+
+const sceneDefinitions = [{ id: 1, count: 120, path: '/assets/scene1_hero' }] as const;
+
+const packageRows = [
+  { tier: 'basic', label: 'Basic', price: 'PHP 1,998', pv: 'PV-5', referral: 'PHP 200' },
+  { tier: 'classic', label: 'Classic', price: 'PHP 5,998', pv: 'PV-10', referral: 'PHP 1,000' },
+  { tier: 'standard', label: 'Standard', price: 'PHP 25,998', pv: 'PV-50', referral: 'PHP 5,000' },
+  { tier: 'business', label: 'Business', price: 'PHP 50,998', pv: 'PV-100', referral: 'PHP 7,000' },
+  { tier: 'vip', label: 'VIP Legacy', price: 'PHP 159,998', pv: 'PV-300', referral: 'PHP 15,000' }
+] as const;
+
+const earningCards = [
+  {
+    className: 'card-item-1',
+    number: '01',
+    href: earnRoutes[0].href,
+    title: 'Direct Selling',
+    body: 'Earn immediate retail margins up to 25% by sharing YOR Fragrances.'
+  },
+  {
+    className: 'card-item-2',
+    number: '02',
+    href: earnRoutes[1].href,
+    title: 'Direct Referral',
+    body: 'Receive immediate sponsor bonuses from PHP 200 up to PHP 15,000 per slot.'
+  },
+  {
+    className: 'card-item-3',
+    number: '03',
+    href: earnRoutes[2].href,
+    title: 'Salesmatch Bonus',
+    body: 'Gain overrides on balanced leg volume. Tuesday encashment, Friday payouts.'
+  },
+  {
+    className: 'card-item-4',
+    number: '04',
+    href: earnRoutes[3].href,
+    title: 'Binary Cycle Bonus',
+    body: 'Earn recurring cycle percentage points down to infinity as placement volume grows.'
+  },
+  {
+    className: 'card-item-5',
+    number: '05',
+    href: earnRoutes[4].href,
+    title: 'Get Yor Five Bonus',
+    body: 'Special bonuses unlocked for every 5 personal enrollments on the same package tier.'
+  },
+  {
+    className: 'card-item-6',
+    number: '06',
+    href: earnRoutes[5].href,
+    title: 'Lifestyle Rewards',
+    body: 'Gain credits for luxury vehicles, gadget upgrades, and dream travel incentives.'
+  },
+  {
+    className: 'card-item-7',
+    number: '07',
+    href: earnRoutes[6].href,
+    title: 'Unilevel Bonus',
+    body: 'Residual percentage overrides on monthly repeat product orders up to 10 levels deep.'
+  },
+  {
+    className: 'card-item-8',
+    number: '08',
+    href: earnRoutes[7].href,
+    title: 'Global Bonus',
+    body: 'Elite share of a 2% yearly global pool representing worldwide company sales.'
+  }
+] as const;
+
+function getExperienceProfile() {
+  if (typeof window === 'undefined') {
+    return { frameStep: 2, isLite: false };
+  }
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+  const isSmallViewport = window.matchMedia('(max-width: 768px)').matches;
+  const isLite = reducedMotion || isCoarsePointer || isSmallViewport;
+
+  if (reducedMotion) {
+    return { frameStep: 12, isLite };
+  }
+
+  return { frameStep: isLite ? 6 : 2, isLite };
+}
+
+function createSceneFrameUrls(scene: (typeof sceneDefinitions)[number], frameStep: number) {
+  const urls: string[] = [];
+
+  for (let frame = 1; frame <= scene.count; frame += frameStep) {
+    urls.push(`${scene.path}/ezgif-frame-${String(frame).padStart(3, '0')}.png`);
+  }
+
+  if (!urls.includes(`${scene.path}/ezgif-frame-${String(scene.count).padStart(3, '0')}.png`)) {
+    urls.push(`${scene.path}/ezgif-frame-${String(scene.count).padStart(3, '0')}.png`);
+  }
+
+  return urls;
 }
 
 export function HomeExperiencePage({ content }: { content: PageContent }) {
@@ -38,6 +140,8 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
   const [activeSection, setActiveSection] = useState(0);
   const [activeOverlay, setActiveOverlay] = useState<string | null>(null);
   const [activeAccordion, setActiveAccordion] = useState<number>(0);
+  const [liteExperience, setLiteExperience] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Fetch page contents dynamically for overlay sheets
   const { data: founderData } = usePageContent('founder');
@@ -49,30 +153,28 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
 
   // Cache image refs to prevent garbage collection and allow instant rendering
   const scene1Images = useRef<HTMLImageElement[]>([]);
-  const scene2Images = useRef<HTMLImageElement[]>([]);
-  const scene3Images = useRef<HTMLImageElement[]>([]);
 
   // Track currently drawn frame to prevent double rendering
   const lastDrawnScene = useRef<number>(1);
-  const lastDrawnFrame = useRef<number>(0);
+  const lastDrawnFrame = useRef<number>(-1);
+  const pendingDraw = useRef<number | null>(null);
+  const pendingScene = useRef<number>(1);
+  const pendingFrame = useRef<number>(0);
 
   // Mathematical "object-fit: cover" rendering on 2D canvas context
-  const drawFrame = useCallback((sceneId: number, frameIndex: number) => {
+  const drawFrame = useCallback((sceneId: number, frameIndex: number, force = false) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let img: HTMLImageElement | undefined;
-    if (sceneId === 1) {
-      img = scene1Images.current[frameIndex];
-    } else if (sceneId === 2) {
-      img = scene2Images.current[frameIndex];
-    } else if (sceneId === 3) {
-      img = scene3Images.current[frameIndex];
-    }
+    const img = scene1Images.current[frameIndex];
 
     if (!img || !img.complete) return;
+
+    if (!force && lastDrawnScene.current === sceneId && lastDrawnFrame.current === frameIndex) {
+      return;
+    }
 
     lastDrawnScene.current = sceneId;
     lastDrawnFrame.current = frameIndex;
@@ -102,59 +204,99 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
     ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
   }, []);
 
+  const scheduleDrawFrame = useCallback((sceneId: number, frameIndex: number) => {
+    pendingScene.current = sceneId;
+    pendingFrame.current = frameIndex;
+
+    if (pendingDraw.current !== null) {
+      return;
+    }
+
+    pendingDraw.current = window.requestAnimationFrame(() => {
+      pendingDraw.current = null;
+      drawFrame(pendingScene.current, pendingFrame.current);
+    });
+  }, [drawFrame]);
+
   // Preloader Engine
   useEffect(() => {
+    const { frameStep, isLite } = getExperienceProfile();
+    setLiteExperience(isLite);
+
+    let cancelled = false;
     let loadedCount = 0;
-    const totalFrames = 120 + 150 + 150; // 420 frames in total
+    let progressFrame: number | null = null;
+    const frameUrlGroups = sceneDefinitions.map((scene) => createSceneFrameUrls(scene, frameStep));
+    const totalFrames = frameUrlGroups.reduce((total, urls) => total + urls.length, 0);
+
+    const queueProgressUpdate = () => {
+      if (progressFrame !== null) {
+        return;
+      }
+
+      progressFrame = window.requestAnimationFrame(() => {
+        progressFrame = null;
+        setProgress(Math.round((loadedCount / totalFrames) * 100));
+      });
+    };
 
     const preloadImage = (src: string): Promise<HTMLImageElement> => {
       return new Promise((resolve) => {
         const img = new Image();
+        img.decoding = 'async';
         img.src = src;
         img.onload = () => {
           loadedCount++;
-          setProgress(Math.round((loadedCount / totalFrames) * 100));
+          queueProgressUpdate();
           resolve(img);
         };
         img.onerror = () => {
           loadedCount++;
-          setProgress(Math.round((loadedCount / totalFrames) * 100));
+          queueProgressUpdate();
           resolve(img); // Count it so the loader never hangs
         };
       });
     };
 
-    const loadAllAssets = async () => {
-      const scene1Urls = Array.from(
-        { length: 120 },
-        (_, i) => `/assets/scene1_hero/ezgif-frame-${String(i + 1).padStart(3, '0')}.png`
-      );
-      const scene2Urls = Array.from(
-        { length: 150 },
-        (_, i) => `/assets/scene2_complan/ezgif-frame-${String(i + 1).padStart(3, '0')}.png`
-      );
-      const scene3Urls = Array.from(
-        { length: 150 },
-        (_, i) => `/assets/scene3_networks/ezgif-frame-${String(i + 1).padStart(3, '0')}.png`
-      );
+    const loadImageBatch = async (urls: string[], concurrency = 8) => {
+      const images = new Array<HTMLImageElement>(urls.length);
+      let cursor = 0;
 
-      const [s1, s2, s3] = await Promise.all([
-        Promise.all(scene1Urls.map(preloadImage)),
-        Promise.all(scene2Urls.map(preloadImage)),
-        Promise.all(scene3Urls.map(preloadImage))
-      ]);
+      async function worker() {
+        while (!cancelled && cursor < urls.length) {
+          const index = cursor;
+          cursor++;
+          images[index] = await preloadImage(urls[index]);
+        }
+      }
+
+      await Promise.all(Array.from({ length: Math.min(concurrency, urls.length) }, worker));
+      return images;
+    };
+
+    const loadAllAssets = async () => {
+      const [s1] = await Promise.all([loadImageBatch(frameUrlGroups[0])]);
+
+      if (cancelled) {
+        return;
+      }
 
       scene1Images.current = s1;
-      scene2Images.current = s2;
-      scene3Images.current = s3;
 
       // Small visual delay before showing page to ensure complete layout paint
       setTimeout(() => {
         setLoading(false);
-      }, 500);
+      }, 180);
     };
 
     loadAllAssets();
+
+    return () => {
+      cancelled = true;
+      if (progressFrame !== null) {
+        window.cancelAnimationFrame(progressFrame);
+      }
+    };
   }, []);
 
   // Sync route path to overlay state
@@ -179,6 +321,34 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
     }
   }, [location.pathname]);
 
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    const { body } = document;
+    const html = document.documentElement;
+
+    if (!activeOverlay) {
+      body.style.overflow = '';
+      html.style.overflow = '';
+      return;
+    }
+
+    body.style.overflow = 'hidden';
+    html.style.overflow = 'hidden';
+
+    return () => {
+      body.style.overflow = '';
+      html.style.overflow = '';
+    };
+  }, [activeOverlay]);
+
   const closeOverlay = () => {
     navigate('/');
   };
@@ -190,12 +360,56 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const sizeCanvas = () => {
+      const pixelRatio = liteExperience ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
+      canvas.width = Math.round(window.innerWidth * pixelRatio);
+      canvas.height = Math.round(window.innerHeight * pixelRatio);
+    };
+
     // Set canvas dimensions initially
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    sizeCanvas();
 
     // Draw the initial frame
-    drawFrame(1, 0);
+    drawFrame(1, 0, true);
+
+    if (liteExperience) {
+      const ids = ['scene-hero', 'scene-complan', 'scene-networks'];
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const active = entries.find((entry) => entry.isIntersecting);
+          if (!active) {
+            return;
+          }
+
+          const index = ids.indexOf(active.target.id);
+          const sceneId = 1;
+          const frameIndex =
+            index === 0 ? 0 : Math.max(0, Math.floor((scene1Images.current.length - 1) * 0.78));
+          setActiveSection(index);
+          drawFrame(sceneId, frameIndex, true);
+        },
+        { threshold: 0.45 }
+      );
+
+      ids.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          observer.observe(el);
+        }
+      });
+
+      const handleLiteResize = () => {
+        sizeCanvas();
+        drawFrame(lastDrawnScene.current, lastDrawnFrame.current, true);
+      };
+
+      window.addEventListener('resize', handleLiteResize);
+
+      return () => {
+        observer.disconnect();
+        window.removeEventListener('resize', handleLiteResize);
+      };
+    }
 
     const ctx = gsap.context(() => {
       // ----------------------------------------------------
@@ -210,13 +424,13 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
           pin: true,
           scrub: 1.5,
           onUpdate: () => {
-            drawFrame(1, Math.floor(heroFrameObj.frame));
+            scheduleDrawFrame(1, Math.floor(heroFrameObj.frame));
           }
         }
       });
 
       tl1.to(heroFrameObj, {
-        frame: 119,
+        frame: Math.max(0, scene1Images.current.length - 1),
         snap: 'frame',
         ease: 'none'
       }, 0);
@@ -224,89 +438,6 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
       // Flanking text horizontal push off-screen
       tl1.to('.split-hero-left', { xPercent: -120, autoAlpha: 0, duration: 1.5 }, 0.1);
       tl1.to('.split-hero-right', { xPercent: 120, autoAlpha: 0, duration: 1.5 }, 0.1);
-
-      // ----------------------------------------------------
-      // SECTION 2: COMPLAN (Slower scrub via end: +=600% and scrub: 1.5)
-      // ----------------------------------------------------
-      const complanFrameObj = { frame: 0 };
-      const tl2 = gsap.timeline({
-        scrollTrigger: {
-          trigger: '#scene-complan',
-          start: 'top top',
-          end: '+=600%',
-          pin: true,
-          scrub: 1.5,
-          onUpdate: () => {
-            drawFrame(2, Math.floor(complanFrameObj.frame));
-          }
-        }
-      });
-
-      tl2.to(complanFrameObj, {
-        frame: 149,
-        snap: 'frame',
-        ease: 'none'
-      }, 0);
-
-      // Fade out the split text flanking typography
-      tl2.to('.complan-split-left', { xPercent: -100, autoAlpha: 0, duration: 1.2 }, 0.1);
-      tl2.to('.complan-split-right', { xPercent: 100, autoAlpha: 0, duration: 1.2 }, 0.1);
-
-      // Staggered 3D parallax card reveals (floating around canvas bottle/bag)
-      tl2.fromTo('.card-item-1', { autoAlpha: 0, y: 50, scale: 0.8 }, { autoAlpha: 1, y: 0, scale: 1, duration: 1 }, 1.0);
-      tl2.fromTo('.card-item-5', { autoAlpha: 0, y: 50, scale: 0.8 }, { autoAlpha: 1, y: 0, scale: 1, duration: 1 }, 1.0);
-      
-      tl2.fromTo('.card-item-2', { autoAlpha: 0, y: 60, scale: 0.8 }, { autoAlpha: 1, y: 0, scale: 1, duration: 1 }, 1.5);
-      tl2.fromTo('.card-item-6', { autoAlpha: 0, y: 60, scale: 0.8 }, { autoAlpha: 1, y: 0, scale: 1, duration: 1 }, 1.5);
-      
-      tl2.fromTo('.card-item-3', { autoAlpha: 0, y: 70, scale: 0.8 }, { autoAlpha: 1, y: 0, scale: 1, duration: 1 }, 2.0);
-      tl2.fromTo('.card-item-7', { autoAlpha: 0, y: 70, scale: 0.8 }, { autoAlpha: 1, y: 0, scale: 1, duration: 1 }, 2.0);
-      
-      tl2.fromTo('.card-item-4', { autoAlpha: 0, y: 80, scale: 0.8 }, { autoAlpha: 1, y: 0, scale: 1, duration: 1 }, 2.5);
-      tl2.fromTo('.card-item-8', { autoAlpha: 0, y: 80, scale: 0.8 }, { autoAlpha: 1, y: 0, scale: 1, duration: 1 }, 2.5);
-
-      // Clear card overlays before exiting scene
-      tl2.to('.complan-card-item', { autoAlpha: 0, y: -50, scale: 0.9, duration: 1 }, 4.5);
-
-      // ----------------------------------------------------
-      // SECTION 3: NETWORKS (Slower scrub via end: +=600% and scrub: 1.5)
-      // ----------------------------------------------------
-      const networksFrameObj = { frame: 0 };
-      const tl3 = gsap.timeline({
-        scrollTrigger: {
-          trigger: '#scene-networks',
-          start: 'top top',
-          end: '+=600%',
-          pin: true,
-          scrub: 1.5,
-          onUpdate: () => {
-            drawFrame(3, Math.floor(networksFrameObj.frame));
-          }
-        }
-      });
-
-      tl3.to(networksFrameObj, {
-        frame: 149,
-        snap: 'frame',
-        ease: 'none'
-      }, 0);
-
-      // Flanking outlines reveal
-      tl3.fromTo('.networks-split-left', { autoAlpha: 0, xPercent: -50 }, { autoAlpha: 1, xPercent: 0, duration: 1.2 }, 0.1);
-      tl3.fromTo('.networks-split-right', { autoAlpha: 0, xPercent: 50 }, { autoAlpha: 1, xPercent: 0, duration: 1.2 }, 0.1);
-
-      // Narrative cards fades (overlaying the weaving gold network)
-      tl3.fromTo('.network-panel-1', { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 1.2 }, 0.8);
-      tl3.to('.network-panel-1', { autoAlpha: 0, y: -30, duration: 1.2 }, 1.8);
-
-      tl3.fromTo('.network-panel-2', { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 1.2 }, 2.0);
-      tl3.to('.network-panel-2', { autoAlpha: 0, y: -30, duration: 1.2 }, 3.0);
-
-      tl3.fromTo('.network-panel-3', { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 1.2 }, 3.2);
-      tl3.to('.network-panel-3', { autoAlpha: 0, y: -30, duration: 1.2 }, 4.2);
-
-      // Final Call To Action panel inside Scene 3
-      tl3.fromTo('.network-panel-4', { autoAlpha: 0, y: 50, scale: 0.95 }, { autoAlpha: 1, y: 0, scale: 1, duration: 1.2 }, 4.4);
 
       // ----------------------------------------------------
       // WAYPOINTS (GOLD THREAD NAV) STATE TOGGLES
@@ -322,8 +453,8 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
 
       ScrollTrigger.create({
         trigger: '#scene-complan',
-        start: 'top center',
-        end: 'bottom center',
+        start: 'top 60%',
+        end: 'bottom 40%',
         onToggle: (self) => {
           if (self.isActive) setActiveSection(1);
         }
@@ -331,8 +462,8 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
 
       ScrollTrigger.create({
         trigger: '#scene-networks',
-        start: 'top center',
-        end: 'bottom center',
+        start: 'top 60%',
+        end: 'bottom 40%',
         onToggle: (self) => {
           if (self.isActive) setActiveSection(2);
         }
@@ -341,18 +472,21 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
 
     // Resize handler
     const handleResize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      drawFrame(lastDrawnScene.current, lastDrawnFrame.current);
+      sizeCanvas();
+      drawFrame(lastDrawnScene.current, lastDrawnFrame.current, true);
     };
 
     window.addEventListener('resize', handleResize);
 
     return () => {
       ctx.revert();
+      if (pendingDraw.current !== null) {
+        window.cancelAnimationFrame(pendingDraw.current);
+        pendingDraw.current = null;
+      }
       window.removeEventListener('resize', handleResize);
     };
-  }, [loading, drawFrame]);
+  }, [loading, drawFrame, liteExperience, scheduleDrawFrame]);
 
   // Smooth scroll to selected section
   const scrollToSection = (index: number) => {
@@ -366,31 +500,37 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
 
   const ranks = [
     {
+      tier: 'manager',
       title: 'Manager',
       target: 'PHP 50,000 Group Sales Volume',
       incentive: 'Exclusive iPhone, Recognition Pin, Leadership Training'
     },
     {
+      tier: 'bronze',
       title: 'Bronze Director',
       target: 'PHP 100,000 Group Sales Volume',
       incentive: 'PHP 100,000 Car Down Payment (Sedan), Achievement Pin, Monthly Override Bonuses'
     },
     {
+      tier: 'silver',
       title: 'Silver Director',
       target: 'PHP 250,000 Group Sales Volume',
       incentive: 'Asian Luxury Cruise & Travel Package, Rank Certificate, Leadership Development Credit'
     },
     {
+      tier: 'gold',
       title: 'Gold Director',
       target: 'PHP 500,000 Group Sales Volume',
       incentive: 'SUV Car Down Payment, Elite Gold Ring, Executive Leadership Council Placement'
     },
     {
+      tier: 'platinum',
       title: 'Platinum Elite',
       target: 'PHP 1,000,000 Group Sales Volume',
       incentive: 'US / Europe Luxury Travel Package, Presidential Circle Access, Cash overrides'
     },
     {
+      tier: 'legacy',
       title: 'Millionaires Circle',
       target: 'PHP 50,000,000+ Lifetime Organizational Volume',
       incentive: 'Luxury Condominium Suite, Hall of Famer permanent status, 2% Global Pool qualifier override'
@@ -398,7 +538,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
   ];
 
   return (
-    <div className="story-landing-page" ref={rootRef}>
+    <div className={`story-landing-page ${liteExperience ? 'is-lite-experience' : ''}`} ref={rootRef}>
       {/* Immersive Loader Screen (Always rendered for smooth CSS opacity transitions) */}
       <div className={`story-loader ${loading ? 'is-loading' : ''}`}>
         <div className="loader-container">
@@ -418,7 +558,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
       </div>
 
       {/* Minimalist Floating Header Overlay (Jesko Jets Style) */}
-      <header className="story-header">
+      <header className={`story-header ${mobileMenuOpen ? 'is-open' : ''}`}>
         <NavLink className="story-logo-wrap" to="/">
           <span className="story-brand-name">Yor International</span>
         </NavLink>
@@ -430,20 +570,69 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
           <NavLink className="story-nav-link" to="/packages">Packages</NavLink>
         </nav>
         <div className="story-header-actions">
-          <a className="story-header-info" href="tel:+639171234567">+63 917 123 4567</a>
-          <NavLink className="story-nav-link" to="/login">Portal Login</NavLink>
+          <NavLink className="story-nav-cta" to="/register">
+              Join Yor
+          </NavLink>
+          <NavLink className="story-nav-link story-nav-link-login" to="/login">Portal Login</NavLink>
+          <button
+            aria-expanded={mobileMenuOpen}
+            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            className={`story-menu-toggle${mobileMenuOpen ? ' is-open' : ''}`}
+            onClick={() => setMobileMenuOpen((current) => !current)}
+            type="button"
+          >
+            <span className="story-menu-toggle-icon story-menu-toggle-hamburger"><Menu size={18} /></span>
+            <span className="story-menu-toggle-icon story-menu-toggle-close"><X size={18} /></span>
+          </button>
         </div>
       </header>
 
-      {/* Static Floating Pill CTA Button */}
-      <div className="pinned-pill-container">
-        <NavLink to="/register" className="pinned-pill-button">
-          <span>Join YOR</span>
-          <span className="pill-icon-circle">
-            <ArrowRight size={16} />
-          </span>
-        </NavLink>
+      <div className={`story-mobile-overlay${mobileMenuOpen ? ' is-open' : ''}`} aria-hidden={!mobileMenuOpen}>
+        <nav className="story-mobile-overlay-nav" aria-label="Mobile navigation">
+          {[
+            { to: '/', label: 'Home' },
+            { to: '/vision', label: 'Vision' },
+            { to: '/mission', label: 'Mission' },
+            { to: '/founder', label: 'Founder' },
+            { to: '/products', label: 'Products' },
+            { to: '/packages', label: 'Packages' },
+          ].map((item, i) => (
+            <NavLink
+              key={item.to}
+              className={({ isActive }) => `story-mobile-overlay-link${isActive ? ' is-active' : ''}`}
+              style={{ '--item-index': i } as React.CSSProperties}
+              to={item.to}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+          <NavLink
+            className={({ isActive }) => `story-mobile-overlay-link is-portal${isActive ? ' is-active' : ''}`}
+            style={{ '--item-index': 6 } as React.CSSProperties}
+            to="/login"
+          >
+            <span className="portal-login-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </span>
+            Portal Login
+          </NavLink>
+        </nav>
       </div>
+
+      {/* Floating Join CTA — only after scrolling to final section */}
+      {activeSection >= 2 ? (
+        <div className="pinned-pill-container">
+          <NavLink to="/register" className="pinned-pill-button">
+            <span>Join YOR</span>
+            <span className="pill-icon-circle">
+              <ArrowRight size={16} />
+            </span>
+          </NavLink>
+        </div>
+      ) : null}
 
       {/* Golden Thread Navigation (Waypoints) */}
       <nav className="waypoint-nav">
@@ -487,7 +676,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
                 <h1 className="split-display">movement</h1>
               </div>
               <div className="split-hero-right">
-                <span className="split-kicker">YOR Vision</span>
+              <span className="split-kicker split-kicker-highlight">YOR Vision</span>
                 <h2>We are</h2>
                 <h1 className="split-display-outline">distinction</h1>
               </div>
@@ -498,9 +687,8 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
               className="home-scroll-indicator"
               onClick={() => scrollToSection(1)}
               type="button"
-              style={{ position: 'absolute', bottom: '6rem', background: 'none', border: 'none', color: '#c5a880', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', zIndex: 15 }}
             >
-              <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.2em', fontWeight: 600 }}>Scroll Down to Start the Journey</span>
+              <span>Scroll Down to Start the Journey</span>
               <ChevronDown size={14} />
             </button>
           </div>
@@ -577,41 +765,16 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td className="package-row-name">Basic
-                        <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 400, marginTop: '0.25rem' }}>PHP 1,998</div>
-                      </td>
-                      <td className="package-row-price">PV-5</td>
-                      <td className="package-row-referral" style={{ textAlign: 'right' }}>PHP 200</td>
-                    </tr>
-                    <tr>
-                      <td className="package-row-name">Classic
-                        <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 400, marginTop: '0.25rem' }}>PHP 5,998</div>
-                      </td>
-                      <td className="package-row-price">PV-10</td>
-                      <td className="package-row-referral" style={{ textAlign: 'right' }}>PHP 1,000</td>
-                    </tr>
-                    <tr>
-                      <td className="package-row-name">Standard
-                        <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 400, marginTop: '0.25rem' }}>PHP 25,998</div>
-                      </td>
-                      <td className="package-row-price">PV-50</td>
-                      <td className="package-row-referral" style={{ textAlign: 'right' }}>PHP 5,000</td>
-                    </tr>
-                    <tr>
-                      <td className="package-row-name">Business
-                        <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 400, marginTop: '0.25rem' }}>PHP 50,998</div>
-                      </td>
-                      <td className="package-row-price">PV-100</td>
-                      <td className="package-row-referral" style={{ textAlign: 'right' }}>PHP 7,000</td>
-                    </tr>
-                    <tr>
-                      <td className="package-row-name">VIP Legacy
-                        <div style={{ fontSize: '0.75rem', color: '#888', fontWeight: 400, marginTop: '0.25rem' }}>PHP 159,998</div>
-                      </td>
-                      <td className="package-row-price">PV-300</td>
-                      <td className="package-row-referral" style={{ textAlign: 'right' }}>PHP 15,000</td>
-                    </tr>
+                    {packageRows.map((row) => (
+                      <tr key={row.label} className={`package-row package-tier-${row.tier}`}>
+                        <td className="package-row-name">
+                          {row.label}
+                          <div className="package-entry-price">{row.price}</div>
+                        </td>
+                        <td className="package-row-price">{row.pv}</td>
+                        <td className="package-row-referral" style={{ textAlign: 'right' }}>{row.referral}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -626,62 +789,53 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
           </div>
         </section>
 
-        {/* Scene 2: The Vessel of Wealth */}
-        <section id="scene-complan" className="story-section">
-          <div className="scene-pin-wrapper">
-            <div className="split-hero-container">
-              <div className="split-hero-left complan-split-left">
-                <h2>Compensation</h2>
-                <h1 className="split-display-outline">8 Ways to</h1>
-              </div>
-              <div className="split-hero-right complan-split-right">
-                <h2>Opportunities</h2>
-                <h1 className="split-display">Earn</h1>
+        <section id="scene-complan" className="story-section premium-story-section">
+          <div className="premium-story-shell premium-story-shell--earn">
+            <div className="premium-story-heading">
+              <span className="premium-story-kicker">Compensation Experience</span>
+              <h2>8 Ways to Earn</h2>
+              <p>
+                A lighter premium showcase that keeps the opportunity clear, fast, and polished without the heavy frame-by-frame scene rendering.
+              </p>
+            </div>
+
+            <div className="premium-story-spotlight">
+              <article className="premium-story-intro-card">
+                <span className="premium-story-label">Built for momentum</span>
+                <h3>Structured around product movement, direct referrals, and leadership depth</h3>
+                <p>
+                  The public plan stays easy to scan: start with retail and referral income, then grow into matching, repeat purchase, and global pool participation.
+                </p>
+              </article>
+
+              <div className="premium-story-metrics">
+                <div className="premium-story-metric-card">
+                  <span>Direct Referral Range</span>
+                  <strong>PHP 200 to PHP 15,000</strong>
+                </div>
+                <div className="premium-story-metric-card">
+                  <span>Repeat Purchase Layer</span>
+                  <strong>Up to 10 levels</strong>
+                </div>
+                <div className="premium-story-metric-card">
+                  <span>Global Pool Access</span>
+                  <strong>2% yearly share</strong>
+                </div>
               </div>
             </div>
 
-            {/* Parallax Floating Income Stream Labels */}
-            <div className="complan-cards-parallax-container">
-              <div className="complan-card-item card-item-1">
-                <span className="card-num">01</span>
-                <h3>Direct Selling</h3>
-                <p>Earn immediate retail margins up to 25% by sharing YOR Fragrances.</p>
-              </div>
-              <div className="complan-card-item card-item-2">
-                <span className="card-num">02</span>
-                <h3>Direct Referral</h3>
-                <p>Receive immediate sponsor bonuses from PHP 200 up to PHP 15,000 per slot.</p>
-              </div>
-              <div className="complan-card-item card-item-3">
-                <span className="card-num">03</span>
-                <h3>Salesmatch Bonus</h3>
-                <p>Gain overrides on balanced leg volume. Tuesday encashment, Friday payouts.</p>
-              </div>
-              <div className="complan-card-item card-item-4">
-                <span className="card-num">04</span>
-                <h3>Binary Cycle Bonus</h3>
-                <p>Earn recurring cycle percentage points down to infinity as placement volume grows.</p>
-              </div>
-              <div className="complan-card-item card-item-5">
-                <span className="card-num">05</span>
-                <h3>Get Yor Five Bonus</h3>
-                <p>Special bonuses unlocked for every 5 personal enrollments on the same package tier.</p>
-              </div>
-              <div className="complan-card-item card-item-6">
-                <span className="card-num">06</span>
-                <h3>Lifestyle Rewards</h3>
-                <p>Gain credits for luxury vehicles, gadget upgrades, and dream travel incentives.</p>
-              </div>
-              <div className="complan-card-item card-item-7">
-                <span className="card-num">07</span>
-                <h3>Unilevel Bonus</h3>
-                <p>Residual percentage overrides on monthly repeat product orders up to 10 levels deep.</p>
-              </div>
-              <div className="complan-card-item card-item-8">
-                <span className="card-num">08</span>
-                <h3>Global Bonus</h3>
-                <p>Elite share of a 2% yearly global pool representing worldwide company sales.</p>
-              </div>
+            <div className="premium-earn-grid">
+              {earningCards.map((card) => (
+                <NavLink key={card.title} to={card.href} className="premium-earn-card">
+                  <span className="premium-earn-number">{card.number}</span>
+                  <h3>{card.title}</h3>
+                  <p>{card.body}</p>
+                  <span className="premium-earn-link">
+                    Explore detail
+                    <ArrowRight size={14} />
+                  </span>
+                </NavLink>
+              ))}
             </div>
           </div>
         </section>
@@ -697,7 +851,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
                 {ranks.map((rank, i) => (
                   <div 
                     key={i} 
-                    className={`accordion-item ${activeAccordion === i ? 'is-active' : ''}`}
+                    className={`accordion-item rank-tier-${rank.tier} ${activeAccordion === i ? 'is-active' : ''}`}
                   >
                     <button 
                       type="button" 
@@ -717,7 +871,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
             </div>
 
             <div className="blocker-right-col product-showcase-wrap">
-              <span className="blocker-kicker">Featured Product variant</span>
+              <span className="blocker-kicker">Featured Product Variant</span>
               
               <div className="product-high-fidelity-card">
                 <div className="product-badge-row">
@@ -733,11 +887,11 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
                   <span className="product-showcase-price">PHP 500 SRP</span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                <div className="product-showcase-image-frame">
                   <img 
                     src="/assets/yor/generated/yor_vision_productpic.jpg" 
                     alt="YOR Vision Drops" 
-                    style={{ maxHeight: '180px', width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.1))' }}
+                    className="product-showcase-image"
                   />
                 </div>
 
@@ -776,59 +930,51 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
           </div>
         </section>
 
-        {/* Scene 3: The Network Connections */}
-        <section id="scene-networks" className="story-section">
-          <div className="scene-pin-wrapper">
-            <div className="networks-split-container">
-              <div className="split-hero-left networks-split-left">
-                <h2>Global</h2>
-                <h1 className="split-display-outline">Connection</h1>
-              </div>
-              <div className="split-hero-right networks-split-right">
-                <h2>Legacy</h2>
-                <h1 className="split-display">Genealogy</h1>
+        <section id="scene-networks" className="story-section premium-story-section premium-story-section--network">
+          <div className="premium-story-shell premium-story-shell--network">
+            <div className="premium-network-copy">
+              <span className="premium-story-kicker">Leadership Network</span>
+              <h2>Premium growth without the visual noise</h2>
+              <p>
+                Instead of another animated scene, this section keeps the focus on how members actually build: sponsor clearly, place with intention, and develop lasting leaders across the organization.
+              </p>
+
+              <div className="premium-network-pillars">
+                <article className="premium-network-pillar">
+                  <span className="panel-kicker">Placement Tree</span>
+                  <h3>Binary structure</h3>
+                  <p>Scale left and right team volume to support balanced growth and stronger matching momentum.</p>
+                </article>
+                <article className="premium-network-pillar">
+                  <span className="panel-kicker">Unilevel Depth</span>
+                  <h3>10-generation visibility</h3>
+                  <p>Follow direct referral lineages deeper with a cleaner, more executive presentation.</p>
+                </article>
+                <article className="premium-network-pillar">
+                  <span className="panel-kicker">Legacy Leadership</span>
+                  <h3>Hall of Famer path</h3>
+                  <p>Move from starter earnings into rank, prestige, and long-term global qualification.</p>
+                </article>
               </div>
             </div>
 
-            <div className="networks-narrative-panels">
-              {/* Panel 1 */}
-              <div className="glass-narrative-panel network-panel-1">
-                <span className="panel-kicker">Placement Tree</span>
-                <h2>Binary Genealogy Structure</h2>
-                <p>Scale two fast-moving lines (left and right) to establish a baseline of volume and unlock binary match overrides.</p>
-              </div>
-
-              {/* Panel 2 */}
-              <div className="glass-narrative-panel network-panel-2">
-                <span className="panel-kicker">Unilevel Structure</span>
-                <h2>Generational Placement</h2>
-                <p>Track direct referral lineages down to 10 generations, receiving residual overrides on all organizational product orders.</p>
-              </div>
-
-              {/* Panel 3 */}
-              <div className="glass-narrative-panel network-panel-3">
-                <span className="panel-kicker">Leadership Mastery</span>
-                <h2>Hall of Famer Status</h2>
-                <p>Climb leadership tiers to qualify for permanent status recognition, high weekly caps, and executive incentives.</p>
-              </div>
-
-              {/* Panel 4: Final CTA */}
-              <div className="glass-narrative-panel story-final-panel network-panel-4">
-                <span className="panel-kicker">Generational Opportunity</span>
-                <h2>Build Your Legacy</h2>
-                <p>Step into an elite team of network developers. Leverage our tools, products, and direct referral structure.</p>
-                <div className="story-actions-row">
-                  <NavLink className="story-primary-cta" to="/register">
-                    Register Now
-                    <ArrowRight size={15} />
-                  </NavLink>
-                  <NavLink className="story-secondary-cta" to="/packages">
-                    Packages
-                  </NavLink>
-                  <NavLink className="story-secondary-cta" to="/login">
-                    Portal Login
-                  </NavLink>
-                </div>
+            <div className="premium-network-cta-card">
+              <span className="premium-story-label">Generational Opportunity</span>
+              <h3>Build your legacy with a cleaner, faster experience</h3>
+              <p>
+                Step into a premium partner journey anchored in compliant products, polished brand presentation, and a clear public compensation map.
+              </p>
+              <div className="story-actions-row premium-story-actions-row">
+                <NavLink className="story-primary-cta" to="/register">
+                  Register Now
+                  <ArrowRight size={15} />
+                </NavLink>
+                <NavLink className="story-secondary-cta" to="/packages">
+                  Packages
+                </NavLink>
+                <NavLink className="story-secondary-cta" to="/login">
+                  Portal Login
+                </NavLink>
               </div>
             </div>
           </div>
@@ -867,13 +1013,19 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
             </div>
 
             <div className="footer-right">
-              <div className="stats-card">
-                <div className="stats-number">150+</div>
-                <div className="stats-label">Countries Supported</div>
-              </div>
-              <div className="stats-card" style={{ marginBottom: 0 }}>
-                <div className="stats-number">40%</div>
-                <div className="stats-label">Lifetime Discount</div>
+              <div className="footer-honest-grid">
+                <article className="stats-card">
+                  <div className="stats-number">8</div>
+                  <div className="stats-label">Ways to Earn</div>
+                </article>
+                <article className="stats-card">
+                  <div className="stats-number">Premium</div>
+                  <div className="stats-label">Wellness Products</div>
+                </article>
+                <article className="stats-card" style={{ marginBottom: 0 }}>
+                  <div className="stats-number">Community</div>
+                  <div className="stats-label">Driven Growth</div>
+                </article>
               </div>
 
               {/* Rotating abstract globe wireframe */}
@@ -897,10 +1049,6 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
               <a href="mailto:info@yorinternational.net" className="footer-bottom-link">
                 <Mail size={12} style={{ marginRight: '0.25rem', display: 'inline', verticalAlign: 'middle' }} />
                 info@yorinternational.net
-              </a>
-              <a href="tel:+639171234567" className="footer-bottom-link">
-                <Phone size={12} style={{ marginRight: '0.25rem', display: 'inline', verticalAlign: 'middle' }} />
-                +63 917 123 4567
               </a>
             </div>
           </div>

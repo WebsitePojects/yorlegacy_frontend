@@ -127,9 +127,15 @@ export function SiteFrame({ children }: PropsWithChildren) {
     '/thank-you',
     '/login'
   ].includes(location.pathname);
+  const isEarnExperiencePage =
+    location.pathname === '/earn' || location.pathname.startsWith('/earn/');
 
-  if (isExperiencePage) {
-    return <div className="public-shell is-homepage">{children}</div>;
+  if (isExperiencePage || isEarnExperiencePage) {
+    return (
+      <div className={`public-shell ${isExperiencePage ? 'is-homepage' : 'is-earn-experience'}`}>
+        {children}
+      </div>
+    );
   }
 
   const footerLinks = [
@@ -157,7 +163,11 @@ export function SiteFrame({ children }: PropsWithChildren) {
     <div className="public-shell">
       <header className={mobileMenuOpen ? 'site-header is-open' : 'site-header'}>
         <NavLink className="site-logo" to="/">
-          <YorBrandMark className="site-logo-mark" />
+          <img
+            alt="Yor International logo"
+            className="site-logo-mark"
+            src="/assets/yor/branding/yor-logo-round.png"
+          />
           <span className="site-logo-copy">
             <strong>Yor International</strong>
             <small>Founder-led fragrance opportunity</small>
@@ -220,7 +230,10 @@ export function SiteFrame({ children }: PropsWithChildren) {
         {activeBottomGroup ? (
           <div className="public-mobile-nav-popover">
             <div className="public-mobile-nav-popover-head">
-              <span>{activeBottomGroup.label}</span>
+              <span className="public-mobile-nav-popover-title">
+                <YorBrandMark className="public-mobile-nav-popover-logo" />
+                <span>{activeBottomGroup.label}</span>
+              </span>
               <button type="button" onClick={() => setActiveMobileGroup(null)} aria-label="Close mobile section">
                 <X size={15} />
               </button>

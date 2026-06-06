@@ -4,6 +4,7 @@ import { NavLink } from 'react-router-dom';
 import { pageAssets } from '../../config/pagePresets';
 import type { PageContent } from '../../types/content';
 import { InteractiveGlowCanvas } from '../layout/InteractiveGlowCanvas';
+import { BackToExperienceLink } from './BackToExperienceLink';
 
 const revealTransition = {
   duration: 0.85,
@@ -19,6 +20,7 @@ export function SpotlightPage({ content }: { content: PageContent }) {
         <div className="spotlight-vision-glow spotlight-vision-glow-left" />
         <div className="spotlight-vision-glow spotlight-vision-glow-right" />
         <div className="page-container spotlight-vision-shell">
+          <BackToExperienceLink />
           <motion.div
             className="spotlight-vision-badge"
             initial={{ opacity: 0, y: 20 }}
@@ -79,6 +81,7 @@ export function SpotlightPage({ content }: { content: PageContent }) {
         <InteractiveGlowCanvas className="spotlight-glow-canvas" />
         <div className="spotlight-mission-overlay" />
         <div className="page-container spotlight-mission-shell">
+          <BackToExperienceLink />
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             transition={revealTransition}

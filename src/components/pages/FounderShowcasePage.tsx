@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
 import { founderHighlights, founderProfile, pageAssets } from '../../config/pagePresets';
 import type { PageContent } from '../../types/content';
+import { BackToExperienceLink } from './BackToExperienceLink';
 
 const founderIcons = [
   BriefcaseBusiness,
@@ -23,6 +24,7 @@ export function FounderShowcasePage({ content }: { content: PageContent }) {
   return (
     <section className="founder-page-stage">
       <div className="page-container">
+        <BackToExperienceLink />
         <motion.div
           className="founder-page-label"
           initial={{ opacity: 0, y: 20 }}

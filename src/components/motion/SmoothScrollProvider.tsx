@@ -2,7 +2,17 @@ import { useEffect, useRef, type PropsWithChildren } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const protectedPrefixes = ['/member', '/admin', '/cashier', '/bod'];
-const nativeScrollRoutes = ['/rank-incentives'];
+const nativeScrollRoutes = [
+  '/rank-incentives',
+  '/vision',
+  '/mission',
+  '/founder',
+  '/products',
+  '/perfume-collection',
+  '/packages',
+  '/register',
+  '/thank-you'
+];
 
 export function SmoothScrollProvider({ children }: PropsWithChildren) {
   const location = useLocation();

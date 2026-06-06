@@ -2,14 +2,19 @@ import { motion } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
 import { earnCards } from '../../config/pagePresets';
 import type { PageContent } from '../../types/content';
+import { EarnExperienceFooter, EarnExperienceHeader } from './EarnExperienceChrome';
 
 export function EarnOverviewPageView({ content }: { content: PageContent }) {
   return (
     <section className="page-template">
       <div className="page-container">
-        <motion.div animate={{ opacity: 1, y: 0 }} className="earn-header" initial={{ opacity: 0, y: 24 }} transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}>
-          <h1 className="display-heading">{content.title}</h1>
-          <p className="hero-summary">{content.summary}</p>
+        <motion.div animate={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 24 }} transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}>
+          <EarnExperienceHeader
+            title={content.title}
+            subtitle={content.summary}
+            backHref="/"
+            backLabel="Back to Home"
+          />
         </motion.div>
         <section className="earn-grid">
           {earnCards.map((card, index) => (
@@ -25,6 +30,7 @@ export function EarnOverviewPageView({ content }: { content: PageContent }) {
             </motion.div>
           ))}
         </section>
+        <EarnExperienceFooter />
       </div>
     </section>
   );

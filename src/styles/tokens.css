@@ -1,6 +1,10 @@
+/* ─── YOR Design System — Base Tokens ─────────────────────────────────────── */
+
 :root {
-  font-family: Inter, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   color-scheme: light;
+
+  /* Legacy public-site tokens (kept for public pages) */
   --background: #f6f4ef;
   --foreground: #211c17;
   --card: rgba(255, 252, 246, 0.9);
@@ -21,6 +25,8 @@
   --input: rgba(108, 83, 58, 0.22);
   --ring: #d19b5e;
   --radius: 0.85rem;
+
+  /* Legacy public-site surface tokens */
   --yor-bg: #f6f4ef;
   --yor-surface: #fffaf5;
   --yor-surface-high: #f5ede1;
@@ -35,10 +41,65 @@
   --yor-radius-lg: 24px;
   --yor-radius-md: 16px;
   --yor-max-width: 1280px;
+
+  /* ── Office Design System — Light Mode ──────────────────────────────────── */
+
+  /* Brand Palette */
+  --color-primary:   #D98014;
+  --color-secondary: #8C4F0D;
+  --color-tertiary:  #F2B84B;
+  --color-neutral:   #121212;
+
+  /* Surfaces — Light */
+  --office-bg:          #F2EDE4;
+  --office-card:        #FFFDF9;
+  --office-sidebar:     #FAF7F2;
+  --office-text:        #1A1208;
+  --office-muted:       #6B5C45;
+  --office-border:      rgba(175, 110, 30, 0.14);
+  --office-border-mid:  rgba(175, 110, 30, 0.26);
+  --office-border-strong: rgba(175, 110, 30, 0.42);
+
+  /* Active state tints */
+  --office-active-bg:   rgba(217, 128, 20, 0.09);
+  --office-hover-bg:    rgba(217, 128, 20, 0.055);
+  --office-primary-tint: rgba(217, 128, 20, 0.055);
+
+  /* Shadows — Light (warmer, more premium) */
+  --office-shadow-sm:   0 2px 10px rgba(120, 70, 10, 0.08);
+  --office-shadow-md:   0 4px 18px rgba(120, 70, 10, 0.10);
+  --office-shadow-lg:   0 8px 36px rgba(120, 70, 10, 0.12);
+  --office-shadow-hover: 0 8px 26px rgba(120, 70, 10, 0.14);
+
+  /* Light-mode glow tokens */
+  --office-glow-primary: 0 0 0 1px rgba(217,128,20,0.20), 0 4px 20px rgba(217,128,20,0.12);
+
+  /* Typography */
+  --font-headline: 'Hanken Grotesk', 'Inter', system-ui, sans-serif;
+  --font-body:     'Inter', system-ui, sans-serif;
+  --font-mono:     'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Font Scale */
+  --text-xs:   11px;
+  --text-sm:   13px;
+  --text-md:   15px;
+  --text-lg:   18px;
+  --text-xl:   24px;
+  --text-hero: 36px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
 }
 
+/* ─── Dark Mode (class-based, applied by ThemeProvider) ──────────────────── */
 :root.dark {
   color-scheme: dark;
+
+  /* Legacy public-site dark overrides */
   --background: #0f1115;
   --foreground: #f4efe7;
   --card: rgba(18, 20, 27, 0.86);
@@ -58,6 +119,7 @@
   --border: rgba(255, 255, 255, 0.09);
   --input: rgba(255, 255, 255, 0.12);
   --ring: #d7a56d;
+
   --yor-bg: #101114;
   --yor-surface: #17191f;
   --yor-surface-high: #1e2128;
@@ -69,4 +131,24 @@
   --yor-text: #f4efe7;
   --yor-muted: #a59687;
   --yor-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+
+  /* ── Office Design System — Dark Mode ───────────────────────────────────── */
+
+  --office-bg:          #121212;
+  --office-card:        #1C1C1C;
+  --office-sidebar:     #161616;
+  --office-text:        #F0E6D3;
+  --office-muted:       #8A7A65;
+  --office-border:      rgba(242, 184, 75, 0.10);
+  --office-border-mid:  rgba(242, 184, 75, 0.18);
+  --office-border-strong: rgba(242, 184, 75, 0.32);
+
+  --office-active-bg:   rgba(217, 128, 20, 0.15);
+  --office-hover-bg:    rgba(217, 128, 20, 0.08);
+  --office-primary-tint: rgba(217, 128, 20, 0.06);
+
+  --office-shadow-sm:   0 2px 8px rgba(0, 0, 0, 0.28);
+  --office-shadow-md:   0 4px 16px rgba(0, 0, 0, 0.36);
+  --office-shadow-lg:   0 8px 32px rgba(0, 0, 0, 0.44);
+  --office-shadow-hover: 0 8px 24px rgba(242, 184, 75, 0.06);
 }

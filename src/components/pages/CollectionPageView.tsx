@@ -1,8 +1,9 @@
-import { ArrowRight, Mars, Venus } from 'lucide-react';
+import { ArrowRight, Check, Mars, Venus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
-import { collectionProducts, featuredCollectionShowcase } from '../../config/pagePresets';
+import { collectionProducts, featuredCollectionShowcase, pageAssets } from '../../config/pagePresets';
 import type { PageContent } from '../../types/content';
+import { BackToExperienceLink } from './BackToExperienceLink';
 
 const revealTransition = {
   duration: 0.85,
@@ -18,6 +19,7 @@ export function CollectionPageView({ content }: { content: PageContent }) {
       <div className="collection-page-glow collection-page-glow-left" />
       <div className="collection-page-glow collection-page-glow-right" />
       <div className="page-container">
+        <BackToExperienceLink />
         <motion.header
           className="collection-page-header"
           initial={{ opacity: 0, y: 24 }}
@@ -41,11 +43,19 @@ export function CollectionPageView({ content }: { content: PageContent }) {
             <span className="collection-feature-eyebrow">{featuredCollectionShowcase.eyebrow}</span>
             <h2>{featuredCollectionShowcase.title}</h2>
             <p>{featuredCollectionShowcase.summary}</p>
+            <div className="collection-feature-note">
+              <strong>{featuredCollectionShowcase.featureHeading}</strong>
+              <p>{featuredCollectionShowcase.featureLead}</p>
+            </div>
             <ul className="collection-feature-points">
               {featuredCollectionShowcase.points.map((point) => (
-                <li key={point}>{point}</li>
+                <li key={point}>
+                  <Check size={16} />
+                  <span>{point}</span>
+                </li>
               ))}
             </ul>
+            <p className="collection-feature-disclaimer">{featuredCollectionShowcase.disclaimer}</p>
             <div className="collection-feature-actions">
               <NavLink className="site-cta" to="/packages">
                 View Packages
@@ -53,16 +63,13 @@ export function CollectionPageView({ content }: { content: PageContent }) {
             </div>
           </div>
           <div className="collection-feature-visual">
-            <div className="collection-feature-panel collection-feature-panel-main">
-              <img src={featuredCollectionShowcase.primaryImage} alt="Yor Vision featured banner" />
-            </div>
-            <div className="collection-feature-stack">
-              <div className="collection-feature-panel collection-feature-panel-secondary">
-                <img src={featuredCollectionShowcase.secondaryImage} alt="Yor Vision product poster" />
+            <div className="collection-feature-panel collection-feature-panel-main collection-feature-panel-product">
+              <div className="collection-feature-product-halo" />
+              <div className="collection-feature-product-copy">
+                <span>Mineral Drops</span>
+                <strong>Hydration-focused daily wellness support</strong>
               </div>
-              <div className="collection-feature-panel collection-feature-panel-tertiary">
-                <img src={featuredCollectionShowcase.tertiaryImage} alt="Yor Vision product box" />
-              </div>
+              <img src={pageAssets.visionNew} alt="Yor Vision mineral drops bottle" />
             </div>
           </div>
         </motion.section>

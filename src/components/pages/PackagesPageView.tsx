@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
 import { packageTiers } from '../../config/pagePresets';
 import type { PageContent } from '../../types/content';
+import { BackToExperienceLink } from './BackToExperienceLink';
 
 const revealTransition = {
   duration: 0.85,
@@ -13,6 +14,7 @@ export function PackagesPageView({ content }: { content: PageContent }) {
   return (
     <section className="packages-page-stage">
       <div className="page-container">
+        <BackToExperienceLink />
         <motion.header
           className="packages-page-header"
           initial={{ opacity: 0, y: 24 }}
@@ -29,6 +31,7 @@ export function PackagesPageView({ content }: { content: PageContent }) {
             <motion.article
               className={[
                 'glass-panel package-tier-card',
+                tier.tone ?? '',
                 tier.featured ? 'is-featured' : '',
                 tier.vip ? 'is-vip' : ''
               ].filter(Boolean).join(' ')}

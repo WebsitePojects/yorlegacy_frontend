@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
-import { NavLink } from 'react-router-dom';
 import type { PageContent } from '../../types/content';
+import { EarnExperienceFooter, EarnExperienceHeader } from './EarnExperienceChrome';
 
 type AccentTone = 'primary' | 'tertiary' | 'muted';
 
@@ -362,75 +362,36 @@ export function BonusDetailPageView({ content }: { content: PageContent }) {
   const routeContent = bonusRouteContent[content.slug];
 
   return (
-    <section className="page-template">
-      <div className="page-container bonus-grid">
+    <section className="page-template bonus-text-page">
+      <div className="page-container bonus-text-shell">
         <motion.div
           animate={{ opacity: 1, y: 0 }}
-          className="bonus-intro"
+          className="bonus-text-intro"
           initial={{ opacity: 0, y: 24 }}
           transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
         >
-          <NavLink className="ghost-link bonus-back" to="/earn">
-            Back to Earnings
-          </NavLink>
-          <span className="eyebrow">{content.eyebrow}</span>
-          <h1 className="display-heading">{content.title}</h1>
-          <p className="hero-summary">{content.summary}</p>
+          <EarnExperienceHeader title={content.title} subtitle={content.summary} />
         </motion.div>
 
-        <motion.article
-          animate={{ opacity: 1, y: 0 }}
-          className={`glass-panel bonus-visual-card bonus-visual-${content.slug.replace(/\//g, '-')}`}
-          initial={{ opacity: 0, y: 30 }}
-          transition={{ delay: 0.08, duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {routeContent ? (
-            <>
-              <div className="bonus-kicker-row">
-                <span className="bonus-kicker">{routeContent.kicker}</span>
-                <strong className="bonus-spotlight">{routeContent.spotlight}</strong>
-              </div>
-              {renderBonusVisual(content)}
-            </>
-          ) : null}
-        </motion.article>
-
-        <aside className="bonus-sections">
-          {routeContent ? (
-            <motion.article
-              animate={{ opacity: 1, y: 0 }}
-              className="glass-panel content-card bonus-metrics-card"
-              initial={{ opacity: 0, y: 28 }}
-              transition={{ delay: 0.14, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <h2>Key Details</h2>
-              <div className="bonus-metric-list">
-                {routeContent.metrics.map((metric) => (
-                  <div key={`${metric.label}-${metric.value}`} className={`bonus-metric-row ${accentClass(metric.accent)}`}>
-                    <div>
-                      <span>{metric.label}</span>
-                      {metric.note ? <p>{metric.note}</p> : null}
-                    </div>
-                    <strong>{metric.value}</strong>
-                  </div>
-                ))}
-              </div>
-            </motion.article>
-          ) : null}
-
-          {routeContent?.insights.map((insight, index) => (
-            <motion.article
-              key={insight.title}
-              animate={{ opacity: 1, y: 0 }}
-              className={`glass-panel content-card bonus-insight-card ${accentClass(insight.accent)}`}
-              initial={{ opacity: 0, y: 28 }}
-              transition={{ delay: 0.2 + index * 0.06, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <h2>{insight.title}</h2>
-              <p>{insight.body}</p>
-            </motion.article>
-          ))}
-        </aside>
+        {routeContent ? (
+          <motion.article
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-panel content-card bonus-text-summary-card"
+            initial={{ opacity: 0, y: 28 }}
+            transition={{ delay: 0.08, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <span className="bonus-kicker">{routeContent.kicker}</span>
+            <h2>{routeContent.spotlight}</h2>
+            <div className="bonus-text-detail-list">
+              {routeContent.metrics.map((metric) => (
+                <p key={`${metric.label}-${metric.value}`}>
+                  <strong>{metric.label}:</strong> {metric.value}
+                  {metric.note ? ` - ${metric.note}` : ''}
+                </p>
+              ))}
+            </div>
+          </motion.article>
+        ) : null}
 
         <section className="bonus-story-grid">
           {content.sections.map((section, index) => (
@@ -446,6 +407,25 @@ export function BonusDetailPageView({ content }: { content: PageContent }) {
             </motion.article>
           ))}
         </section>
+
+        {routeContent?.insights.length ? (
+          <section className="bonus-story-grid bonus-text-insight-grid">
+            {routeContent.insights.map((insight, index) => (
+              <motion.article
+                key={insight.title}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-panel content-card bonus-story-card"
+                initial={{ opacity: 0, y: 28 }}
+                transition={{ delay: 0.3 + index * 0.06, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <h2>{insight.title}</h2>
+                <p>{insight.body}</p>
+              </motion.article>
+            ))}
+          </section>
+        ) : null}
+
+        <EarnExperienceFooter />
       </div>
     </section>
   );
