@@ -1058,64 +1058,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
         <div className="canvas-overlay-glow" style={{ zIndex: 3 }} />
       </div>
 
-      {/* Minimalist Floating Header Overlay */}
-      <header className={`story-header ${mobileMenuOpen ? 'is-open' : ''}`}>
-        <button className="story-logo-wrap" onClick={() => scrollToAnchor('#scene-hero')}>
-          <span className="story-brand-name">Yor International</span>
-        </button>
-        <div className="story-header-actions" style={{ marginLeft: 'auto' }}>
-          <NavLink className="story-nav-cta" to="/register" style={{ pointerEvents: 'auto' }}>
-              Join Yor
-          </NavLink>
-          <NavLink className="story-nav-link story-nav-link-login" to="/login" style={{ pointerEvents: 'auto', marginLeft: '1rem' }}>Portal Login</NavLink>
-          <button
-            aria-expanded={mobileMenuOpen}
-            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-            className={`story-menu-toggle${mobileMenuOpen ? ' is-open' : ''}`}
-            onClick={() => setMobileMenuOpen((current) => !current)}
-            type="button"
-          >
-            <span className="story-menu-toggle-icon story-menu-toggle-hamburger"><Menu size={18} /></span>
-            <span className="story-menu-toggle-icon story-menu-toggle-close"><X size={18} /></span>
-          </button>
-        </div>
-      </header>
 
-      <div className={`story-mobile-overlay${mobileMenuOpen ? ' is-open' : ''}`} aria-hidden={!mobileMenuOpen}>
-        <nav className="story-mobile-overlay-nav" aria-label="Mobile navigation">
-          <button
-            type="button"
-            className="story-mobile-overlay-link"
-            style={{ '--item-index': 0 } as React.CSSProperties}
-            onClick={() => {
-              setMobileMenuOpen(false);
-              scrollToAnchor('#scene-hero');
-            }}
-          >
-            Home
-          </button>
-          <NavLink
-            to="/register"
-            className="story-mobile-overlay-link is-primary"
-            style={{ '--item-index': 1 } as React.CSSProperties}
-          >
-            Join YOR
-          </NavLink>
-          <NavLink
-            to="/login"
-            className="story-mobile-overlay-link is-portal"
-            style={{ '--item-index': 2 } as React.CSSProperties}
-          >
-            <span className="portal-login-icon" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-            </span>
-            Portal Login
-          </NavLink>
-        </nav>
-      </div>
 
       {/* Floating Join CTA */}
       {activeSection >= 3 ? (

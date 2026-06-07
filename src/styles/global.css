@@ -13070,3 +13070,189 @@ img, video, canvas, svg {
   }
 }
 
+/* --- YOR Genealogy Widened Card-Style Node Layout Overrides --- */
+.genealogy-canvas-node {
+  position: relative;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+  width: 210px !important;
+  min-height: 100px !important;
+  height: auto !important;
+  aspect-ratio: auto !important;
+  padding: 12px !important;
+  border-radius: 16px !important;
+  text-align: left !important;
+  align-content: stretch !important;
+}
+
+.genealogy-canvas-node.is-open-slot {
+  aspect-ratio: auto !important;
+  min-height: 100px !important;
+}
+
+.genealogy-canvas-node.is-shadow-slot {
+  aspect-ratio: auto !important;
+  min-height: 100px !important;
+}
+
+.genealogy-canvas-node.is-shadow-activated {
+  aspect-ratio: auto !important;
+  min-height: 100px !important;
+}
+
+.genealogy-canvas-node-main {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+  gap: 4px !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.genealogy-canvas-node-title {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+  gap: 1px !important;
+  width: 100% !important;
+}
+
+.genealogy-canvas-node-title strong {
+  max-width: 110px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  display: block !important;
+}
+
+.genealogy-canvas-node-main p {
+  margin-top: 0 !important;
+  min-height: 0 !important;
+  max-width: 110px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  display: block !important;
+}
+
+.genealogy-canvas-node-stats {
+  display: flex !important;
+  gap: 8px !important;
+  justify-content: flex-start !important;
+  font-size: 0.65rem !important;
+  color: var(--yor-copper-soft) !important;
+  font-weight: 700 !important;
+  width: 100% !important;
+}
+
+.genealogy-canvas-children {
+  grid-template-columns: repeat(2, minmax(220px, 1fr)) !important;
+  gap: 40px !important;
+}
+
+/* --- YOR Registration Modal Overlay & Fullscreen Mobile Layout --- */
+.registration-page--modal-shell {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+  overflow-y: auto !important;
+}
+
+.registration-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: -1 !important;
+  background: rgba(3, 3, 3, 0.75) !important;
+  backdrop-filter: blur(16px) !important;
+  cursor: pointer !important;
+}
+
+.registration-shell--modal {
+  width: 100% !important;
+  max-width: 680px !important;
+  margin: auto !important;
+  padding: 0 !important;
+}
+
+.registration-card--modal {
+  width: 100% !important;
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--yor-copper) 12%, transparent), transparent 32%),
+    color-mix(in oklab, var(--card) 98%, transparent) !important;
+  border: 1px solid color-mix(in oklab, var(--border) 70%, var(--yor-copper) 30%) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.45) !important;
+  padding: 32px !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.registration-modal-topbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 24px !important;
+  padding-bottom: 16px !important;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 80%, var(--yor-copper) 20%) !important;
+}
+
+.registration-modal-close {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--yor-text) !important;
+  cursor: pointer !important;
+  transition: all 180ms ease !important;
+}
+
+.registration-modal-close:hover {
+  background: color-mix(in oklab, var(--yor-copper) 16%, transparent) !important;
+  color: var(--yor-copper-soft) !important;
+  border-color: color-mix(in oklab, var(--yor-copper) 48%, var(--border)) !important;
+  transform: scale(1.05) !important;
+}
+
+@media (max-width: 768px) {
+  .registration-page--modal-shell {
+    padding: 0 !important;
+    align-items: flex-start !important;
+  }
+
+  .registration-shell--modal {
+    max-width: 100% !important;
+    margin: 0 !important;
+    min-height: 100vh !important;
+  }
+
+  .registration-card--modal {
+    border: 0 !important;
+    border-radius: 0 !important;
+    min-height: 100vh !important;
+    padding: 24px 16px 40px !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  
+  .registration-modal-topbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    background: #0d0c0b !important;
+    padding-top: 8px !important;
+    margin-top: -8px !important;
+  }
+}
+

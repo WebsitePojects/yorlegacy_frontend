@@ -21,11 +21,11 @@ export const routes = [
       },
       {
         path: 'vision',
-        element: <HomePage />
+        element: <ContentPage slug="vision" />
       },
       {
         path: 'mission',
-        element: <HomePage />
+        element: <ContentPage slug="mission" />
       },
       {
         path: 'founder',
@@ -37,11 +37,11 @@ export const routes = [
       },
       {
         path: 'products',
-        element: <HomePage />
+        element: <ContentPage slug="perfume-collection" />
       },
       {
         path: 'packages',
-        element: <HomePage />
+        element: <ContentPage slug="packages" />
       },
       {
         path: 'register',
