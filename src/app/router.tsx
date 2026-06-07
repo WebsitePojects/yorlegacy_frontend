@@ -5,8 +5,10 @@ import { AdminDashboardPage } from '../pages/AdminDashboardPage';
 import { HomePage } from '../pages/HomePage';
 import { ContentPage } from '../pages/ContentPage';
 import { LoginPage } from '../pages/LoginPage';
+import { RegisterPage } from '../pages/RegisterPage';
 import { MemberDashboardPage } from '../pages/MemberDashboardPage';
 import { UnauthorizedPage } from '../pages/UnauthorizedPage';
+import { NotFoundPage } from '../pages/NotFoundPage';
 
 export const routes = [
   {
@@ -19,31 +21,31 @@ export const routes = [
       },
       {
         path: 'vision',
-        element: <ContentPage slug="vision" />
+        element: <HomePage />
       },
       {
         path: 'mission',
-        element: <ContentPage slug="mission" />
+        element: <HomePage />
       },
       {
         path: 'founder',
-        element: <ContentPage slug="founder" />
+        element: <HomePage />
       },
       {
         path: 'perfume-collection',
-        element: <ContentPage slug="perfume-collection" />
+        element: <HomePage />
       },
       {
         path: 'products',
-        element: <ContentPage slug="perfume-collection" />
+        element: <HomePage />
       },
       {
         path: 'packages',
-        element: <ContentPage slug="packages" />
+        element: <HomePage />
       },
       {
         path: 'register',
-        element: <ContentPage slug="register" />
+        element: <RegisterPage />
       },
       {
         path: 'thank-you',
@@ -75,7 +77,11 @@ export const routes = [
       },
       {
         path: 'login',
-        element: <HomePage />
+        element: <LoginPage />
+      },
+      {
+        path: 'admin/login',
+        element: <LoginPage />
       },
       {
         path: 'member',
@@ -168,6 +174,10 @@ export const routes = [
       {
         path: 'rank-incentives',
         element: <ContentPage slug="rank-incentives" />
+      },
+      {
+        path: '*',
+        element: <NotFoundPage />
       }
     ]
   }

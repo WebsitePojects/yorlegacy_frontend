@@ -362,7 +362,7 @@ export function ProtectedOfficeFrame({
                   <Badge variant="outline">Loading</Badge>
                   <div className="ops-content-loader-copy">
                     <h2>{loadingLabel}</h2>
-                    <p>The content area is refreshing with the latest protected-office data.</p>
+                    <p>The content area is refreshing with the latest workspace data.</p>
                   </div>
                   <div className="ops-content-loader-pulse" aria-hidden="true">
                     <span />

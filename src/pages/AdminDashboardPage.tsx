@@ -39,6 +39,22 @@ const formatCurrency = (value: number): string =>
     maximumFractionDigits: 2
   })}`;
 
+function formatAuditActionLabel(action: string) {
+  if (action === 'sandbox_runtime_enabled') {
+    return 'runtime_enabled';
+  }
+
+  if (action.includes('sandbox')) {
+    return action.replace(/sandbox/g, 'runtime');
+  }
+
+  if (action.includes('playground')) {
+    return action.replace(/playground/g, 'review_mode');
+  }
+
+  return action;
+}
+
 const customAdminModuleIds = new Set([
   'dashboard',
   'member-management',
@@ -430,8 +446,8 @@ export function AdminDashboardPage() {
     const confirmed = await confirmAction({
       title: 'Generate activation code batch?',
       description: codeBatchAssignedTo.trim()
-        ? `Generate ${codeBatchQuantity} ${codeBatchAccountType} ${codeBatchPackageTier} code(s) for ${codeBatchAssignedTo} in the branch sandbox inventory.`
-        : `Generate ${codeBatchQuantity} ${codeBatchAccountType} ${codeBatchPackageTier} code(s) into the unassigned branch sandbox pool.`,
+        ? `Generate ${codeBatchQuantity} ${codeBatchAccountType} ${codeBatchPackageTier} code(s) for ${codeBatchAssignedTo}.`
+        : `Generate ${codeBatchQuantity} ${codeBatchAccountType} ${codeBatchPackageTier} code(s) into the unassigned code pool.`,
       confirmLabel: 'Generate Batch',
       tone: 'warning'
     });
@@ -448,9 +464,9 @@ export function AdminDashboardPage() {
         accountType: codeBatchAccountType
       });
       notify({
-        title: result.moneyMode === 'sandbox' ? 'Code batch generated' : 'Code generation checked',
+        title: 'Code batch generated',
         description: result.detail ?? result.reason,
-        tone: result.moneyMode === 'sandbox' ? 'success' : 'warning'
+        tone: 'success'
       });
       setReloadNonce((value) => value + 1);
     } catch (cause) {
@@ -465,7 +481,7 @@ export function AdminDashboardPage() {
   async function handleApproveEncashment(encashmentId: string) {
     const confirmed = await confirmAction({
       title: 'Mark encashment as paid?',
-      description: `Mark ${encashmentId} as paid inside the branch sandbox payout queue so the member and admin views both move forward.`,
+      description: `Mark ${encashmentId} as paid so the member and office records move forward together.`,
       confirmLabel: 'Mark Paid',
       tone: 'warning'
     });
@@ -477,9 +493,9 @@ export function AdminDashboardPage() {
     try {
       const result = await approveEncashment(encashmentId);
       notify({
-        title: result.moneyMode === 'sandbox' ? 'Encashment marked paid' : 'Encashment payout workflow checked',
+        title: 'Encashment marked paid',
         description: result.detail ?? result.reason,
-        tone: result.moneyMode === 'sandbox' ? 'success' : 'warning'
+        tone: 'success'
       });
       setReloadNonce((value) => value + 1);
     } catch (cause) {
@@ -494,7 +510,7 @@ export function AdminDashboardPage() {
   async function handleReleaseCodes() {
     const confirmed = await confirmAction({
       title: 'Release selected codes?',
-      description: `Release ${selectedAdminCodes.length} selected code(s) so they become registration-ready in the sandbox inventory.`,
+      description: `Release ${selectedAdminCodes.length} selected code(s) so they become registration-ready.`,
       confirmLabel: 'Release Codes',
       tone: 'warning'
     });
@@ -506,9 +522,9 @@ export function AdminDashboardPage() {
     try {
       const result = await releaseActivationCodes(selectedAdminCodes);
       notify({
-        title: result.moneyMode === 'sandbox' ? 'Codes released' : 'Release workflow checked',
+        title: 'Codes released',
         description: result.detail ?? result.reason,
-        tone: result.moneyMode === 'sandbox' ? 'success' : 'warning'
+        tone: 'success'
       });
       setReloadNonce((value) => value + 1);
     } catch (cause) {
@@ -523,7 +539,7 @@ export function AdminDashboardPage() {
   async function handleTransferCodes() {
     const confirmed = await confirmAction({
       title: 'Transfer selected codes?',
-      description: `Transfer ${selectedAdminCodes.length} selected code(s) to ${adminTransferTarget || 'the selected member'} in the sandbox inventory.`,
+      description: `Transfer ${selectedAdminCodes.length} selected code(s) to ${adminTransferTarget || 'the selected member'}.`,
       confirmLabel: 'Transfer Codes',
       tone: 'warning'
     });
@@ -538,9 +554,9 @@ export function AdminDashboardPage() {
         codes: selectedAdminCodes
       });
       notify({
-        title: result.moneyMode === 'sandbox' ? 'Codes transferred' : 'Transfer workflow checked',
+        title: 'Codes transferred',
         description: result.detail ?? result.reason,
-        tone: result.moneyMode === 'sandbox' ? 'success' : 'warning'
+        tone: 'success'
       });
       setReloadNonce((value) => value + 1);
     } catch (cause) {
@@ -555,7 +571,7 @@ export function AdminDashboardPage() {
   async function handleReleaseAndTransferCodes() {
     const confirmed = await confirmAction({
       title: 'Release and transfer selected codes?',
-      description: `Release ${selectedAdminCodes.length} selected code(s), then transfer them to ${adminTransferTarget || 'the selected member'} in the sandbox inventory.`,
+      description: `Release ${selectedAdminCodes.length} selected code(s), then transfer them to ${adminTransferTarget || 'the selected member'}.`,
       confirmLabel: 'Release + Transfer',
       tone: 'warning'
     });
@@ -571,9 +587,9 @@ export function AdminDashboardPage() {
         codes: selectedAdminCodes
       });
       notify({
-        title: result.moneyMode === 'sandbox' ? 'Codes released and transferred' : 'Release and transfer checked',
+        title: 'Codes released and transferred',
         description: result.detail ?? result.reason,
-        tone: result.moneyMode === 'sandbox' ? 'success' : 'warning'
+        tone: 'success'
       });
       setReloadNonce((value) => value + 1);
     } catch (cause) {
@@ -611,9 +627,9 @@ export function AdminDashboardPage() {
         remarks: codeReviewRemarks
       });
       notify({
-        title: result.moneyMode === 'sandbox' ? 'Code review updated' : 'Code review checked',
+        title: 'Code review updated',
         description: result.detail ?? result.reason,
-        tone: result.moneyMode === 'sandbox' ? 'success' : 'warning'
+        tone: 'success'
       });
       setReloadNonce((value) => value + 1);
     } catch (cause) {
@@ -671,9 +687,9 @@ export function AdminDashboardPage() {
         remarks: encashmentDraft.remarks
       });
       notify({
-        title: result.moneyMode === 'sandbox' ? 'Encashment updated' : 'Encashment workflow checked',
+        title: 'Encashment updated',
         description: result.detail ?? result.reason,
-        tone: result.moneyMode === 'sandbox' ? 'success' : 'warning'
+        tone: 'success'
       });
       setReloadNonce((value) => value + 1);
     } catch (cause) {
@@ -704,7 +720,7 @@ export function AdminDashboardPage() {
   async function handleSaveMemberProfile() {
     const confirmed = await confirmAction({
       title: 'Save member profile update?',
-      description: `Update ${memberProfileDraft.username || 'the selected member'} inside the branch sandbox runtime using the Nogatu-style account-details form fields.`,
+      description: `Update ${memberProfileDraft.username || 'the selected member'} using the current account-details form fields.`,
       confirmLabel: 'Save Profile',
       tone: 'warning'
     });
@@ -725,9 +741,9 @@ export function AdminDashboardPage() {
         contactNumber: memberProfileDraft.contactNumber
       });
       notify({
-        title: result.moneyMode === 'sandbox' ? 'Member profile updated' : 'Member profile workflow checked',
+        title: 'Member profile updated',
         description: result.detail ?? result.reason,
-        tone: result.moneyMode === 'sandbox' ? 'success' : 'warning'
+        tone: 'success'
       });
       setReloadNonce((value) => value + 1);
     } catch (cause) {
@@ -742,7 +758,7 @@ export function AdminDashboardPage() {
   async function handleMemberStatusAction(username: string, status: MemberAccountStatus) {
     const confirmed = await confirmAction({
       title: `${labelForMemberStatus(status)} ${username}?`,
-      description: `Apply ${status} status to ${username} in the branch sandbox runtime.`,
+      description: `Apply ${status} status to ${username}.`,
       confirmLabel: labelForMemberStatus(status),
       tone: 'warning'
     });
@@ -754,9 +770,9 @@ export function AdminDashboardPage() {
     try {
       const result = await updateMemberStatus(username, status);
       notify({
-        title: result.moneyMode === 'sandbox' ? `${username} updated` : 'Member status workflow checked',
+        title: `${username} updated`,
         description: result.detail ?? result.reason,
-        tone: result.moneyMode === 'sandbox' ? 'success' : 'warning'
+        tone: 'success'
       });
       setReloadNonce((value) => value + 1);
     } catch (cause) {
@@ -783,9 +799,9 @@ export function AdminDashboardPage() {
 
   async function handleResetSandbox() {
     const confirmed = await confirmAction({
-      title: 'Reset the sandbox runtime?',
-      description: 'This restores the branch-local sandbox store to its seeded Yor test state for a fresh QA pass.',
-      confirmLabel: 'Reset Sandbox',
+      title: 'Reset runtime data?',
+      description: 'This restores the current local runtime data to its seeded Yor test state for a fresh QA pass.',
+      confirmLabel: 'Reset Data',
       tone: 'warning'
     });
 
@@ -796,14 +812,14 @@ export function AdminDashboardPage() {
     try {
       const result = await resetSandbox();
       notify({
-        title: 'Sandbox reset completed',
+        title: 'Runtime data reset completed',
         description: result.detail ?? result.reason,
         tone: 'success'
       });
       setReloadNonce((value) => value + 1);
     } catch (cause) {
       notify({
-        title: 'Unable to reset sandbox',
+        title: 'Unable to reset runtime data',
         description: cause instanceof Error ? cause.message : 'Please try again.',
         tone: 'destructive'
       });
@@ -835,7 +851,7 @@ export function AdminDashboardPage() {
       },
       'encashment-reports': {
         title: 'Encashment Queue',
-        body: 'Review the Tuesday encashment and Friday payout queue and move requests through the branch-local sandbox.'
+        body: 'Review the Tuesday encashment and Friday payout queue with gross, deductions, remarks, and final paid state.'
       },
       'get-five-reports': {
         title: 'Get Yor Five',
@@ -924,9 +940,9 @@ export function AdminDashboardPage() {
       moduleLabel={activeModule?.label ?? 'Operational Dashboard'}
       moduleDescription={
         moduleId === 'dashboard'
-          ? 'KPI-first operational view for accounts, payout queues, codes, and controlled sandbox activity.'
+          ? 'Operational dashboard.'
           : activeModule?.description ??
-            'Professional operations shell aligned to the Yor compensation plan and the current protected operating flow.'
+            'Operations portal.'
       }
       sidebarHeading="Yor Control"
       sidebarSubheading={office?.profile.officeTitle ?? 'Operations office'}
@@ -981,12 +997,7 @@ export function AdminDashboardPage() {
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
                 <Card className="ops-admin-control-card border-[var(--border)] bg-[var(--card)]">
                   <CardHeader>
-                    <CardTitle>General Code Generation</CardTitle>
-                    <CardDescription>
-                      {activationCodes.moneyMode === 'sandbox'
-                        ? 'General codes stay in the unassigned pool by default, then operations can release, settle, transfer, or mark them lost from the table workflow.'
-                        : 'General code generation remains review-first while final writes stay in protected playground mode.'}
-                    </CardDescription>
+                    <CardTitle>Code Generation</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {canGenerateCodes ? (
@@ -1122,7 +1133,6 @@ export function AdminDashboardPage() {
                 <Card className="border-[var(--border)] bg-[var(--card)]">
                   <CardHeader>
                     <CardTitle>Audit Trail</CardTitle>
-                    <CardDescription>Recent inventory actions stay visible so admin can verify release, transfer, lost-code, and payment-state changes.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {activationCodes.auditTrail.map((event) => (
@@ -1148,8 +1158,7 @@ export function AdminDashboardPage() {
               />
               <Card className="ops-admin-table-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
-                  <CardTitle>Activation Code Inventory</CardTitle>
-                  <CardDescription>Search-first inventory with settlement state, lost-code handling, and table-driven release or transfer actions.</CardDescription>
+                  <CardTitle>Code Inventory</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="ops-code-table overflow-hidden rounded-xl border border-[var(--border)]">
@@ -1243,10 +1252,7 @@ export function AdminDashboardPage() {
             <section className="space-y-4">
               <Card className="border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
-                  <CardTitle>Member Name Update</CardTitle>
-                  <CardDescription>
-                    Search by username first, then review the Nogatu-style account details form before saving profile changes.
-                  </CardDescription>
+                  <CardTitle>Member Profile Update</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
@@ -1357,9 +1363,6 @@ export function AdminDashboardPage() {
               <Card className="border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Member Directory</CardTitle>
-                  <CardDescription>
-                    Username-first masterlist with status controls and Nogatu-style action space so large member counts remain practical.
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
@@ -1474,12 +1477,6 @@ export function AdminDashboardPage() {
                       </Button>
                     </div>
                   </div>
-
-                  <div className="grid gap-2 text-sm text-[var(--muted-foreground)]">
-                    {memberCenter.actionNotes.map((note) => (
-                      <p key={note}>{note}</p>
-                    ))}
-                  </div>
                 </CardContent>
               </Card>
             </section>
@@ -1490,7 +1487,6 @@ export function AdminDashboardPage() {
               <Card className="ops-admin-table-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Encashment Queue</CardTitle>
-                  <CardDescription>Searchless queue review with gross, deductions, net payable, remarks, and paid-state control kept in one operator surface.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="grid gap-3 sm:grid-cols-3">
@@ -1540,21 +1536,11 @@ export function AdminDashboardPage() {
                       </table>
                     </div>
                   </div>
-                  <div className="grid gap-2 text-sm text-[var(--muted-foreground)]">
-                    {encashments.processNotes.map((note) => (
-                      <p key={note}>{note}</p>
-                    ))}
-                  </div>
                 </CardContent>
               </Card>
               <Card className="ops-admin-process-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Selected Request</CardTitle>
-                  <CardDescription>
-                    {encashments.moneyMode === 'sandbox'
-                      ? 'Admins and superadmins can edit deductions, queue, cancel, leave remarks, and mark requests paid inside the branch sandbox.'
-                      : 'This review panel mirrors the final settlement workflow while writes stay protected.'}
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {selectedEncashment ? (
@@ -1668,9 +1654,6 @@ export function AdminDashboardPage() {
                 <CardHeader className="ops-admin-tree-header gap-4 md:flex-row md:items-end md:justify-between">
                   <div>
                     <CardTitle>Account Genealogy</CardTitle>
-                    <CardDescription>
-                      Search a username first, then inspect placement depth, trace path, and open slots without loading a default admin tree.
-                    </CardDescription>
                   </div>
                   <div className="ops-admin-tree-search flex w-full max-w-xl flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
@@ -1709,6 +1692,7 @@ export function AdminDashboardPage() {
                         setTreeSearchInput(username);
                         setTreeRootUsername(username);
                       }}
+                      adminMode={true}
                     />
                   ) : (
                     <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-8 text-sm text-[var(--muted-foreground)]">
@@ -1722,7 +1706,6 @@ export function AdminDashboardPage() {
                 <Card className="border-[var(--border)] bg-[var(--card)]">
                   <CardHeader>
                     <CardTitle>Tree Summary</CardTitle>
-                    <CardDescription>Operational network view with left/right account totals, matched-point context, and carry-forward visibility.</CardDescription>
                   </CardHeader>
                   <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <DataPoint label="Accounts On Left" value={leftAccountCount} />
@@ -1737,8 +1720,7 @@ export function AdminDashboardPage() {
                 {selectedTreeNode ? (
                   <Card className="ops-admin-tree-detail-card border-[var(--border)] bg-[var(--card)]">
                     <CardHeader>
-                      <CardTitle>Node Focus</CardTitle>
-                      <CardDescription>Searchable admin node detail with package, state, and point context.</CardDescription>
+                      <CardTitle>Node Details</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-5">
                       <DataPoint label="Username" value={selectedTreeNode.username} />
@@ -1764,24 +1746,27 @@ export function AdminDashboardPage() {
                 <Card className="ops-admin-security-card border-[var(--border)] bg-[var(--card)]">
                   <CardHeader>
                     <CardTitle>Security Status</CardTitle>
-                    <CardDescription>Protected access posture and audit mindset for the current office role.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {summary
                       ? Object.entries(summary.status).map(([key, value]) => (
                           <div key={key} className="flex items-start justify-between gap-3 text-sm">
                             <span className="text-[var(--muted-foreground)]">{key}</span>
-                            <strong className="text-right text-[var(--foreground)]">{value}</strong>
+                            <strong className="text-right text-[var(--foreground)]">
+                              {key === 'moneyActions' && value.includes('sandbox')
+                                ? value.replace('branch sandbox writes enabled', 'controlled runtime writes enabled')
+                                : value}
+                            </strong>
                           </div>
                         ))
                       : null}
                     {office?.auditEvents.length ? (
-                        <div className="ops-admin-audit-box rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                      <div className="ops-admin-audit-box rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
                         <p className="mb-2 text-sm font-medium text-[var(--foreground)]">Recent audit events</p>
                         <div className="space-y-2 text-sm text-[var(--muted-foreground)]">
                           {office.auditEvents.slice(0, 4).map((event) => (
                             <p key={`${event.occurredAt}-${event.action}`}>
-                              {event.action} / {event.actor}
+                              {formatAuditActionLabel(event.action)} / {event.actor}
                             </p>
                           ))}
                         </div>
@@ -1794,15 +1779,11 @@ export function AdminDashboardPage() {
               {moduleId === 'dashboard' && canResetSandbox ? (
                 <Card className="border-[var(--border)] bg-[var(--card)]">
                   <CardHeader>
-                    <CardTitle>Sandbox Control</CardTitle>
-                    <CardDescription>Admin and superadmin currently share the same branch-local reset control for destructive QA passes.</CardDescription>
+                    <CardTitle>Runtime Reset Control</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <p className="text-sm text-[var(--muted-foreground)]">
-                      Reset clears test mutations and restores the seeded Yor sandbox state without touching production or the Nogatu reference system.
-                    </p>
                     <Button type="button" variant="outline" onClick={handleResetSandbox}>
-                      Reset Sandbox Runtime
+                      Reset Runtime Data
                     </Button>
                   </CardContent>
                 </Card>

@@ -201,6 +201,7 @@ export type MemberActivationCodeCenter = {
   inventory: Array<{
     id: string;
     code: string;
+    codeFamily?: string;
     accountType: string;
     packageTier: string;
     assignedTo: string;
@@ -235,10 +236,21 @@ export type MemberWalletDetail = {
     payoutMethod: string;
     payoutSchedule: string;
   };
+  incomeBreakdown: Array<{
+    streamId: string;
+    label: string;
+    walletType: string;
+    amount: number;
+  }>;
   preview: {
     requestedAmount: number;
     fee: number;
+    processingFee: number;
+    maintenanceFee: number;
+    systemRetainer: number;
+    tax: number;
     cdDeduction: number;
+    totalDeductions: number;
     netReceivable: number;
     sufficientBalance: boolean;
     note: string;

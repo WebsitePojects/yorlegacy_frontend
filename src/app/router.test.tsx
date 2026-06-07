@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { vi } from 'vitest';
 import { AuthProvider } from '../auth/AuthContext';
@@ -201,7 +201,8 @@ describe('routes', () => {
   });
 
   it('renders a member side-page module from authenticated API data', async () => {
-    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const previewRequests: number[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
 
       if (url.includes('/api/auth/me')) {
@@ -294,11 +295,25 @@ describe('routes', () => {
             payoutMethod: 'GCash',
             payoutSchedule: 'Tuesday encashment / Friday payout'
           },
+          incomeBreakdown: [
+            { streamId: 'direct-referral', label: 'Direct Referral', walletType: 'main', amount: 5000 },
+            { streamId: 'salesmatch', label: 'Salesmatch Bonus', walletType: 'main', amount: 7500 },
+            { streamId: 'binary-cycle', label: 'Binary Cycle Bonus', walletType: 'main', amount: 0 },
+            { streamId: 'get-five', label: 'Get Yor Five Bonus', walletType: 'main', amount: 0 },
+            { streamId: 'lifestyle-rewards', label: 'Lifestyle Rewards', walletType: 'lifestyle', amount: 0 },
+            { streamId: 'unilevel', label: 'Unilevel Bonus', walletType: 'main', amount: 0 },
+            { streamId: 'global', label: 'Global Bonus', walletType: 'main', amount: 0 }
+          ],
           preview: {
-            requestedAmount: 5000,
-            fee: 100,
+            requestedAmount: 0,
+            fee: 0,
+            processingFee: 0,
+            maintenanceFee: 0,
+            systemRetainer: 0,
+            tax: 0,
             cdDeduction: 0,
-            netReceivable: 4900,
+            totalDeductions: 0,
+            netReceivable: 0,
             sufficientBalance: true,
             note: 'Preview mirrors the protected encashment breakdown.'
           },
@@ -330,6 +345,36 @@ describe('routes', () => {
         });
       }
 
+      if (url.includes('/api/member/wallet/preview-encash')) {
+        const payload = init?.body ? JSON.parse(String(init.body)) as { amount?: number } : {};
+        const requestedAmount = Number(payload.amount ?? 0);
+        const processingFee = 50;
+        const systemRetainer = requestedAmount * 0.05;
+        const fee = processingFee + systemRetainer;
+        const tax = requestedAmount * 0.1;
+        const totalDeductions = fee + tax;
+
+        previewRequests.push(requestedAmount);
+
+        return okJson({
+          moneyMode: 'sandbox',
+          requestedAmount,
+          preview: {
+            requestedAmount,
+            fee,
+            processingFee,
+            maintenanceFee: 0,
+            systemRetainer,
+            tax,
+            cdDeduction: 0,
+            totalDeductions,
+            netReceivable: requestedAmount - totalDeductions,
+            sufficientBalance: true,
+            note: 'Preview mirrors the protected encashment breakdown.'
+          }
+        });
+      }
+
       throw new Error(`Unexpected request ${url}`);
     }) as unknown as typeof fetch);
 
@@ -350,6 +395,155 @@ describe('routes', () => {
     expect(await screen.findByText(/submit request/i)).toBeInTheDocument();
     expect((await screen.findAllByText(/PHP 15,200.75/i)).length).toBeGreaterThan(0);
     expect(await screen.findByRole('heading', { name: /wallet summary/i })).toBeInTheDocument();
+    expect((screen.getByLabelText(/requested amount/i) as HTMLInputElement).value).toBe('0');
+    expect(screen.queryByText(/System Maintenance Fee/i)).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/requested amount/i), {
+      target: { value: '10,000' }
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/PHP 8,450.00/i)).toBeInTheDocument();
+    });
+    expect(previewRequests).toContain(10000);
+  });
+
+  it('opens genealogy-slot registration inside a modal instead of leaving the tree', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes('/api/auth/me')) {
+        return okJson({
+          authenticated: true,
+          user: {
+            id: 'yor-member-demo',
+            name: 'Yor Member',
+            email: 'member@yor.local',
+            role: 'member'
+          }
+        });
+      }
+
+      if (url.includes('/api/member/summary')) {
+        return okJson({
+          user: {
+            id: 'yor-member-demo',
+            name: 'Yor Member',
+            email: 'member@yor.local',
+            role: 'member'
+          },
+          modules: ['Genealogy'],
+          status: {
+            authentication: 'active',
+            payouts: 'branch sandbox writes'
+          }
+        });
+      }
+
+      if (url.includes('/api/member/office')) {
+        return okJson({
+          user: {
+            id: 'yor-member-demo',
+            name: 'Yor Member',
+            email: 'member@yor.local',
+            role: 'member'
+          },
+          profile: {
+            packageTier: 'Standard',
+            referralCode: 'YOR-MEMBER-001',
+            sponsorCode: 'YOR-SPONSOR-001',
+            accountStatus: 'active',
+            username: 'YOR0001',
+            fullName: 'Yor Member',
+            payoutMethod: 'GCash'
+          },
+          wallet: {
+            availableBalance: 'PHP 15,200.75',
+            pendingBalance: 'PHP 4,300.00',
+            payoutSchedule: 'Tuesday encashment / Friday payout'
+          },
+          metrics: [{ label: 'Direct Referrals', value: '5' }],
+          modules: [memberGenealogyModuleFixture],
+          gatedActions: [],
+          alerts: ['Tree stays available for placement review.']
+        });
+      }
+
+      if (url.includes('/api/member/dashboard')) {
+        return okJson({
+          moneyMode: 'sandbox',
+          packageTier: 'Standard',
+          payoutSchedule: 'Tuesday encashment / Friday payout',
+          incomeStreams: [],
+          notices: []
+        });
+      }
+
+      if (url.includes('/api/member/modules/genealogy')) {
+        return okJson(memberGenealogyModuleFixture);
+      }
+
+      if (url.includes('/api/member/genealogy/binary-tree')) {
+        return okJson(memberGenealogyFixture);
+      }
+
+      if (url.includes('/api/member/activation-codes')) {
+        return okJson({
+          moneyMode: 'sandbox',
+          member: {
+            username: 'YOR0001',
+            packageTier: 'Standard'
+          },
+          inventory: [
+            {
+              id: 'code-1',
+              code: 'PDSTK7V2LC',
+              codeFamily: 'YOR CODES',
+              accountType: 'PD',
+              packageTier: 'Standard',
+              assignedTo: 'YOR0001',
+              status: 'available',
+              generatedAt: '2026-05-28',
+              transferable: true,
+              upgradable: false,
+              visibility: 'released-by-sponsor'
+            }
+          ],
+          history: [],
+          transferTargets: [],
+          hints: []
+        });
+      }
+
+      throw new Error(`Unexpected request ${url}`);
+    }) as unknown as typeof fetch);
+
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/member/genealogy']
+    });
+
+    render(
+      <ThemeProvider defaultTheme="dark">
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </ThemeProvider>
+    );
+
+    expect(await screen.findByRole('heading', { name: /placement network view/i })).toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole('button', { name: /open slot left under alpha001/i }));
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /encode member in open slot/i })).toBeInTheDocument();
+    expect(await screen.findByLabelText(/activation code/i)).toBeInTheDocument();
+    expect(screen.getByText(/ALPHA001 \/ Left/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /discard registration/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
   });
 });
 
@@ -400,4 +594,310 @@ const memberModuleFixture = {
     rows: [{ date: '2026-05-28', balance: 'PHP 15,200.75' }]
   },
   gatedActions: []
+};
+
+const memberGenealogyModuleFixture = {
+  id: 'genealogy',
+  label: 'Genealogy',
+  path: '/member/genealogy',
+  group: 'Network',
+  description: 'Placement tree and binary network visibility.',
+  status: 'read-only',
+  legacyReference: 'ecom/genealogy.php',
+  permissions: ['member', 'admin', 'cashier', 'bod', 'superadmin'],
+  metrics: [{ label: 'Visible Nodes', value: '5' }],
+  table: {
+    title: 'Genealogy',
+    columns: [],
+    rows: []
+  },
+  gatedActions: []
+};
+
+const memberGenealogyFixture = {
+  moneyMode: 'sandbox',
+  treeType: 'binary',
+  root: {
+    nodeId: 'node-root',
+    username: 'YOU1',
+    fullName: 'Root Member',
+    referralCode: 'YOR-MEMBER-001',
+    packageTier: 'VIP',
+    placement: 'root',
+    status: 'active',
+    depth: 0,
+    tracePath: 'YOU1',
+    binaryPoints: 0,
+    directReferrals: 2,
+    leftPoints: 100,
+    rightPoints: 80,
+    openSlots: { left: false, right: false },
+    shadowSlots: {
+      left: {
+        id: 'shadow-left',
+        owner: 'YOU1',
+        placement: 'left',
+        state: 'reserved_shadow',
+        label: 'YOU 2',
+        activationStatus: 'inactive',
+        registrationEnabled: false,
+        walletEnabled: false,
+        unilevelEnabled: false,
+        binaryCycleEnabled: false,
+        note: 'Binary Function Only'
+      },
+      right: {
+        id: 'shadow-right',
+        owner: 'YOU1',
+        placement: 'right',
+        state: 'reserved_shadow',
+        label: 'YOU 3',
+        activationStatus: 'inactive',
+        registrationEnabled: false,
+        walletEnabled: false,
+        unilevelEnabled: false,
+        binaryCycleEnabled: false,
+        note: 'Binary Function Only'
+      }
+    },
+    accountStateLabel: 'PD',
+    children: [
+      {
+        nodeId: 'node-shadow-left',
+        username: 'YOU2',
+        fullName: 'Left Shadow',
+        referralCode: 'YOR-MEMBER-001',
+        packageTier: 'VIP',
+        placement: 'left',
+        status: 'shadow',
+        depth: 1,
+        tracePath: 'YOU1>YOU2',
+        binaryPoints: 0,
+        directReferrals: 0,
+        leftPoints: 100,
+        rightPoints: 0,
+        openSlots: { left: true, right: true },
+        shadowSlots: {
+          left: {
+            id: 'shadow-left-2',
+            owner: 'YOU2',
+            placement: 'left',
+            state: 'reserved_shadow',
+            label: 'YOU 2L',
+            activationStatus: 'inactive',
+            registrationEnabled: false,
+            walletEnabled: false,
+            unilevelEnabled: false,
+            binaryCycleEnabled: false,
+            note: 'Binary Function Only'
+          },
+          right: {
+            id: 'shadow-left-3',
+            owner: 'YOU2',
+            placement: 'right',
+            state: 'reserved_shadow',
+            label: 'YOU 2R',
+            activationStatus: 'inactive',
+            registrationEnabled: false,
+            walletEnabled: false,
+            unilevelEnabled: false,
+            binaryCycleEnabled: false,
+            note: 'Binary Function Only'
+          }
+        },
+        accountStateLabel: 'PD',
+        children: [
+          {
+            nodeId: 'node-alpha',
+            username: 'ALPHA001',
+            fullName: 'Alice Alpha',
+            referralCode: 'YOR-ALPHA-001',
+            packageTier: 'Standard',
+            placement: 'left',
+            status: 'active',
+            depth: 2,
+            tracePath: 'YOU1>YOU2>ALPHA001',
+            binaryPoints: 0,
+            directReferrals: 0,
+            leftPoints: 0,
+            rightPoints: 0,
+            openSlots: { left: true, right: true },
+            shadowSlots: {
+              left: {
+                id: 'shadow-alpha-left',
+                owner: 'ALPHA001',
+                placement: 'left',
+                state: 'reserved_shadow',
+                label: 'ALPHA L',
+                activationStatus: 'inactive',
+                registrationEnabled: false,
+                walletEnabled: false,
+                unilevelEnabled: false,
+                binaryCycleEnabled: false,
+                note: 'Binary Function Only'
+              },
+              right: {
+                id: 'shadow-alpha-right',
+                owner: 'ALPHA001',
+                placement: 'right',
+                state: 'reserved_shadow',
+                label: 'ALPHA R',
+                activationStatus: 'inactive',
+                registrationEnabled: false,
+                walletEnabled: false,
+                unilevelEnabled: false,
+                binaryCycleEnabled: false,
+                note: 'Binary Function Only'
+              }
+            },
+            accountStateLabel: 'PD',
+            children: []
+          }
+        ]
+      },
+      {
+        nodeId: 'node-shadow-right',
+        username: 'YOU3',
+        fullName: 'Right Shadow',
+        referralCode: 'YOR-MEMBER-001',
+        packageTier: 'VIP',
+        placement: 'right',
+        status: 'shadow',
+        depth: 1,
+        tracePath: 'YOU1>YOU3',
+        binaryPoints: 0,
+        directReferrals: 0,
+        leftPoints: 0,
+        rightPoints: 80,
+        openSlots: { left: true, right: true },
+        shadowSlots: {
+          left: {
+            id: 'shadow-right-2',
+            owner: 'YOU3',
+            placement: 'left',
+            state: 'reserved_shadow',
+            label: 'YOU 3L',
+            activationStatus: 'inactive',
+            registrationEnabled: false,
+            walletEnabled: false,
+            unilevelEnabled: false,
+            binaryCycleEnabled: false,
+            note: 'Binary Function Only'
+          },
+          right: {
+            id: 'shadow-right-3',
+            owner: 'YOU3',
+            placement: 'right',
+            state: 'reserved_shadow',
+            label: 'YOU 3R',
+            activationStatus: 'inactive',
+            registrationEnabled: false,
+            walletEnabled: false,
+            unilevelEnabled: false,
+            binaryCycleEnabled: false,
+            note: 'Binary Function Only'
+          }
+        },
+        accountStateLabel: 'PD',
+        children: []
+      }
+    ]
+  },
+  nodes: [
+    {
+      nodeId: 'node-root',
+      username: 'YOU1',
+      fullName: 'Root Member',
+      referralCode: 'YOR-MEMBER-001',
+      packageTier: 'VIP',
+      placement: 'root',
+      status: 'active',
+      depth: 0,
+      tracePath: 'YOU1',
+      binaryPoints: 0,
+      directReferrals: 2,
+      leftPoints: 100,
+      rightPoints: 80,
+      openSlots: { left: false, right: false },
+      shadowSlots: {
+        left: {
+          id: 'shadow-left',
+          owner: 'YOU1',
+          placement: 'left',
+          state: 'reserved_shadow',
+          label: 'YOU 2',
+          activationStatus: 'inactive',
+          registrationEnabled: false,
+          walletEnabled: false,
+          unilevelEnabled: false,
+          binaryCycleEnabled: false,
+          note: 'Binary Function Only'
+        },
+        right: {
+          id: 'shadow-right',
+          owner: 'YOU1',
+          placement: 'right',
+          state: 'reserved_shadow',
+          label: 'YOU 3',
+          activationStatus: 'inactive',
+          registrationEnabled: false,
+          walletEnabled: false,
+          unilevelEnabled: false,
+          binaryCycleEnabled: false,
+          note: 'Binary Function Only'
+        }
+      },
+      accountStateLabel: 'PD',
+      parentNodeId: null,
+      level: 0
+    },
+    {
+      nodeId: 'node-alpha',
+      username: 'ALPHA001',
+      fullName: 'Alice Alpha',
+      referralCode: 'YOR-ALPHA-001',
+      packageTier: 'Standard',
+      placement: 'left',
+      status: 'active',
+      depth: 2,
+      tracePath: 'YOU1>YOU2>ALPHA001',
+      binaryPoints: 0,
+      directReferrals: 0,
+      leftPoints: 0,
+      rightPoints: 0,
+      openSlots: { left: true, right: true },
+      shadowSlots: {
+        left: {
+          id: 'shadow-alpha-left',
+          owner: 'ALPHA001',
+          placement: 'left',
+          state: 'reserved_shadow',
+          label: 'ALPHA L',
+          activationStatus: 'inactive',
+          registrationEnabled: false,
+          walletEnabled: false,
+          unilevelEnabled: false,
+          binaryCycleEnabled: false,
+          note: 'Binary Function Only'
+        },
+        right: {
+          id: 'shadow-alpha-right',
+          owner: 'ALPHA001',
+          placement: 'right',
+          state: 'reserved_shadow',
+          label: 'ALPHA R',
+          activationStatus: 'inactive',
+          registrationEnabled: false,
+          walletEnabled: false,
+          unilevelEnabled: false,
+          binaryCycleEnabled: false,
+          note: 'Binary Function Only'
+        }
+      },
+      accountStateLabel: 'PD',
+      parentNodeId: 'node-shadow-left',
+      level: 2
+    }
+  ],
+  notes: ['Shadow accounts sit directly under YOU 1.']
 };

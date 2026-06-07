@@ -1,30 +1,23 @@
 import { useEffect, useRef, type PropsWithChildren } from 'react';
 import { useLocation } from 'react-router-dom';
+import Lenis from 'lenis';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 const protectedPrefixes = ['/member', '/admin', '/cashier', '/bod'];
-const nativeScrollRoutes = [
-  '/rank-incentives',
-  '/vision',
-  '/mission',
-  '/founder',
-  '/products',
-  '/perfume-collection',
-  '/packages',
-  '/register',
-  '/thank-you'
-];
+const utilityRoutes = ['/login', '/register', '/thank-you'];
 
 export function SmoothScrollProvider({ children }: PropsWithChildren) {
   const location = useLocation();
-  const lenisRef = useRef<{ destroy: () => void; resize: () => void } | null>(null);
+  const lenisRef = useRef<Lenis | null>(null);
   const refreshRef = useRef<(() => void) | null>(null);
   const isProtectedOffice = protectedPrefixes.some((prefix) => location.pathname.startsWith(prefix));
-  const isNativeScrollRoute = nativeScrollRoutes.some((route) => location.pathname.startsWith(route));
+  const isUtilityRoute = utilityRoutes.some((route) => location.pathname.startsWith(route));
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    if (prefersReducedMotion || isProtectedOffice || isNativeScrollRoute) {
+    if (prefersReducedMotion || isProtectedOffice || isUtilityRoute) {
       lenisRef.current?.destroy();
       lenisRef.current = null;
       refreshRef.current = null;
@@ -33,69 +26,51 @@ export function SmoothScrollProvider({ children }: PropsWithChildren) {
     }
 
     document.documentElement.classList.add('has-lenis-scroll');
-    let cancelled = false;
-    let teardown = () => {};
+    gsap.registerPlugin(ScrollTrigger);
 
-    void (async () => {
-      const [{ default: Lenis }, { default: gsap }, { ScrollTrigger }] = await Promise.all([
-        import('lenis'),
-        import('gsap'),
-        import('gsap/ScrollTrigger')
-      ]);
+    const lenis = new Lenis({
+      autoRaf: false,
+      anchors: {
+        offset: 110
+      },
+      duration: 1.15,
+      lerp: 0.08,
+      syncTouch: false,
+      wheelMultiplier: 0.92
+    });
 
-      if (cancelled) {
-        return;
-      }
+    const update = (time: number) => {
+      lenis.raf(time * 1000);
+    };
 
-      gsap.registerPlugin(ScrollTrigger);
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add(update);
+    gsap.ticker.lagSmoothing(0);
+    lenisRef.current = lenis;
+    (window as any).lenis = lenis;
+    refreshRef.current = () => ScrollTrigger.refresh();
 
-      const lenis = new Lenis({
-        autoRaf: false,
-        anchors: {
-          offset: 110
-        },
-        duration: 1.15,
-        lerp: 0.08,
-        syncTouch: false,
-        wheelMultiplier: 0.92
-      });
-
-      const update = (time: number) => {
-        lenis.raf(time * 1000);
-      };
-
-      lenis.on('scroll', ScrollTrigger.update);
-      gsap.ticker.add(update);
-      gsap.ticker.lagSmoothing(0);
-      lenisRef.current = lenis;
-      refreshRef.current = () => ScrollTrigger.refresh();
-
-      const refreshId = window.requestAnimationFrame(() => {
-        ScrollTrigger.refresh();
-      });
-
-      teardown = () => {
-        window.cancelAnimationFrame(refreshId);
-        lenis.off('scroll', ScrollTrigger.update);
-        gsap.ticker.remove(update);
-        lenis.destroy();
-        lenisRef.current = null;
-        refreshRef.current = null;
-        document.documentElement.classList.remove('has-lenis-scroll');
-        ScrollTrigger.refresh();
-      };
-    })();
+    const refreshId = window.requestAnimationFrame(() => {
+      ScrollTrigger.refresh();
+    });
 
     return () => {
-      cancelled = true;
-      teardown();
+      window.cancelAnimationFrame(refreshId);
+      lenis.off('scroll', ScrollTrigger.update);
+      gsap.ticker.remove(update);
+      lenis.destroy();
+      lenisRef.current = null;
+      (window as any).lenis = null;
+      refreshRef.current = null;
+      document.documentElement.classList.remove('has-lenis-scroll');
+      ScrollTrigger.refresh();
     };
-  }, [isNativeScrollRoute, isProtectedOffice]);
+  }, [isProtectedOffice, isUtilityRoute]);
 
   useEffect(() => {
     if (
       isProtectedOffice ||
-      isNativeScrollRoute ||
+      isUtilityRoute ||
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
     ) {
       return;
@@ -109,7 +84,7 @@ export function SmoothScrollProvider({ children }: PropsWithChildren) {
     return () => {
       window.cancelAnimationFrame(refreshId);
     };
-  }, [isNativeScrollRoute, isProtectedOffice, location.pathname]);
+  }, [isProtectedOffice, isUtilityRoute, location.pathname]);
 
   return children;
 }

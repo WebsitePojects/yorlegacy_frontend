@@ -38,6 +38,7 @@ import {
   reviewAdminActivationCodes,
   reviewAdminEncashment,
   resetAdminSandbox,
+  searchMemberProfile,
   submitMemberEncashment,
   transferAdminActivationCodes,
   transferMemberActivationCodes,
@@ -70,8 +71,10 @@ import type {
 import type { RegistrationReadiness } from '../types/auth';
 
 type LoginPayload = {
-  email: string;
+  username: string;
   password: string;
+  rememberMe?: boolean;
+  scope?: 'member' | 'office';
 };
 
 type AuthContextValue = AuthState & {
@@ -152,6 +155,7 @@ type AuthContextValue = AuthState & {
   resetSandbox: () => Promise<GatedActionResponse>;
   getAdminBinaryTree: (rootUsername?: string) => Promise<GenealogyCenter>;
   getAdminSponsorTree: (rootUsername?: string) => Promise<GenealogyCenter>;
+  searchMemberProfile: (username: string) => Promise<{ username: string; fullName: string; packageTier: string }>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -192,7 +196,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   async function login(payload: LoginPayload): Promise<AuthState> {
-    const authState = await loginUser(payload.email, payload.password);
+    const authState = await loginUser(payload.username, payload.password, payload.rememberMe, payload.scope);
 
     setState({
       isLoading: false,
@@ -253,7 +257,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     updateMemberStatus: updateAdminMemberStatus,
     resetSandbox: resetAdminSandbox,
     getAdminBinaryTree: fetchAdminBinaryTree,
-    getAdminSponsorTree: fetchAdminSponsorTree
+    getAdminSponsorTree: fetchAdminSponsorTree,
+    searchMemberProfile
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

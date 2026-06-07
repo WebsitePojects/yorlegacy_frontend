@@ -8,3 +8,6 @@ qa-screens/
 test-results/
 docs/*.local.md
 docs/LOCAL_*.md
+.dev-server*
+*.log
+

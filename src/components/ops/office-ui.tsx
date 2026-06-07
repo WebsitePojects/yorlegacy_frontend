@@ -468,9 +468,9 @@ export function GatedActionsCard({ actions }: { actions: GatedAction[] }) {
       <CardHeader>
         <div className="flex items-center gap-2">
           <ShieldAlert className="size-4 text-amber-500" />
-          <CardTitle>Sandbox Notes</CardTitle>
+          <CardTitle>Operational Notes</CardTitle>
         </div>
-        <CardDescription>These notes explain how the branch-local sandbox behaves so the team can test hard without mistaking it for production.</CardDescription>
+        <CardDescription>These notes call out controls, review points, and evidence requirements before a workflow should be treated as fully released.</CardDescription>
       </CardHeader>
       <CardContent className="ops-gated-card-content space-y-3">
         {actions.map((action) => (

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://yorinternational.net/sitemap.xml
