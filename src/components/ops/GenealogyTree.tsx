@@ -197,7 +197,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
   const searchRef = useRef<HTMLDivElement | null>(null);
   const exportRef = useRef<HTMLDivElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const nodeRefs = useRef(new Map<string, HTMLButtonElement>());
+  const nodeRefs = useRef(new Map<string, HTMLDivElement>());
   const focusFrameRef = useRef<number | null>(null);
   const dragRef = useRef<{ pointerId: number; x: number; y: number; offsetX: number; offsetY: number; dragging: boolean } | null>(null);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
@@ -294,7 +294,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
     queueNodeFocus(root.nodeId, -140);
   }
 
-  function registerNodeRef(key: string, element: HTMLButtonElement | null) {
+  function registerNodeRef(key: string, element: HTMLDivElement | null) {
     if (element) {
       nodeRefs.current.set(key, element);
       return;
@@ -924,7 +924,7 @@ function BinaryBranch({
   focusedNodeKey?: string | null;
   onNavigateToNode?: (username: string) => void;
   onOpenSlot?: (slot: { parentUsername: string; parentReferralCode?: string; side: 'left' | 'right' }) => void;
-  registerNodeRef?: (key: string, element: HTMLButtonElement | null) => void;
+  registerNodeRef?: (key: string, element: HTMLDivElement | null) => void;
   onActivateShadow: (label: string) => Promise<void>;
   adminMode?: boolean;
 }) {
@@ -932,10 +932,40 @@ function BinaryBranch({
   const isSelected = source ? selectedNodeId === source.nodeId || focusedNodeKey === node.key : focusedNodeKey === node.key;
   const { presentNotice } = useFeedback();
 
+  const handleAction = async () => {
+    if (source) {
+      onSelect?.(source.nodeId);
+      onNavigateToNode?.(source.username);
+      return;
+    }
+
+    if (node.isShadowNode) {
+      await onActivateShadow(node.shadowSlot?.label ?? node.key);
+      return;
+    }
+
+    if (node.isOpenSlot && node.parentUsername && node.side !== 'root') {
+      if (adminMode) {
+        await presentNotice({
+          title: 'Admin View Only',
+          description: 'Admin view: open slots cannot be encoded.',
+          tone: 'info'
+        });
+        return;
+      }
+      onOpenSlot?.({
+        parentUsername: node.parentUsername,
+        parentReferralCode: node.parentReferralCode,
+        side: node.side
+      });
+    }
+  };
+
   return (
     <div className="genealogy-canvas-branch">
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         ref={(element) => registerNodeRef?.(node.key, element)}
         aria-label={
           source
@@ -954,34 +984,15 @@ function BinaryBranch({
           source && packageTone(source.packageTier),
           isSelected && 'is-selected'
         )}
-        onClick={async (event) => {
+        onClick={(event) => {
           event.stopPropagation();
-
-          if (source) {
-            onSelect?.(source.nodeId);
-            onNavigateToNode?.(source.username);
-            return;
-          }
-
-          if (node.isShadowNode) {
-            await onActivateShadow(node.shadowSlot?.label ?? node.key);
-            return;
-          }
-
-          if (node.isOpenSlot && node.parentUsername && node.side !== 'root') {
-            if (adminMode) {
-              await presentNotice({
-                title: 'Admin View Only',
-                description: 'Admin view: open slots cannot be encoded.',
-                tone: 'info'
-              });
-              return;
-            }
-            onOpenSlot?.({
-              parentUsername: node.parentUsername,
-              parentReferralCode: node.parentReferralCode,
-              side: node.side
-            });
+          void handleAction();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            event.stopPropagation();
+            void handleAction();
           }
         }}
         onPointerDown={(event) => event.stopPropagation()}
@@ -1162,7 +1173,7 @@ function BinaryBranch({
             )}
           </>
         )}
-      </button>
+      </div>
 
       {node.children.length ? (
         <div className="genealogy-canvas-children">

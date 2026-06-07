@@ -6,6 +6,7 @@ import { useFeedback } from '../feedback/FeedbackProvider';
 import { earnRoutes, primaryNavigation } from '../../config/navigation';
 import { YorBrandMark } from '../branding/YorBrandMark';
 import { useTheme } from '../theme-provider';
+import { PublicHeader } from './PublicHeader';
 
 type MobileNavGroup = {
   id: 'home' | 'company' | 'network' | 'earn' | 'join';
@@ -133,6 +134,7 @@ export function SiteFrame({ children }: PropsWithChildren) {
   if (isExperiencePage || isEarnExperiencePage) {
     return (
       <div className={`public-shell ${isExperiencePage ? 'is-homepage' : 'is-earn-experience'}`}>
+        <PublicHeader />
         {children}
       </div>
     );

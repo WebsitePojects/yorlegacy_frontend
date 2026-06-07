@@ -110,23 +110,7 @@ export function LoginPage() {
 
   return (
     <div className="story-landing-page is-lite-experience" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Floating Header */}
-      <header className="story-header" style={{ position: 'sticky', top: 0, pointerEvents: 'auto', background: 'rgba(3, 3, 3, 0.9)', backdropFilter: 'blur(12px)' }}>
-        <NavLink className="story-logo-wrap" to="/">
-          <span className="story-brand-name">Yor International</span>
-        </NavLink>
-        <div className="story-header-actions">
-          {scope === 'member' ? (
-            <NavLink className="story-nav-link" to="/admin/login" style={{ marginRight: '1rem' }}>Office Login</NavLink>
-          ) : (
-            <NavLink className="story-nav-link" to="/login" style={{ marginRight: '1rem' }}>Member Login</NavLink>
-          )}
-          <NavLink className="story-nav-link" to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-            <ArrowLeft size={12} />
-            Return Home
-          </NavLink>
-        </div>
-      </header>
+
 
       {/* Main Login Content */}
       <main style={{ flex: 1, padding: '6rem 4vw', display: 'flex', alignItems: 'center', background: '#030303', position: 'relative' }}>
@@ -285,11 +269,24 @@ export function LoginPage() {
                   </div>
                 ) : null}
 
-                {scope === 'member' && (
+                {scope === 'member' ? (
                   <p style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)' }}>
                     Not a member yet?{' '}
                     <NavLink to="/register" style={{ color: '#c5a880', textDecoration: 'underline' }}>
                       Register here
+                    </NavLink>
+                    <span style={{ display: 'block', marginTop: '0.5rem' }}>
+                      Office user?{' '}
+                      <NavLink to="/admin/login" style={{ color: '#c5a880', textDecoration: 'underline' }}>
+                        Office Login
+                      </NavLink>
+                    </span>
+                  </p>
+                ) : (
+                  <p style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)' }}>
+                    Member user?{' '}
+                    <NavLink to="/login" style={{ color: '#c5a880', textDecoration: 'underline' }}>
+                      Member Login
                     </NavLink>
                   </p>
                 )}
