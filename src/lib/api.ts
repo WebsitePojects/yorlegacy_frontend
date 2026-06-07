@@ -84,10 +84,10 @@ export function fetchAuthState(): Promise<AuthState> {
   return fetchJson<AuthState>('/api/auth/me', { method: 'GET' });
 }
 
-export function loginUser(email: string, password: string): Promise<AuthState> {
+export function loginUser(username: string, password: string, rememberMe?: boolean, scope?: 'member' | 'office'): Promise<AuthState> {
   return fetchJson<AuthState>('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ username, password, rememberMe, scope })
   });
 }
 
@@ -98,7 +98,7 @@ export function logoutUser(): Promise<{ authenticated: boolean }> {
 }
 
 export function fetchDemoCredentials(): Promise<
-  Record<AppRole, { email: string; password: string }>
+  Record<AppRole, { username: string; password: string }>
 > {
   return fetchJson('/api/auth/demo-credentials', { method: 'GET' });
 }
@@ -141,6 +141,12 @@ export function fetchAdminModule(moduleId: string): Promise<OperationalModule> {
 
 export function fetchMemberActivationCodes(): Promise<MemberActivationCodeCenter> {
   return fetchJson('/api/member/activation-codes', { method: 'GET' });
+}
+
+export function searchMemberProfile(username: string): Promise<{ username: string; fullName: string; packageTier: string }> {
+  return fetchJson(`/api/member/search-profile?username=${encodeURIComponent(username)}`, {
+    method: 'GET'
+  });
 }
 
 export function transferMemberActivationCodes(payload: {
@@ -368,13 +374,16 @@ export function fetchAdminSponsorTree(rootUsername?: string): Promise<GenealogyC
 }
 
 export function fetchRegistrationPreview(payload: {
+  origin: 'referral-link' | 'genealogy-slot';
   fullName: string;
+  username?: string;
   email: string;
   phone: string;
   password: string;
-  sponsorCode: string;
-  packageTier: string;
-  preferredSide: 'left' | 'right';
+  activationCode: string;
+  referralCode?: string;
+  placementParentUsername?: string;
+  placementSide?: 'left' | 'right';
 }): Promise<RegistrationPreview> {
   return fetchJson('/api/registration/preview', {
     method: 'POST',
@@ -383,13 +392,16 @@ export function fetchRegistrationPreview(payload: {
 }
 
 export function submitRegistration(payload: {
+  origin: 'referral-link' | 'genealogy-slot';
   fullName: string;
+  username?: string;
   email: string;
   phone: string;
   password: string;
-  sponsorCode: string;
-  packageTier: string;
-  preferredSide: 'left' | 'right';
+  activationCode: string;
+  referralCode?: string;
+  placementParentUsername?: string;
+  placementSide?: 'left' | 'right';
 }): Promise<RegistrationSubmitResponse> {
   return fetchJson('/api/registration/submit', {
     method: 'POST',

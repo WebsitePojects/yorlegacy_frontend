@@ -1,7 +1,10 @@
 import type { GatedActionResponse, MemberActivationCodeCenter, MoneyMode } from './auth';
 
+export type RegistrationOrigin = 'referral-link' | 'genealogy-slot';
+
 export type RegistrationPreview = {
   moneyMode: MoneyMode;
+  origin: RegistrationOrigin;
   canProceed: boolean;
   sponsor: {
     username: string;
@@ -10,11 +13,12 @@ export type RegistrationPreview = {
     packageTier: string;
   } | null;
   selectedPackage: string | null;
-  preferredSide: 'left' | 'right' | null;
+  placementSide: 'left' | 'right' | null;
+  resolvedAccountType: string | null;
   matchingCode: MemberActivationCodeCenter['inventory'][number] | null;
   placement: {
     placementUsername: string;
-    placementSide: string;
+    placementSide: 'left' | 'right';
     note: string;
   } | null;
   availableCodes: MemberActivationCodeCenter['inventory'];
@@ -29,6 +33,8 @@ export type RegistrationSubmitResponse = GatedActionResponse & {
     email: string;
     referralCode: string;
     sponsorUsername: string;
+    packageTier: string;
+    accountType: string;
     loginEmail: string;
   };
 };

@@ -1,7 +1,5 @@
-import { ArrowLeft, ArrowRight, Menu, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { YorBrandMark } from '../branding/YorBrandMark';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 
 type EarnExperienceChromeProps = {
   title: string;
@@ -10,85 +8,14 @@ type EarnExperienceChromeProps = {
   backLabel?: string;
 };
 
-const earnExperienceLinks = [
-  { label: 'Home', href: '/' },
-  { label: 'Vision', href: '/vision' },
-  { label: 'Mission', href: '/mission' },
-  { label: 'Founder', href: '/founder' },
-  { label: 'Products', href: '/products' },
-  { label: 'Packages', href: '/packages' },
-  { label: 'Join Yor', href: '/register', tone: 'primary' as const },
-  { label: 'Portal Login', href: '/login', tone: 'secondary' as const }
-];
-
 export function EarnExperienceHeader({
   title,
   subtitle,
-  backHref = '/earn',
-  backLabel = 'Back to Earnings'
+  backHref = '/#scene-complan',
+  backLabel = 'Back to Ways of Wealth'
 }: EarnExperienceChromeProps) {
-  const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [location.pathname]);
-
   return (
     <header className="earn-experience-header">
-      <div className={`earn-experience-topbar ${mobileMenuOpen ? 'is-open' : ''}`}>
-        <NavLink className="earn-experience-brand" to="/">
-          <YorBrandMark className="earn-experience-brand-mark" />
-          <span>
-            <strong>Yor International</strong>
-            <small>Premium earnings experience</small>
-          </span>
-        </NavLink>
-
-        <div className="earn-experience-actions">
-          <NavLink className="earn-experience-pill" to="/register">
-            Join Yor
-          </NavLink>
-          <NavLink className="earn-experience-pill is-muted earn-experience-login-pill" to="/login">
-            Portal Login
-          </NavLink>
-          <button
-            aria-expanded={mobileMenuOpen}
-            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-            className="earn-experience-menu-toggle"
-            onClick={() => setMobileMenuOpen((current) => !current)}
-            type="button"
-          >
-            {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
-        </div>
-      </div>
-
-      {mobileMenuOpen ? (
-        <div className="earn-experience-mobile-menu">
-          <div className="earn-experience-mobile-menu-card">
-            {earnExperienceLinks.map((link) => (
-              <NavLink
-                key={link.href}
-                className={({ isActive }) =>
-                  [
-                    'earn-experience-mobile-link',
-                    isActive ? 'is-active' : '',
-                    link.tone === 'primary' ? 'is-primary' : '',
-                    link.tone === 'secondary' ? 'is-secondary' : ''
-                  ]
-                    .filter(Boolean)
-                    .join(' ')
-                }
-                to={link.href}
-              >
-                {link.label}
-              </NavLink>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       <div className="earn-experience-hero">
         <NavLink className="earn-experience-back" to={backHref}>
           <ArrowLeft size={16} />

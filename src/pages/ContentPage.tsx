@@ -9,13 +9,23 @@ import { RegistrationPageView } from '../components/pages/RegistrationPageView';
 import { SpotlightPage } from '../components/pages/SpotlightPage';
 import { PageTemplate } from '../components/layout/PageTemplate';
 import { usePageContent } from '../hooks/usePageContent';
+import { buildSeoConfig, useSeoDocument } from '../lib/seo';
+import { useLocation } from 'react-router-dom';
 
 type ContentPageProps = {
   slug: string;
 };
 
 export function ContentPage({ slug }: ContentPageProps) {
+  const location = useLocation();
   const { data, isLoading, error } = usePageContent(slug);
+  useSeoDocument(
+    buildSeoConfig({
+      slug,
+      pathname: location.pathname,
+      content: data
+    })
+  );
 
   if (!data && (error || !isLoading)) {
     return (
