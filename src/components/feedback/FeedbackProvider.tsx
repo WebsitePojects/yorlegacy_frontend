@@ -38,13 +38,25 @@ type NotifyOptions = {
   tone?: FeedbackTone;
 };
 
+type NoticeOptions = {
+  title: string;
+  description: string;
+  actionLabel?: string;
+  tone?: FeedbackTone;
+};
+
 type PendingConfirm = ConfirmOptions & {
   resolve: (confirmed: boolean) => void;
+};
+
+type PendingNotice = NoticeOptions & {
+  resolve: () => void;
 };
 
 type FeedbackContextValue = {
   confirmAction: (options: ConfirmOptions) => Promise<boolean>;
   notify: (options: NotifyOptions) => void;
+  presentNotice: (options: NoticeOptions) => Promise<void>;
 };
 
 const FeedbackContext = createContext<FeedbackContextValue | null>(null);
@@ -66,6 +78,7 @@ const toneClasses: Record<FeedbackTone, string> = {
 export function FeedbackProvider({ children }: PropsWithChildren) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+  const [pendingNotice, setPendingNotice] = useState<PendingNotice | null>(null);
   const toastIdRef = useRef(0);
   const dismissToasts = useCallback(() => {
     setToasts([]);
@@ -114,17 +127,33 @@ export function FeedbackProvider({ children }: PropsWithChildren) {
     });
   }, []);
 
+  const presentNotice = useCallback((options: NoticeOptions) => {
+    return new Promise<void>((resolve) => {
+      setPendingNotice({
+        ...options,
+        tone: options.tone ?? 'info',
+        resolve
+      });
+    });
+  }, []);
+
   const value = useMemo(
     () => ({
       confirmAction,
-      notify
+      notify,
+      presentNotice
     }),
-    [confirmAction, notify]
+    [confirmAction, notify, presentNotice]
   );
 
   function closeConfirm(confirmed: boolean) {
     pendingConfirm?.resolve(confirmed);
     setPendingConfirm(null);
+  }
+
+  function closeNotice() {
+    pendingNotice?.resolve();
+    setPendingNotice(null);
   }
 
   return (
@@ -169,6 +198,46 @@ export function FeedbackProvider({ children }: PropsWithChildren) {
                         </Button>
                       </AlertDialogPrimitive.Action>
                     </div>
+              </AlertDialogPrimitive.Content>
+            </>
+          ) : null}
+        </AlertDialogPrimitive.Portal>
+      </AlertDialogPrimitive.Root>
+
+      <AlertDialogPrimitive.Root open={Boolean(pendingNotice)}>
+        <AlertDialogPrimitive.Portal>
+          {pendingNotice ? (
+            <>
+              <AlertDialogPrimitive.Overlay className="feedback-dialog-overlay fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm" />
+              <AlertDialogPrimitive.Content className="feedback-dialog-content fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--popover)] p-6 text-[var(--popover-foreground)] shadow-2xl">
+                <div className="flex items-start gap-4">
+                  <div
+                    className={cn(
+                      'flex size-11 shrink-0 items-center justify-center rounded-xl border bg-[var(--background)]',
+                      toneClasses[pendingNotice.tone ?? 'info']
+                    )}
+                  >
+                    {(() => {
+                      const Icon = toneIcon[pendingNotice.tone ?? 'info'];
+                      return <Icon className="size-5" />;
+                    })()}
+                  </div>
+                  <div className="min-w-0 space-y-2">
+                    <AlertDialogPrimitive.Title className="text-lg font-semibold">
+                      {pendingNotice.title}
+                    </AlertDialogPrimitive.Title>
+                    <AlertDialogPrimitive.Description className="whitespace-pre-line text-sm leading-6 text-[var(--muted-foreground)]">
+                      {pendingNotice.description}
+                    </AlertDialogPrimitive.Description>
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-end">
+                  <AlertDialogPrimitive.Action asChild>
+                    <Button type="button" onClick={closeNotice}>
+                      {pendingNotice.actionLabel ?? 'Close'}
+                    </Button>
+                  </AlertDialogPrimitive.Action>
+                </div>
               </AlertDialogPrimitive.Content>
             </>
           ) : null}

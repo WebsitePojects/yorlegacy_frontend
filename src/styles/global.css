@@ -1289,8 +1289,8 @@ body {
 
 .genealogy-canvas {
   width: max-content;
-  min-width: 1480px;
-  margin: 54px auto 72px;
+  min-width: 900px;
+  margin: 40px auto 56px;
   transform-origin: top center;
   transition: transform 80ms linear;
 }
@@ -1321,15 +1321,15 @@ body {
 .genealogy-canvas-branch {
   display: grid;
   justify-items: center;
-  gap: 34px;
+  gap: 22px;
   position: relative;
 }
 
 .genealogy-canvas-children {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(2, minmax(340px, 1fr));
-  gap: 72px;
+  grid-template-columns: repeat(2, minmax(190px, 1fr));
+  gap: 32px;
   width: 100%;
 }
 
@@ -1337,29 +1337,43 @@ body {
   content: '';
   position: absolute;
   top: -24px;
-  left: 20%;
-  right: 20%;
+  left: 25%;
+  right: 25%;
   height: 2px;
   background: linear-gradient(90deg, rgba(245, 200, 66, 0.08), rgba(245, 200, 66, 0.58), rgba(245, 200, 66, 0.08));
+}
+
+.genealogy-canvas-children::after {
+  content: '';
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  height: 10px;
+  background: linear-gradient(180deg, rgba(245, 200, 66, 0.55), rgba(122, 64, 32, 0.18));
 }
 
 .genealogy-canvas-children > .genealogy-canvas-branch::before {
   content: '';
   position: absolute;
   top: -38px;
+  left: 50%;
+  transform: translateX(-50%);
   width: 1px;
   height: 38px;
   background: linear-gradient(180deg, rgba(245, 200, 66, 0.55), rgba(122, 64, 32, 0.18));
 }
 
 .genealogy-canvas-node {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr;
   justify-items: center;
-  gap: 8px;
-  width: 232px;
-  min-height: 232px;
-  padding: 16px 18px 18px;
+  gap: 5px;
+  width: 164px;
+  min-height: 164px;
+  padding: 12px 10px 12px;
   border: 1px solid color-mix(in oklab, var(--border) 62%, var(--yor-copper) 38%);
   border-radius: 999px;
   background:
@@ -1367,9 +1381,10 @@ body {
     linear-gradient(180deg, color-mix(in oklab, var(--card) 96%, transparent), color-mix(in oklab, var(--background) 88%, transparent));
   color: var(--foreground);
   text-align: center;
-  box-shadow: 0 22px 52px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
   cursor: pointer;
   transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+  overflow: visible;
 }
 
 .genealogy-canvas-node:hover {
@@ -1426,8 +1441,8 @@ body {
 
 .genealogy-canvas-node-orb {
   display: grid;
-  width: 72px;
-  height: 72px;
+  width: 56px;
+  height: 56px;
   place-items: center;
   border: 1px solid rgba(245, 200, 66, 0.36);
   border-radius: 999px;
@@ -1435,10 +1450,11 @@ body {
     radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.22), transparent 32%),
     linear-gradient(145deg, #140d0c, #8e4d29 48%, #f1b943);
   color: #fff8e8;
-  font-size: 0.95rem;
+  font-size: 0.78rem;
   font-weight: 900;
-  letter-spacing: 0.08em;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 14px 32px rgba(194, 123, 70, 0.24);
+  letter-spacing: 0.06em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 20px rgba(194, 123, 70, 0.24);
+  flex-shrink: 0;
 }
 
 .genealogy-canvas-node-main,
@@ -1449,23 +1465,31 @@ body {
 
 .genealogy-canvas-node-title {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
 }
 
 .genealogy-canvas-node-title strong {
   color: var(--foreground);
-  font-size: 0.94rem;
+  font-size: 0.72rem;
   line-height: 1.2;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .genealogy-canvas-node-main p {
-  margin-top: 6px;
+  margin-top: 2px;
   color: var(--muted-foreground);
-  font-size: 0.68rem;
-  line-height: 1.52;
+  font-size: 0.58rem;
+  line-height: 1.3;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .genealogy-canvas-node.is-shadow-slot .genealogy-canvas-node-title strong {
@@ -1519,29 +1543,223 @@ body {
 }
 
 .genealogy-canvas-node-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: auto;
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  margin-top: 2px;
 }
 
 .genealogy-canvas-node-stats span {
   border: 1px solid color-mix(in oklab, var(--border) 72%, var(--yor-copper) 28%);
   border-radius: 999px;
-  padding: 5px 6px;
+  padding: 2px 5px;
   background: color-mix(in oklab, var(--yor-copper) 8%, transparent);
   color: var(--muted-foreground);
-  font-size: 0.58rem;
+  font-size: 0.5rem;
   font-weight: 800;
   text-align: center;
+  white-space: nowrap;
 }
 
 .genealogy-canvas-node-status {
   width: 100%;
   color: var(--yor-copper-soft);
-  font-size: 0.64rem;
+  font-size: 0.52rem;
   font-weight: 800;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ── Node Hover Popover ──────────────────────────────────────────── */
+.genealogy-canvas-node-popover {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 120;
+  width: 260px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in oklab, var(--yor-copper) 42%, var(--border));
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(245, 200, 66, 0.14), transparent 34%),
+    color-mix(in oklab, var(--card) 96%, transparent);
+  box-shadow: 0 20px 48px rgba(0,0,0,0.38), 0 0 0 1px rgba(245,200,66,0.08);
+  backdrop-filter: blur(18px);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 160ms ease, visibility 160ms ease, transform 160ms ease;
+  transform: translateX(-50%) translateY(4px);
+  text-align: left;
+}
+
+.genealogy-canvas-node-popover::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: color-mix(in oklab, var(--yor-copper) 42%, var(--card));
+}
+
+.genealogy-canvas-node:hover .genealogy-canvas-node-popover,
+.genealogy-canvas-node:focus-visible .genealogy-canvas-node-popover {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Flip popover to below when near top of viewport */
+.genealogy-canvas-branch:first-child .genealogy-canvas-node-popover {
+  bottom: auto;
+  top: calc(100% + 12px);
+  transform: translateX(-50%) translateY(-4px);
+}
+
+.genealogy-canvas-branch:first-child .genealogy-canvas-node:hover .genealogy-canvas-node-popover,
+.genealogy-canvas-branch:first-child .genealogy-canvas-node:focus-visible .genealogy-canvas-node-popover {
+  transform: translateX(-50%) translateY(0);
+}
+
+.genealogy-canvas-branch:first-child .genealogy-canvas-node-popover::after {
+  top: auto;
+  bottom: 100%;
+  border-top-color: transparent;
+  border-bottom-color: color-mix(in oklab, var(--yor-copper) 42%, var(--card));
+}
+
+.genealogy-canvas-node-popover strong {
+  display: block;
+  color: var(--foreground);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 2px;
+}
+
+.genealogy-canvas-node-popover p {
+  color: var(--muted-foreground);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.genealogy-canvas-node-popover span {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border: 1px solid color-mix(in oklab, var(--yor-copper) 28%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--yor-copper) 8%, transparent);
+  color: var(--yor-copper-soft);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.genealogy-canvas-node-popover small {
+  display: block;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  color: var(--muted-foreground);
+  font-size: 0.62rem;
+  line-height: 1.55;
+}
+
+/* Rich popover rows */
+.genealogy-popover-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 48%, transparent);
+}
+
+.genealogy-popover-row:last-child {
+  border-bottom: none;
+}
+
+.genealogy-popover-row-label {
+  color: var(--muted-foreground);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.genealogy-popover-row-value {
+  color: var(--foreground);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-align: right;
+  word-break: break-all;
+}
+
+.genealogy-popover-row-value.is-positive {
+  color: #56d6a1;
+}
+
+.genealogy-popover-row-value.is-warn {
+  color: #f1b943;
+}
+
+.genealogy-popover-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in oklab, var(--yor-copper) 24%, var(--border));
+}
+
+.genealogy-popover-avatar {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(245, 200, 66, 0.3);
+  border-radius: 999px;
+  background: linear-gradient(145deg, #140d0c, #8e4d29 48%, #f1b943);
+  color: #fff8e8;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.genealogy-popover-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.genealogy-popover-name strong {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-bottom: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.genealogy-popover-name p {
+  font-size: 0.62rem;
+  color: var(--muted-foreground);
+  margin: 0;
+}
+
+.genealogy-popover-section-label {
+  margin: 8px 0 4px;
+  color: var(--yor-copper-soft);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
@@ -6100,14 +6318,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 0;
   overflow: hidden;
-  background: var(--yor-bg);
+  background: #030303;
 }
 
 .yor-login-root.is-lite {
-  background:
-    linear-gradient(180deg, #0b1015 0%, #14110f 58%, #0d0c0b 100%);
+  background: #030303;
 }
 
 /* ─── Ambient background ─── */
@@ -6116,60 +6333,18 @@ body {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
+  background-image: url('/assets/yor/generated/login_bg_pattern.png');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.04;
 }
 
 .yor-login-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(72px);
-  opacity: 0.38;
-  animation: loginOrbDrift 12s ease-in-out infinite alternate;
-}
-
-.yor-login-orb-1 {
-  width: min(560px, 80vw);
-  height: min(560px, 80vw);
-  top: -15%;
-  left: -10%;
-  background: radial-gradient(circle, rgba(216, 163, 79, 0.55) 0%, transparent 70%);
-  animation-duration: 14s;
-}
-
-.yor-login-orb-2 {
-  width: min(400px, 60vw);
-  height: min(400px, 60vw);
-  bottom: -10%;
-  right: -8%;
-  background: radial-gradient(circle, rgba(143, 91, 55, 0.45) 0%, transparent 70%);
-  animation-duration: 18s;
-  animation-delay: -6s;
-}
-
-.yor-login-orb-3 {
-  width: min(300px, 50vw);
-  height: min(300px, 50vw);
-  top: 40%;
-  left: 30%;
-  background: radial-gradient(circle, rgba(242, 184, 75, 0.2) 0%, transparent 70%);
-  animation-duration: 22s;
-  animation-delay: -10s;
+  display: none;
 }
 
 .yor-login-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(143, 91, 55, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(143, 91, 55, 0.06) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 0%, transparent 100%);
-}
-
-@keyframes loginOrbDrift {
-  0%   { transform: translate(0, 0) scale(1); }
-  33%  { transform: translate(3%, -4%) scale(1.04); }
-  66%  { transform: translate(-2%, 3%) scale(0.97); }
-  100% { transform: translate(4%, 1%) scale(1.02); }
+  display: none;
 }
 
 /* ─── Main card ─── */
@@ -6179,30 +6354,27 @@ body {
   display: grid;
   grid-template-columns: 1fr;
   width: 100%;
-  max-width: 480px;
-  border-radius: 28px;
+  max-width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  border-radius: 0;
   overflow: hidden;
-  border: 1px solid var(--yor-border);
-  background: var(--card);
-  box-shadow:
-    0 0 0 1px rgba(216, 163, 79, 0.08),
-    0 32px 80px rgba(0, 0, 0, 0.26),
-    0 8px 24px rgba(0, 0, 0, 0.14);
-  backdrop-filter: blur(24px);
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .yor-login-root.is-lite .yor-login-card {
-  box-shadow:
-    0 0 0 1px rgba(216, 163, 79, 0.05),
-    0 18px 44px rgba(0, 0, 0, 0.2);
+  box-shadow: none;
   backdrop-filter: none;
 }
 
 @media (min-width: 900px) {
   .yor-login-card {
-    grid-template-columns: 1fr 1.1fr;
-    max-width: 920px;
-    border-radius: 32px;
+    grid-template-columns: 1fr 1.2fr;
+    max-width: 100%;
+    border-radius: 0;
   }
 }
 
@@ -10980,7 +11152,7 @@ html, body {
 
 /* Mobile nav shell placeholder — nav is now position:fixed outside scroll */
 .ops-mobile-nav-shell {
-  display: none;
+  display: block;
 }
 
 /* ── KPI / Metric Cards ───────────────────────────────────────────────────── */
@@ -12629,3 +12801,458 @@ img, video, canvas, svg {
     font-size: 0.95rem;
   }
 }
+
+/* ── Genealogy Tree Additions ── */
+.genealogy-canvas-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 6px 4px 12px;
+  min-width: 280px;
+}
+
+.genealogy-canvas-search input {
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: 0.8rem;
+  color: var(--foreground);
+  flex: 1;
+  min-width: 0;
+}
+
+.genealogy-canvas-search button {
+  background: color-mix(in oklab, var(--yor-copper) 22%, transparent);
+  border: 0;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--yor-copper-soft);
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.genealogy-canvas-search button:hover {
+  background: var(--yor-copper);
+  color: #fff;
+}
+
+.genealogy-canvas-search-popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  margin-top: 8px;
+  border: 1px solid color-mix(in oklab, var(--yor-copper) 42%, var(--border));
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--card) 98%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+  max-height: 280px;
+  display: flex;
+  flex-direction: column;
+}
+
+.genealogy-canvas-search-caption {
+  padding: 8px 12px 6px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--yor-copper-soft);
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 48%, transparent);
+}
+
+.genealogy-canvas-search-results {
+  overflow-y: auto;
+  max-height: 240px;
+}
+
+.genealogy-canvas-search-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 32%, transparent);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 180ms ease;
+}
+
+.genealogy-canvas-search-option:last-child {
+  border-bottom: 0;
+}
+
+.genealogy-canvas-search-option:hover,
+.genealogy-canvas-search-option.is-highlighted {
+  background: color-mix(in oklab, var(--yor-copper) 12%, transparent);
+}
+
+.genealogy-canvas-search-kind {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 0.52rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--yor-copper) 16%, transparent);
+  color: var(--yor-copper-soft);
+}
+
+.genealogy-canvas-search-kind.is-shadow {
+  background: color-mix(in oklab, var(--yor-gold) 16%, transparent);
+  color: var(--yor-gold);
+}
+
+.genealogy-canvas-search-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.genealogy-canvas-search-copy strong {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--foreground);
+}
+
+.genealogy-canvas-search-copy p {
+  font-size: 0.62rem;
+  color: var(--muted-foreground);
+  margin: 0;
+}
+
+.genealogy-canvas-search-option small {
+  font-size: 0.58rem;
+  color: var(--muted-foreground);
+}
+
+.genealogy-canvas-search-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+}
+
+.genealogy-canvas-export {
+  position: relative;
+}
+
+.genealogy-canvas-export-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 10000;
+  margin-top: 8px;
+  min-width: 140px;
+  border: 1px solid color-mix(in oklab, var(--yor-copper) 42%, var(--border));
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--card) 98%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.42);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.genealogy-canvas-export-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.genealogy-canvas-export-menu button:hover {
+  background: color-mix(in oklab, var(--yor-copper) 16%, transparent);
+  color: var(--yor-copper-soft);
+}
+
+.genealogy-canvas-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 20px;
+  border: 1px solid color-mix(in oklab, var(--border) 74%, var(--yor-copper) 26%);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 100% 100%, color-mix(in oklab, var(--yor-copper) 6%, transparent), transparent 38%),
+    color-mix(in oklab, var(--card) 94%, transparent);
+}
+
+.genealogy-canvas-breakdown > div {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.genealogy-canvas-breakdown span {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--yor-copper-soft);
+}
+
+.genealogy-canvas-breakdown strong {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.genealogy-canvas-breakdown p {
+  font-size: 0.68rem;
+  color: var(--muted-foreground);
+  margin: 0;
+  line-height: 1.45;
+}
+
+.genealogy-canvas-depth {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+}
+
+.genealogy-canvas-depth select {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--foreground);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 180ms ease;
+}
+
+.genealogy-canvas-depth select:hover {
+  border-color: color-mix(in oklab, var(--yor-copper) 52%, var(--border));
+}
+
+@media (max-width: 768px) {
+  .genealogy-canvas-breakdown {
+    display: none;
+  }
+  .registration-clean-header,
+  .registration-context-grid {
+    display: none !important;
+  }
+  .login-brand-col {
+    display: none !important;
+  }
+  .login-content-wrap {
+    gap: 0 !important;
+  }
+}
+
+/* --- YOR Genealogy Widened Card-Style Node Layout Overrides --- */
+.genealogy-canvas-node {
+  position: relative;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+  width: 210px !important;
+  min-height: 100px !important;
+  height: auto !important;
+  aspect-ratio: auto !important;
+  padding: 12px !important;
+  border-radius: 16px !important;
+  text-align: left !important;
+  align-content: stretch !important;
+}
+
+.genealogy-canvas-node.is-open-slot {
+  aspect-ratio: auto !important;
+  min-height: 100px !important;
+}
+
+.genealogy-canvas-node.is-shadow-slot {
+  aspect-ratio: auto !important;
+  min-height: 100px !important;
+}
+
+.genealogy-canvas-node.is-shadow-activated {
+  aspect-ratio: auto !important;
+  min-height: 100px !important;
+}
+
+.genealogy-canvas-node-main {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+  gap: 4px !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.genealogy-canvas-node-title {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+  gap: 1px !important;
+  width: 100% !important;
+}
+
+.genealogy-canvas-node-title strong {
+  max-width: 110px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  display: block !important;
+}
+
+.genealogy-canvas-node-main p {
+  margin-top: 0 !important;
+  min-height: 0 !important;
+  max-width: 110px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  display: block !important;
+}
+
+.genealogy-canvas-node-stats {
+  display: flex !important;
+  gap: 8px !important;
+  justify-content: flex-start !important;
+  font-size: 0.65rem !important;
+  color: var(--yor-copper-soft) !important;
+  font-weight: 700 !important;
+  width: 100% !important;
+}
+
+.genealogy-canvas-children {
+  grid-template-columns: repeat(2, minmax(220px, 1fr)) !important;
+  gap: 40px !important;
+}
+
+/* --- YOR Registration Modal Overlay & Fullscreen Mobile Layout --- */
+.registration-page--modal-shell {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 1000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+  overflow-y: auto !important;
+}
+
+.registration-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: -1 !important;
+  background: rgba(3, 3, 3, 0.75) !important;
+  backdrop-filter: blur(16px) !important;
+  cursor: pointer !important;
+}
+
+.registration-shell--modal {
+  width: 100% !important;
+  max-width: 680px !important;
+  margin: auto !important;
+  padding: 0 !important;
+}
+
+.registration-card--modal {
+  width: 100% !important;
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--yor-copper) 12%, transparent), transparent 32%),
+    color-mix(in oklab, var(--card) 98%, transparent) !important;
+  border: 1px solid color-mix(in oklab, var(--border) 70%, var(--yor-copper) 30%) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.45) !important;
+  padding: 32px !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.registration-modal-topbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 24px !important;
+  padding-bottom: 16px !important;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 80%, var(--yor-copper) 20%) !important;
+}
+
+.registration-modal-close {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 36px !important;
+  height: 36px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--yor-text) !important;
+  cursor: pointer !important;
+  transition: all 180ms ease !important;
+}
+
+.registration-modal-close:hover {
+  background: color-mix(in oklab, var(--yor-copper) 16%, transparent) !important;
+  color: var(--yor-copper-soft) !important;
+  border-color: color-mix(in oklab, var(--yor-copper) 48%, var(--border)) !important;
+  transform: scale(1.05) !important;
+}
+
+@media (max-width: 768px) {
+  .registration-page--modal-shell {
+    padding: 0 !important;
+    align-items: flex-start !important;
+  }
+
+  .registration-shell--modal {
+    max-width: 100% !important;
+    margin: 0 !important;
+    min-height: 100vh !important;
+  }
+
+  .registration-card--modal {
+    border: 0 !important;
+    border-radius: 0 !important;
+    min-height: 100vh !important;
+    padding: 24px 16px 40px !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  
+  .registration-modal-topbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    background: #0d0c0b !important;
+    padding-top: 8px !important;
+    margin-top: -8px !important;
+  }
+}
+

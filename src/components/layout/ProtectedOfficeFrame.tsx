@@ -82,21 +82,24 @@ function officeLabelForBasePath(basePath: OfficeBasePath): string {
 function workspaceLinksForRole(role: AppRole | undefined): WorkspaceLink[] {
   if (role === 'member') {
     return [
-      { href: '/member', label: 'Member' }
+      { href: '/member', label: 'Member' },
+      { href: '/', label: 'Public Site' }
     ];
   }
 
   if (role === 'cashier') {
     return [
       { href: '/cashier', label: 'Cashier' },
-      { href: '/member', label: 'Member View' }
+      { href: '/member', label: 'Member View' },
+      { href: '/', label: 'Public Site' }
     ];
   }
 
   if (role === 'bod') {
     return [
       { href: '/bod', label: 'Board' },
-      { href: '/member', label: 'Member View' }
+      { href: '/member', label: 'Member View' },
+      { href: '/', label: 'Public Site' }
     ];
   }
 
@@ -104,7 +107,8 @@ function workspaceLinksForRole(role: AppRole | undefined): WorkspaceLink[] {
     { href: '/admin', label: 'Admin' },
     { href: '/cashier', label: 'Cashier' },
     { href: '/bod', label: 'Board' },
-    { href: '/member', label: 'Member View' }
+    { href: '/member', label: 'Member View' },
+    { href: '/', label: 'Public Site' }
   ];
 }
 
@@ -213,56 +217,58 @@ export function ProtectedOfficeFrame({
   return (
     <section className="ops-shell bg-[var(--background)] text-[var(--foreground)]">
       <header className={cn('ops-shell-header', scrollElevated ? 'is-scrolled' : '')}>
-        <div className="ops-shell-header-main flex min-w-0 items-center gap-3">
-          <Link to={basePath} className="protected-brand-link" aria-label="Office home">
+        <div className="ops-shell-header-main flex min-w-0 items-center gap-4">
+          <Link to={basePath} className="protected-brand-link">
             <YorBrandMark className="protected-brand-mark" />
           </Link>
-          <div className="min-w-0 hidden sm:block">
-            <nav className="office-breadcrumb" aria-label="Breadcrumb">
-              <span className="office-breadcrumb-parent">{sidebarHeading}</span>
-              <span className="office-breadcrumb-sep" aria-hidden="true">›</span>
-              <span className="office-breadcrumb-current">{moduleLabel}</span>
-            </nav>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="protected-office-title truncate text-sm font-semibold text-[var(--foreground)]">Yor International</p>
+              <Badge variant="outline">{officeLabel}</Badge>
+            </div>
+            <div className="protected-office-breadcrumb mt-1 flex flex-wrap items-center gap-2 text-sm text-[var(--muted-foreground)]">
+              <span>{sidebarHeading}</span>
+              <ChevronRight className="size-4" />
+              <span>{moduleLabel}</span>
+            </div>
           </div>
         </div>
 
-        <nav className="office-workspace-tabs hidden lg:flex" aria-label="Switch office view">
-          {workspaceLinks.map((link) => {
-            const isActive = location.pathname.startsWith(link.href) && link.href !== '/';
-            return (
-              <NavLink
+        <div className="ops-shell-header-actions flex flex-wrap items-center justify-end gap-3">
+          <nav className="hidden flex-wrap items-center gap-2 lg:flex">
+            {workspaceLinks.map((link) => (
+              <Button
                 key={link.href}
-                to={link.href}
-                className={`office-workspace-tab${isActive ? ' is-active' : ''}`}
-                viewTransition
+                asChild
+                variant={location.pathname.startsWith(link.href) && link.href !== '/' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-9 rounded-lg"
               >
-                {isActive && <span className="office-workspace-tab-pill" aria-hidden="true" />}
-                <span className="office-workspace-tab-label">{link.label}</span>
-              </NavLink>
-            );
-          })}
-        </nav>
+                <NavLink to={link.href}>{link.label}</NavLink>
+              </Button>
+            ))}
+          </nav>
 
-        <div className="ops-shell-header-actions flex items-center gap-2">
-          <div className="ops-shell-theme-toggle">
-            <ModeToggle />
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                aria-label="Open user menu"
-                type="button"
-                className="ops-shell-profile-trigger"
-              >
-                <span className="flex size-7 items-center justify-center rounded-full bg-[var(--office-active-bg)] text-[var(--color-primary)]">
-                  <UserCircle2 className="size-4" />
-                </span>
-                <span className="protected-office-user-copy hidden text-left sm:block">
-                  <span className="block text-sm font-semibold leading-5" style={{ color: 'var(--office-text)', fontSize: 'var(--text-sm)' }}>{user?.name ?? 'Protected User'}</span>
-                  <span className="block" style={{ color: 'var(--office-muted)', fontSize: 'var(--text-xs)' }}>{user?.email ?? 'Signed in'}</span>
-                </span>
-              </button>
-            </DropdownMenuTrigger>
+          <div className="ops-shell-header-tools flex items-center gap-3">
+            <div className="ops-shell-theme-toggle">
+              <ModeToggle />
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  aria-label="Open user menu"
+                  variant="outline"
+                  className="ops-shell-profile-trigger h-10 gap-3 rounded-full px-3"
+                >
+                  <span className="flex size-8 items-center justify-center rounded-full bg-[var(--background)] text-[var(--yor-copper-soft)]">
+                    <UserCircle2 className="size-5" />
+                  </span>
+                  <span className="protected-office-user-copy hidden text-left sm:block">
+                    <span className="block text-sm font-medium leading-5">{user?.name ?? 'Protected User'}</span>
+                    <span className="block text-xs text-[var(--muted-foreground)]">{user?.email ?? 'Signed in'}</span>
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="z-[120] w-64">
                 <DropdownMenuLabel className="space-y-1">
                   <p className="text-sm font-semibold">{user?.name ?? 'Protected User'}</p>
@@ -293,6 +299,7 @@ export function ProtectedOfficeFrame({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+        </div>
       </header>
 
       <div className="ops-shell-body">
@@ -315,38 +322,37 @@ export function ProtectedOfficeFrame({
         }}>
           <section className="ops-stage-hero">
             <div className="ops-stage-hero-header gap-4 md:flex-row md:items-start md:justify-between">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <span className="badge" style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  width: 'fit-content',
-                  padding: '2px 10px',
-                  borderRadius: '999px',
-                  background: 'var(--office-primary-tint)',
-                  border: '1px solid var(--office-border-mid)',
-                  color: 'var(--color-primary)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 'var(--text-xs)',
-                  fontWeight: 600,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                }}>{headerBadge}</span>
-                <h1 className="ops-stage-title">{moduleLabel}</h1>
-                <p className="ops-stage-description">{moduleDescription}</p>
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{headerBadge}</Badge>
+                </div>
+                <div className="space-y-1">
+                  <h1 className="ops-stage-title text-2xl">{moduleLabel}</h1>
+                  <p className="ops-stage-description max-w-3xl leading-6 text-[var(--muted-foreground)]">{moduleDescription}</p>
+                </div>
               </div>
               {summaryCard ? (
-                <div className="ops-stage-summary-card">
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--office-muted)', fontWeight: 600 }}>
+                <div className="ops-stage-summary-card min-w-56 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
                     {summaryCard.label}
                   </p>
-                  <p style={{ fontFamily: 'var(--font-headline)', fontSize: '20px', fontWeight: 700, color: 'var(--office-text)', marginTop: '6px' }}>{summaryCard.value}</p>
+                  <p className="mt-2 text-xl font-semibold text-[var(--foreground)]">{summaryCard.value}</p>
                   {summaryCard.detail ? (
-                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--office-muted)', marginTop: '3px' }}>{summaryCard.detail}</p>
+                    <p className="mt-1 text-sm text-[var(--muted-foreground)]">{summaryCard.detail}</p>
                   ) : null}
                 </div>
               ) : null}
             </div>
           </section>
+
+          <div className="ops-mobile-nav-shell lg:hidden">
+            <MobileOfficeNav
+              basePath={basePath}
+              currentModuleId={currentModuleId}
+              modules={modules}
+              onPrefetchModule={handlePrefetchModule}
+            />
+          </div>
 
           <div className={cn('ops-content-shell', isContentLoading && 'is-loading')} aria-busy={isContentLoading}>
             <div className="ops-content-shell-stage">{children}</div>
@@ -354,33 +360,21 @@ export function ProtectedOfficeFrame({
               <div className="ops-content-loader-card">
                 <div className="ops-content-loader-body">
                   <Badge variant="outline">Loading</Badge>
-                </div>
-                <div className="ops-content-loader-copy">
-                  <h2>{loadingLabel}</h2>
-                  <p>The content area is refreshing with the latest protected-office data.</p>
-                </div>
-                <div className="ops-content-loader-pulse" aria-hidden="true">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-                <div className="ops-content-loader-brand">
-                  <YorBrandMark className="ops-content-loader-logo" />
-                  <span>YOR Office</span>
+                  <div className="ops-content-loader-copy">
+                    <h2>{loadingLabel}</h2>
+                    <p>The content area is refreshing with the latest workspace data.</p>
+                  </div>
+                  <div className="ops-content-loader-pulse" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
                 </div>
               </div>
             ) : null}
           </div>
         </main>
       </div>
-
-      {/* Fixed bottom nav — rendered outside scroll container so it truly sticks */}
-      <MobileOfficeNav
-        basePath={basePath}
-        currentModuleId={currentModuleId}
-        modules={modules}
-        onPrefetchModule={handlePrefetchModule}
-      />
     </section>
   );
 }

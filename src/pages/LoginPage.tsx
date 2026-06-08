@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff, Lock, Mail, Shield } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, Shield, ArrowLeft } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { useFeedback } from '@/components/feedback/FeedbackProvider';
-import { YorBrandMark } from '@/components/branding/YorBrandMark';
+import { useFeedback } from '../components/feedback/FeedbackProvider';
+import { YorBrandMark } from '../components/branding/YorBrandMark';
 import type { AppRole } from '../types/auth';
+import { buildSeoConfig, useSeoDocument } from '../lib/seo';
+import { NavLink } from 'react-router-dom';
+import '../components/pages/HomeExperiencePage.css';
 
 type LocationState = { from?: string };
 
@@ -61,42 +64,29 @@ export function LoginPage() {
   const { login, getDemoCredentials } = useAuth();
   const { notify } = useFeedback();
 
-  const [email, setEmail] = useState('');
+  useSeoDocument(
+    buildSeoConfig({
+      slug: 'login',
+      pathname: location.pathname
+    })
+  );
+
+  const scope: 'member' | 'office' = location.pathname.startsWith('/admin') ? 'office' : 'member';
+
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [demoInfo, setDemoInfo] = useState<Record<AppRole, { email: string; password: string }> | null>(null);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
-  const [liteVisualMode, setLiteVisualMode] = useState(false);
-
-  useEffect(() => {
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const compactViewport = window.matchMedia('(max-width: 820px)');
-    const coarsePointer = window.matchMedia('(pointer: coarse)');
-
-    const syncMode = () => {
-      setLiteVisualMode(reducedMotion.matches || compactViewport.matches || coarsePointer.matches);
-    };
-
-    syncMode();
-    reducedMotion.addEventListener('change', syncMode);
-    compactViewport.addEventListener('change', syncMode);
-    coarsePointer.addEventListener('change', syncMode);
-
-    return () => {
-      reducedMotion.removeEventListener('change', syncMode);
-      compactViewport.removeEventListener('change', syncMode);
-      coarsePointer.removeEventListener('change', syncMode);
-    };
-  }, []);
+  const [demoInfo, setDemoInfo] = useState<Record<AppRole, { username: string; password: string }> | null>(null);
+  const [rememberMe, setRememberMe] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
     setError(null);
     try {
-      const authState = await login({ email, password });
+      const authState = await login({ username, password, rememberMe, scope });
       const nextPath = (location.state as LocationState | null)?.from;
       notify({
         title: 'Signed in',
@@ -119,220 +109,200 @@ export function LoginPage() {
   }
 
   return (
-    <div className={`yor-login-root ${liteVisualMode ? 'is-lite' : ''}`}>
-      {/* Ambient Background */}
-      {!liteVisualMode ? (
-        <div className="yor-login-ambient" aria-hidden="true">
-          <div className="yor-login-orb yor-login-orb-1" />
-          <div className="yor-login-orb yor-login-orb-2" />
-          <div className="yor-login-orb yor-login-orb-3" />
-          <div className="yor-login-grid" />
-        </div>
-      ) : null}
+    <div className="story-landing-page is-lite-experience" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Main Card */}
-      <main className="yor-login-card" role="main">
 
-        {/* ── LEFT PANEL: Branding ── */}
-        <aside className="yor-login-brand-panel" aria-label="YOR International branding">
-          <div className="yor-login-brand-inner">
-            <div className="yor-login-logo-wrap">
-              <YorBrandMark className="yor-login-logo" variant="showcase" />
-            </div>
-
-            <div className="yor-login-brand-copy">
-              <span className="yor-login-eyebrow">Yor International</span>
-              <h1 className="yor-login-headline">
-                Your Legacy
-                <br />
-                <span className="yor-login-headline-gold">Starts Here</span>
-              </h1>
-              <p className="yor-login-tagline">
-                A premier global network built on fragrance excellence, ocular wellness, and life-changing financial opportunity.
-              </p>
-            </div>
-
-            {/* Rank track decoration */}
-            <div className="yor-login-rank-strip" aria-label="Rank progression">
-              {['Manager', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Legacy'].map((rank, i) => (
-                <div key={rank} className={`yor-login-rank-pip yor-login-rank-pip-${i}`}>
-                  <span className="yor-login-rank-pip-dot" />
-                  <span className="yor-login-rank-pip-label">{rank}</span>
+      {/* Main Login Content */}
+      <main style={{ flex: 1, padding: '6rem 4vw', display: 'flex', alignItems: 'center', background: '#030303', position: 'relative' }}>
+        <section id="scene-login" className="inline-login-section" style={{ width: '100%', background: 'transparent', padding: 0 }}>
+          <div className="login-pattern-bg" />
+          <div className="section-container" style={{ width: '100%', maxWidth: '1200px', margin: '0 auto' }}>
+            <div className="login-content-wrap">
+              {/* Branding Panel */}
+              <div className="login-brand-col">
+                <div className="login-logo-wrap">
+                  <YorBrandMark className="login-logo-svg" variant="showcase" />
                 </div>
-              ))}
-            </div>
-
-            <div className="yor-login-brand-footer">
-              <span>© {new Date().getFullYear()} YOR International</span>
-              <span className="yor-login-brand-sep">·</span>
-              <span>Protected Portal</span>
-            </div>
-          </div>
-        </aside>
-
-        {/* ── RIGHT PANEL: Form ── */}
-        <div className="yor-login-form-panel">
-          <div className="yor-login-form-inner">
-
-            {/* Mobile logo */}
-            <div className="yor-login-mobile-logo" aria-hidden="true">
-              <YorBrandMark className="yor-login-logo-sm" variant="showcase" />
-              <span className="yor-login-mobile-brand">Yor International</span>
-            </div>
-
-            <header className="yor-login-form-header">
-              <div className="yor-login-badge">
-                <Lock size={12} aria-hidden="true" />
-                <span>Secure Access</span>
-              </div>
-              <h2 className="yor-login-form-title">Welcome Back</h2>
-              <p className="yor-login-form-sub">Sign in to your member or office account.</p>
-            </header>
-
-            <form className="yor-login-form" onSubmit={handleSubmit} noValidate>
-              {/* Email */}
-              <div className={`yor-login-field ${focusedField === 'email' ? 'is-focused' : ''} ${email ? 'has-value' : ''}`}>
-                <label className="yor-login-label" htmlFor="login-email">
-                  Email Address
-                </label>
-                <div className="yor-login-input-wrap">
-                  <Mail className="yor-login-input-icon" size={16} aria-hidden="true" />
-                  <input
-                    id="login-email"
-                    className="yor-login-input"
-                    type="email"
-                    autoComplete="username"
-                    placeholder="member@yor.local"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onFocus={() => setFocusedField('email')}
-                    onBlur={() => setFocusedField(null)}
-                    required
-                  />
+                <div className="login-brand-copy-text">
+                  <span className="eyebrow">Yor International</span>
+                  <h1>
+                    Your Legacy
+                    <br />
+                    <span className="gold-text">Starts Here</span>
+                  </h1>
+                  <p>
+                    A premier global network built on fragrance excellence, ocular wellness, and life-changing financial opportunity.
+                  </p>
+                </div>
+                {/* Rank strip */}
+                <div className="login-rank-strip">
+                  {['Manager', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Legacy'].map((rank, i) => (
+                    <div key={rank} className={`rank-pip rank-pip-${i}`}>
+                      <span className="pip-dot" />
+                      <span className="pip-label">{rank}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Password */}
-              <div className={`yor-login-field ${focusedField === 'password' ? 'is-focused' : ''} ${password ? 'has-value' : ''}`}>
-                <div className="yor-login-field-header">
-                  <label className="yor-login-label" htmlFor="login-password">Password</label>
+              {/* Form Panel */}
+              <div className="login-form-col">
+                <div className="login-form-header">
+                  <div className="secure-badge">
+                    <Lock size={12} />
+                    <span>Secure Access</span>
+                  </div>
+                  <h2>{scope === 'office' ? 'Office Access' : 'Welcome Back'}</h2>
+                  <p>
+                    {scope === 'office'
+                      ? 'Sign in to your admin, cashier, or board office account.'
+                      : 'Sign in to your member or office account.'}
+                  </p>
                 </div>
-                <div className="yor-login-input-wrap">
-                  <Lock className="yor-login-input-icon" size={16} aria-hidden="true" />
-                  <input
-                    id="login-password"
-                    className="yor-login-input yor-login-input-pw"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onFocus={() => setFocusedField('password')}
-                    onBlur={() => setFocusedField(null)}
-                    required
-                  />
+
+                <form className="login-form-element" onSubmit={handleSubmit}>
+                  {/* Username */}
+                  <label className="login-field-wrap">
+                    <span>Username</span>
+                    <div className="login-input-inner">
+                      <User size={16} className="login-input-icon" />
+                      <input
+                        type="text"
+                        placeholder={scope === 'office' ? 'yoradmin' : 'YOR0001'}
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </label>
+
+                  {/* Password */}
+                  <label className="login-field-wrap">
+                    <span>Password</span>
+                    <div className="login-input-inner">
+                      <Lock size={16} className="login-input-icon" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="login-pw-toggle-btn"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </label>
+
+                  {/* Remember me */}
+                  <div className="login-meta-row">
+                    <label className="login-remember-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(event) => setRememberMe(event.target.checked)}
+                      />
+                      <span>Remember me</span>
+                    </label>
+                    <span className="login-secure-tag">
+                      <Shield size={11} />
+                      256-bit encrypted
+                    </span>
+                  </div>
+
+                  {/* Error */}
+                  {error ? (
+                    <div className="login-error-banner" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#f87171', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
+                      {error}
+                    </div>
+                  ) : null}
+
+                  {/* Submit */}
+                  <button className="login-submit-action-btn" type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Signing In...' : 'Sign In'}
+                  </button>
+                </form>
+
+                {/* Demo Directory */}
+                <div style={{ marginTop: '2rem', textAlign: 'center' }}>
                   <button
-                    className="yor-login-pw-toggle"
+                    className="footer-link-btn"
                     type="button"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    onClick={() => setShowPassword((v) => !v)}
-                    tabIndex={0}
+                    onClick={() => void showDemoCredentials()}
+                    style={{ fontSize: '0.8rem', color: '#c5a880', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
                   >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    View access directory
                   </button>
                 </div>
-              </div>
 
-              {/* Remember me */}
-              <div className="yor-login-meta">
-                <label className="yor-login-check">
-                  <input type="checkbox" />
-                  <span className="yor-login-check-box" aria-hidden="true" />
-                  <span>Remember me</span>
-                </label>
-                <span className="yor-login-secure-note">
-                  <Shield size={11} aria-hidden="true" />
-                  256-bit encrypted
-                </span>
-              </div>
+                {demoInfo ? (
+                  <div className="login-demo-panel" style={{ marginTop: '1.5rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '12px', padding: '1.25rem' }}>
+                    <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', fontWeight: 700, color: '#eaeaea', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Access Directory</p>
+                    {credentialOrder.map((role) => {
+                      const Icon = roleIcons[role];
+                      return (
+                        <div key={role} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: '0.8rem' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#c5a880' }}>
+                            <Icon size={10} />
+                            {credentialLabels[role]}
+                          </span>
+                          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUsername(demoInfo[role].username);
+                                setPassword(demoInfo[role].password);
+                              }}
+                              style={{ background: 'none', border: 'none', color: '#eaeaea', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                            >
+                              {demoInfo[role].username}
+                            </button>
+                            <span style={{ color: '#666' }}>{demoInfo[role].password}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
 
-              {/* Error */}
-              {error ? (
-                <div className="yor-login-error" role="alert" aria-live="assertive">
-                  <span className="yor-login-error-dot" aria-hidden="true" />
-                  {error}
-                </div>
-              ) : null}
-
-              {/* Submit */}
-              <button
-                className="yor-login-submit"
-                type="submit"
-                disabled={isSubmitting}
-                aria-busy={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="yor-login-spinner" aria-hidden="true" />
-                    <span>Signing In…</span>
-                  </>
+                {scope === 'member' ? (
+                  <p style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)' }}>
+                    Not a member yet?{' '}
+                    <NavLink to="/register" style={{ color: '#c5a880', textDecoration: 'underline' }}>
+                      Register here
+                    </NavLink>
+                    <span style={{ display: 'block', marginTop: '0.5rem' }}>
+                      Office user?{' '}
+                      <NavLink to="/admin/login" style={{ color: '#c5a880', textDecoration: 'underline' }}>
+                        Office Login
+                      </NavLink>
+                    </span>
+                  </p>
                 ) : (
-                  <span>Sign In to Portal</span>
+                  <p style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)' }}>
+                    Member user?{' '}
+                    <NavLink to="/login" style={{ color: '#c5a880', textDecoration: 'underline' }}>
+                      Member Login
+                    </NavLink>
+                  </p>
                 )}
-              </button>
-            </form>
-
-            {/* Demo credentials */}
-            <div className="yor-login-demo-row">
-              <button
-                className="yor-login-demo-btn"
-                type="button"
-                onClick={() => void showDemoCredentials()}
-              >
-                View access directory
-              </button>
-            </div>
-
-            {demoInfo ? (
-              <div className="yor-login-demo-panel">
-                <p className="yor-login-demo-title">Access Directory</p>
-                {credentialOrder.map((role) => {
-                  const Icon = roleIcons[role];
-                  return (
-                    <div className="yor-login-demo-row-item" key={role}>
-                      <div className="yor-login-demo-role-chip">
-                        <Icon size={10} aria-hidden="true" />
-                        <span>{credentialLabels[role]}</span>
-                      </div>
-                      <div className="yor-login-demo-creds">
-                        <button
-                          type="button"
-                          className="yor-login-demo-autofill"
-                          onClick={() => {
-                            setEmail(demoInfo[role].email);
-                            setPassword(demoInfo[role].password);
-                          }}
-                          title="Autofill credentials"
-                        >
-                          {demoInfo[role].email}
-                        </button>
-                        <span className="yor-login-demo-pw">{demoInfo[role].password}</span>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
-            ) : null}
-
-            <p className="yor-login-footer-note">
-              Not a member yet?{' '}
-              <a className="yor-login-footer-link" href="/register">
-                Register here
-              </a>
-            </p>
+            </div>
           </div>
-        </div>
+        </section>
       </main>
+
+      {/* Matching Luxury Footer */}
+      <footer className="luxury-footer" style={{ borderTop: '1px solid rgba(255,255,255,0.03)', background: '#030303', padding: '4rem 8vw 2rem' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#666' }}>
+          <div>© {new Date().getFullYear()} YOR International. All rights reserved.</div>
+          <div>Secure Portal Gateway</div>
+        </div>
+      </footer>
     </div>
   );
 }

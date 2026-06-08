@@ -4,6 +4,7 @@ import { ArrowRight, GitBranch, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useFeedback } from '@/components/feedback/FeedbackProvider';
 import { ProtectedOfficeFrame } from '@/components/layout/ProtectedOfficeFrame';
+import { RegistrationPageView } from '@/components/pages/RegistrationPageView';
 import { GenealogyTree } from '../components/ops/GenealogyTree';
 import { readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
 import {
@@ -32,11 +33,66 @@ import type {
   ShadowAccountCenter
 } from '../types/auth';
 
+type EncashmentPreview = MemberWalletDetail['preview'];
+
 const formatCurrency = (value: number): string =>
   `PHP ${value.toLocaleString('en-PH', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })}`;
+
+function normalizeEncashmentInput(value: string): string {
+  let normalized = '';
+  let hasDecimal = false;
+
+  for (const character of value) {
+    if (/\d/.test(character) || character === ',') {
+      normalized += character;
+      continue;
+    }
+
+    if (character === '.' && !hasDecimal) {
+      normalized += character;
+      hasDecimal = true;
+    }
+  }
+
+  return normalized;
+}
+
+function parseEncashmentAmount(value: string): number | null {
+  const normalized = value.replace(/,/g, '').trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatEncashmentInput(value: number): string {
+  return value.toLocaleString('en-PH', {
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function createEmptyEncashmentPreview(note: string): EncashmentPreview {
+  return {
+    requestedAmount: 0,
+    fee: 0,
+    processingFee: 0,
+    maintenanceFee: 0,
+    systemRetainer: 0,
+    tax: 0,
+    cdDeduction: 0,
+    totalDeductions: 0,
+    netReceivable: 0,
+    sufficientBalance: true,
+    note
+  };
+}
 
 const customMemberModuleIds = new Set([
   'dashboard',
@@ -116,6 +172,12 @@ type MemberModuleBundle = {
   shadowAccounts: ShadowAccountCenter | null;
 };
 
+type GenealogyOpenSlotSelection = {
+  parentUsername: string;
+  parentReferralCode?: string;
+  side: 'left' | 'right';
+};
+
 export function MemberDashboardPage() {
   const {
     getMemberActivationCodes,
@@ -150,10 +212,16 @@ export function MemberDashboardPage() {
   const [shadowAccounts, setShadowAccounts] = useState<ShadowAccountCenter | null>(null);
   const [selectedTreeNodeId, setSelectedTreeNodeId] = useState<string | null>(null);
   const [treeRootUsername, setTreeRootUsername] = useState('');
-  const [encashAmount, setEncashAmount] = useState(5000);
+  const [pendingRegistrationSlot, setPendingRegistrationSlot] = useState<GenealogyOpenSlotSelection | null>(null);
+  const [encashAmountInput, setEncashAmountInput] = useState('0');
+  const [encashPreview, setEncashPreview] = useState<EncashmentPreview | null>(null);
+  const [encashPreviewError, setEncashPreviewError] = useState<string | null>(null);
+  const [isEncashPreviewLoading, setIsEncashPreviewLoading] = useState(false);
   const [selectedCode, setSelectedCode] = useState('');
   const [transferTarget, setTransferTarget] = useState('');
   const [maintenanceCode, setMaintenanceCode] = useState('');
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [copiedCodeCount, setCopiedCodeCount] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const [isContentLoading, setIsContentLoading] = useState(true);
   const [reloadNonce, setReloadNonce] = useState(0);
@@ -174,7 +242,9 @@ export function MemberDashboardPage() {
       setSelectedTreeNodeId(bundle.binaryTree?.root.nodeId ?? null);
 
       if (bundle.walletDetail) {
-        setEncashAmount(bundle.walletDetail.preview.requestedAmount);
+        setEncashAmountInput(formatEncashmentInput(bundle.walletDetail.preview.requestedAmount));
+        setEncashPreview(bundle.walletDetail.preview);
+        setEncashPreviewError(null);
       }
 
       if (bundle.activationCodes) {
@@ -273,6 +343,16 @@ export function MemberDashboardPage() {
     [buildMemberBundle, memberCacheKey, treeRootUsername]
   );
 
+  const encashAmount = useMemo(() => parseEncashmentAmount(encashAmountInput) ?? 0, [encashAmountInput]);
+  const renderedEncashmentPreview =
+    encashPreview ?? walletDetail?.preview ?? createEmptyEncashmentPreview('Enter an amount to see the live encashment breakdown.');
+
+  useEffect(() => {
+    if (moduleId !== 'genealogy' && pendingRegistrationSlot) {
+      setPendingRegistrationSlot(null);
+    }
+  }, [moduleId, pendingRegistrationSlot]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -318,24 +398,83 @@ export function MemberDashboardPage() {
     treeRootUsername
   ]);
 
-  async function handlePreviewEncashment() {
-    try {
-      const result = await previewEncashment(encashAmount);
-      notify({
-        title: 'Encashment preview ready',
-        description: `Net receivable ${formatCurrency(result.preview.netReceivable)} after fee ${formatCurrency(result.preview.fee)} and CD deduction ${formatCurrency(result.preview.cdDeduction)}.`,
-        tone: result.preview.sufficientBalance ? 'success' : 'warning'
-      });
-    } catch (cause) {
-      notify({
-        title: 'Unable to preview encashment',
-        description: cause instanceof Error ? cause.message : 'Please try again.',
-        tone: 'destructive'
-      });
+  useEffect(() => {
+    if (moduleId !== 'wallet' || !walletDetail) {
+      return;
     }
-  }
+
+    const requestedAmount = parseEncashmentAmount(encashAmountInput);
+
+    if (!requestedAmount || requestedAmount <= 0) {
+      setEncashPreview(createEmptyEncashmentPreview('Enter a valid amount to see the live encashment breakdown.'));
+      setEncashPreviewError(null);
+      setIsEncashPreviewLoading(false);
+      return;
+    }
+
+    if (encashPreview?.requestedAmount === requestedAmount) {
+      setIsEncashPreviewLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(() => {
+      void (async () => {
+        try {
+          setIsEncashPreviewLoading(true);
+          const result = await previewEncashment(requestedAmount);
+
+          if (cancelled) {
+            return;
+          }
+
+          setEncashPreview(result.preview);
+          setEncashPreviewError(null);
+        } catch (cause) {
+          if (cancelled) {
+            return;
+          }
+
+          setEncashPreviewError(cause instanceof Error ? cause.message : 'Unable to update encashment preview.');
+        } finally {
+          if (!cancelled) {
+            setIsEncashPreviewLoading(false);
+          }
+        }
+      })();
+    }, 220);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    encashAmountInput,
+    encashPreview?.requestedAmount,
+    moduleId,
+    previewEncashment,
+    walletDetail
+  ]);
 
   async function handleSubmitEncashment() {
+    if (encashAmount <= 0) {
+      notify({
+        title: 'Enter an amount first',
+        description: 'Type a valid encashment amount to continue.',
+        tone: 'warning'
+      });
+      return;
+    }
+
+    if (!renderedEncashmentPreview.sufficientBalance) {
+      notify({
+        title: 'Insufficient balance',
+        description: renderedEncashmentPreview.note,
+        tone: 'warning'
+      });
+      return;
+    }
+
     const confirmed = await confirmAction({
       title: 'Submit encashment request?',
       description: `This will queue a sandbox encashment for ${formatCurrency(encashAmount)} and write it into the local ledger and admin approval queue.`,
@@ -448,6 +587,37 @@ export function MemberDashboardPage() {
     } catch (cause) {
       notify({
         title: 'Unable to use maintenance code',
+        description: cause instanceof Error ? cause.message : 'Please try again.',
+        tone: 'destructive'
+      });
+    }
+  }
+
+  async function handleCopyCode() {
+    if (!selectedCode) {
+      await notify({
+        title: 'Select a code first',
+        description: 'Choose an activation code before copying it.',
+        tone: 'warning'
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(selectedCode);
+      setCopiedCode(selectedCode);
+      setCopiedCodeCount((current) => ({
+        ...current,
+        [selectedCode]: (current[selectedCode] ?? 0) + 1
+      }));
+      await notify({
+        title: copiedCodeCount[selectedCode] ? 'Code copied again' : 'Code copied',
+        description: `${selectedCode} is now ready to share with the registrant.`,
+        tone: 'success'
+      });
+    } catch (cause) {
+      await notify({
+        title: 'Unable to copy code',
         description: cause instanceof Error ? cause.message : 'Please try again.',
         tone: 'destructive'
       });
@@ -627,42 +797,137 @@ export function MemberDashboardPage() {
 
           {moduleId === 'wallet' && walletDetail ? (
             <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-              <DataListCard
-                title="Wallet Summary"
-                rows={[
-                  { label: 'Available', value: formatCurrency(walletDetail.summary.availableBalance) },
-                  { label: 'Pending', value: formatCurrency(walletDetail.summary.pendingBalance) },
-                  { label: 'CD Balance', value: formatCurrency(walletDetail.summary.cdBalance) },
-                  { label: 'Payout Method', value: walletDetail.summary.payoutMethod }
-                ]}
-              />
+              <div className="space-y-4">
+                <DataListCard
+                  title="Wallet Summary"
+                  rows={[
+                    { label: 'Available', value: formatCurrency(walletDetail.summary.availableBalance) },
+                    { label: 'Pending', value: formatCurrency(walletDetail.summary.pendingBalance) },
+                    { label: 'CD Balance', value: formatCurrency(walletDetail.summary.cdBalance) },
+                    { label: 'Payout Method', value: walletDetail.summary.payoutMethod }
+                  ]}
+                />
+                <Card className="border-[var(--border)] bg-[var(--card)]">
+                  <CardHeader>
+                    <CardTitle>Income Breakdown</CardTitle>
+                    <CardDescription>Every approved income stream that can feed Yor's wallet buckets in this branch runtime.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-0">
+                    {walletDetail.incomeBreakdown.map((stream) => (
+                      <div
+                        key={stream.streamId}
+                        className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)]/70 px-4 py-3"
+                      >
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-[var(--foreground)]">{stream.label}</p>
+                          <Badge variant="outline" className="uppercase tracking-[0.18em]">
+                            {stream.walletType} wallet
+                          </Badge>
+                        </div>
+                        <p className="text-sm font-semibold text-amber-200">{formatCurrency(stream.amount)}</p>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
               <Card className="border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Encashment Preview</CardTitle>
                   <CardDescription>{walletDetail.preview.note}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <label className="grid gap-2 text-sm">
-                    <span className="font-medium text-[var(--muted-foreground)]">Requested amount</span>
-                    <Input
-                      type="number"
-                      value={encashAmount}
-                      onChange={(event) => setEncashAmount(Number(event.target.value))}
-                    />
-                  </label>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <DataPoint label="Fee" value={formatCurrency(walletDetail.preview.fee)} />
-                    <DataPoint label="CD Deduction" value={formatCurrency(walletDetail.preview.cdDeduction)} />
-                    <DataPoint label="Net" value={formatCurrency(walletDetail.preview.netReceivable)} />
+                <CardContent className="space-y-5">
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)]/75 px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+                      Encashment Rules
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">
+                      10% tax, PHP 50 processing fee, 5% system retainer, {walletDetail.summary.payoutSchedule.toLowerCase()}.
+                    </p>
                   </div>
-                  <div className="member-action-row flex flex-wrap gap-3">
-                    <Button type="button" className="member-action-button" onClick={handlePreviewEncashment}>
-                      Preview
-                    </Button>
-                    <Button type="button" variant="outline" className="member-action-button" onClick={handleSubmitEncashment}>
-                      Submit Request
-                    </Button>
+
+                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)]/75 p-4">
+                        <label htmlFor="encash-amount" className="grid gap-2 text-sm">
+                          <span className="font-medium text-[var(--muted-foreground)]">Requested amount</span>
+                          <Input
+                            id="encash-amount"
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="10,000"
+                            value={encashAmountInput}
+                            onChange={(event) => {
+                              setEncashPreviewError(null);
+                              setEncashAmountInput(normalizeEncashmentInput(event.target.value));
+                            }}
+                            onBlur={() => {
+                              const parsedAmount = parseEncashmentAmount(encashAmountInput);
+                              if (parsedAmount && parsedAmount > 0) {
+                                setEncashAmountInput(formatEncashmentInput(parsedAmount));
+                              }
+                            }}
+                          />
+                        </label>
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <span className="text-[var(--muted-foreground)]">Live preview updates while you type naturally.</span>
+                          <span className={isEncashPreviewLoading ? 'text-amber-300' : 'text-[var(--muted-foreground)]'}>
+                            {isEncashPreviewLoading ? 'Updating preview...' : 'Preview synced'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)]/75 p-4">
+                        <div className="space-y-3">
+                          <EncashmentBreakdownRow label="10% Tax" value={renderedEncashmentPreview.tax} />
+                          <EncashmentBreakdownRow label="Processing Fee" value={renderedEncashmentPreview.processingFee} />
+                          <EncashmentBreakdownRow label="System Retainer" value={renderedEncashmentPreview.systemRetainer} />
+                          <EncashmentBreakdownRow label="CD Deduction" value={renderedEncashmentPreview.cdDeduction} />
+                          <div className="border-t border-[var(--border)] pt-3">
+                            <EncashmentBreakdownRow
+                              label="Total Deductions"
+                              value={renderedEncashmentPreview.totalDeductions}
+                              emphasize
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 content-start">
+                      <EncashmentStatCard label="Available Balance" value={formatCurrency(walletDetail.summary.availableBalance)} />
+                      <EncashmentStatCard
+                        label="Requested Amount"
+                        value={formatCurrency(renderedEncashmentPreview.requestedAmount || encashAmount)}
+                      />
+                      <EncashmentStatCard
+                        label="Net Receivable"
+                        value={formatCurrency(renderedEncashmentPreview.netReceivable)}
+                        highlight
+                      />
+                    </div>
                   </div>
+
+                  <div
+                    className={[
+                      'rounded-2xl border px-4 py-3 text-sm',
+                      encashPreviewError
+                        ? 'border-red-500/40 bg-red-500/10 text-red-200'
+                        : renderedEncashmentPreview.sufficientBalance
+                          ? 'border-[var(--border)] bg-[var(--background)]/70 text-[var(--muted-foreground)]'
+                          : 'border-amber-500/40 bg-amber-500/10 text-amber-100'
+                    ].join(' ')}
+                  >
+                    {encashPreviewError ?? renderedEncashmentPreview.note}
+                  </div>
+
+                  <Button
+                    type="button"
+                    className="member-action-button w-full"
+                    onClick={handleSubmitEncashment}
+                    disabled={encashAmount <= 0 || isEncashPreviewLoading || Boolean(encashPreviewError) || !renderedEncashmentPreview.sufficientBalance}
+                  >
+                    Submit Request
+                  </Button>
                 </CardContent>
               </Card>
               <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
@@ -703,16 +968,17 @@ export function MemberDashboardPage() {
             <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
               <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
                 <CardHeader>
-                  <CardTitle>Activation Code Inventory</CardTitle>
+                  <CardTitle>Code Inventory Table</CardTitle>
                   <CardDescription>Inspect, transfer, upgrade, or reserve codes without burying the main actions under extra panels.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ReportTableView
                     table={{
-                      title: 'Activation Inventory',
+                      title: 'Code Inventory Table',
                       columns: [
                         { key: 'code', label: 'Code' },
-                        { key: 'packageTier', label: 'Package' },
+                        { key: 'codeFamily', label: 'Family' },
+                        { key: 'packageTier', label: 'Product/Package' },
                         { key: 'assignedTo', label: 'Assigned' },
                         { key: 'status', label: 'Status' },
                         { key: 'visibility', label: 'Visibility' }
@@ -720,6 +986,7 @@ export function MemberDashboardPage() {
                       rows: activationCodes.inventory
                         .map((item) => ({
                           code: item.code,
+                          codeFamily: item.codeFamily ?? 'YOR CODES',
                           packageTier: item.packageTier,
                           assignedTo: item.assignedTo,
                           status: item.status,
@@ -758,6 +1025,9 @@ export function MemberDashboardPage() {
                     }))}
                   />
                   <div className="member-action-grid grid gap-3 sm:grid-cols-2">
+                    <Button type="button" variant="outline" className="member-action-button" onClick={handleCopyCode}>
+                      {copiedCode === selectedCode ? 'Copy Again' : 'Copy Code'}
+                    </Button>
                     <Button type="button" className="member-action-button" onClick={handleTransferCodes}>
                       Transfer Code
                     </Button>
@@ -765,6 +1035,13 @@ export function MemberDashboardPage() {
                       Upgrade Account
                     </Button>
                   </div>
+                  {selectedCode ? (
+                    <p className="text-sm text-[var(--muted-foreground)]">
+                      {copiedCode === selectedCode
+                        ? `${selectedCode} marked as copied ${copiedCodeCount[selectedCode] ?? 1} time(s).`
+                        : 'Copy the selected activation code before sharing it to a registrant.'}
+                    </p>
+                  ) : null}
                 </CardContent>
               </Card>
               <Card className="border-[var(--border)] bg-[var(--card)]">
@@ -964,6 +1241,7 @@ export function MemberDashboardPage() {
                     selectedNodeId={selectedTreeNodeId}
                     onSelect={setSelectedTreeNodeId}
                     onNavigateToNode={setTreeRootUsername}
+                    onOpenSlot={setPendingRegistrationSlot}
                   />
                 </CardContent>
               </Card>
@@ -1242,6 +1520,24 @@ export function MemberDashboardPage() {
             </section>
           ) : null}
       </div>
+
+      {moduleId === 'genealogy' && binaryTree && pendingRegistrationSlot ? (
+        <RegistrationPageView
+          key={`${pendingRegistrationSlot.parentUsername}-${pendingRegistrationSlot.side}`}
+          variant="modal"
+          initialContext={{
+            referralCode: binaryTree.root.referralCode,
+            placementSide: pendingRegistrationSlot.side,
+            placementParentUsername: pendingRegistrationSlot.parentUsername,
+            placementParentLabel: pendingRegistrationSlot.parentUsername
+          }}
+          onClose={() => setPendingRegistrationSlot(null)}
+          onSubmitted={() => {
+            setPendingRegistrationSlot(null);
+            setReloadNonce((current) => current + 1);
+          }}
+        />
+      ) : null}
     </ProtectedOfficeFrame>
   );
 }
@@ -1280,6 +1576,44 @@ function DataPoint({ label, value }: { label: string; value: string | number }) 
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">{label}</p>
       <p className="mt-2 text-sm font-medium text-[var(--foreground)]">{value}</p>
+    </div>
+  );
+}
+
+function EncashmentBreakdownRow({
+  label,
+  value,
+  emphasize = false
+}: {
+  label: string;
+  value: number;
+  emphasize?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <p className={emphasize ? 'font-semibold text-[var(--foreground)]' : 'text-[var(--muted-foreground)]'}>{label}</p>
+      <p className={emphasize ? 'font-semibold text-[var(--foreground)]' : 'font-medium text-[var(--foreground)]'}>
+        - {formatCurrency(value)}
+      </p>
+    </div>
+  );
+}
+
+function EncashmentStatCard({
+  label,
+  value,
+  highlight = false
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)]/75 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">{label}</p>
+      <p className={highlight ? 'mt-3 text-lg font-semibold text-amber-200' : 'mt-3 text-base font-semibold text-[var(--foreground)]'}>
+        {value}
+      </p>
     </div>
   );
 }
