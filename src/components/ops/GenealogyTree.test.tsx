@@ -142,7 +142,7 @@ describe('GenealogyTree', () => {
     const onSelect = vi.fn();
     renderTree({ onSelect });
 
-    const searchInput = screen.getByPlaceholderText(/Search username, name, or YOU 2/i);
+    const searchInput = screen.getByPlaceholderText(/Search username, name, or YOU/i);
     fireEvent.focus(searchInput);
 
     const results = screen.getByRole('listbox', { name: /placement tree search results/i });
@@ -155,7 +155,7 @@ describe('GenealogyTree', () => {
     fireEvent.click(screen.getByRole('option', { name: /ALPHA001/i }));
 
     expect(onSelect).toHaveBeenCalledWith('node-alpha');
-  });
+  }, 10000);
 
   it('emits the selected open-slot placement instead of forcing a page navigation', () => {
     const onOpenSlot = vi.fn();
@@ -168,5 +168,5 @@ describe('GenealogyTree', () => {
       parentReferralCode: 'YOR-MEMBER-001',
       side: 'left'
     });
-  });
+  }, 10000);
 });

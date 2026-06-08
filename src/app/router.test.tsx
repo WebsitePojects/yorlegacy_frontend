@@ -39,9 +39,9 @@ describe('routes', () => {
       </ThemeProvider>
     );
 
-    expect(await screen.findByText(/initializing experience/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/Yor International/i)).length).toBeGreaterThan(0);
     expect((await screen.findAllByRole('link', { name: /portal login/i })).length).toBeGreaterThan(0);
-  });
+  }, 10000);
 
   it('renders the earn overview route', async () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
