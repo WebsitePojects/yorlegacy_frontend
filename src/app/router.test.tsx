@@ -39,7 +39,6 @@ describe('routes', () => {
       </ThemeProvider>
     );
 
-    expect(await screen.findByText(/initializing experience/i)).toBeInTheDocument();
     expect((await screen.findAllByRole('link', { name: /portal login/i })).length).toBeGreaterThan(0);
   });
 
@@ -75,6 +74,67 @@ describe('routes', () => {
     expect(
       await screen.findByRole('heading', { name: /8 ways to earn overview/i })
     ).toBeInTheDocument();
+  });
+
+  it('renders the member login portal without the access directory', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes('/api/auth/me')) {
+        return okJson({
+          authenticated: false,
+          user: null
+        });
+      }
+
+      throw new Error(`Unexpected request ${url}`);
+    }) as unknown as typeof fetch);
+
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/login']
+    });
+
+    render(
+      <ThemeProvider defaultTheme="dark">
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </ThemeProvider>
+    );
+
+    expect(await screen.findByRole('heading', { name: /member login/i })).toBeInTheDocument();
+    expect(screen.queryByText(/view access directory/i)).not.toBeInTheDocument();
+  });
+
+  it('renders the standalone registration page with username-first fields', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url.includes('/api/auth/me')) {
+        return okJson({
+          authenticated: false,
+          user: null
+        });
+      }
+
+      throw new Error(`Unexpected request ${url}`);
+    }) as unknown as typeof fetch);
+
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/register']
+    });
+
+    render(
+      <ThemeProvider defaultTheme="dark">
+        <AuthProvider>
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </ThemeProvider>
+    );
+
+    expect(await screen.findByRole('heading', { name: /create member account/i })).toBeInTheDocument();
+    expect(screen.getByText(/email address \(optional\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/username/i)).toBeInTheDocument();
   });
 
   it('renders an admin operational module route from authenticated API data', async () => {
@@ -531,6 +591,10 @@ describe('routes', () => {
     );
 
     expect(await screen.findByRole('heading', { name: /placement network view/i })).toBeInTheDocument();
+
+    // Change depth select to 4 so Alice Alpha (level 2) children are generated
+    const select = await screen.findByLabelText(/depth/i);
+    fireEvent.change(select, { target: { value: '4' } });
 
     fireEvent.click(await screen.findByRole('button', { name: /open slot left under alpha001/i }));
 

@@ -1,21 +1,25 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Eye, EyeOff, KeyRound, Lock, Mail, Phone, User, X } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFeedback } from '../feedback/FeedbackProvider';
 import { fetchMemberActivationCodes, fetchRegistrationPreview, submitRegistration } from '../../lib/api';
 import type { PageContent } from '../../types/content';
 import type { MemberActivationCodeCenter } from '../../types/auth';
 import type { RegistrationPreview, RegistrationSubmitResponse } from '../../types/registration';
-import { BackToExperienceLink } from './BackToExperienceLink';
 
 type RegistrationPageViewProps = {
   content?: PageContent;
   variant?: 'page' | 'modal';
   initialContext?: {
     referralCode?: string;
+    placementContext?: {
+      parentUsername: string;
+      side: 'left' | 'right';
+    };
     placementSide?: 'left' | 'right';
     placementParentUsername?: string;
     placementParentLabel?: string;
+    placementToken?: string;
   };
   onClose?: () => void;
   onSubmitted?: (result: RegistrationSubmitResponse) => void;
@@ -39,6 +43,8 @@ export function RegistrationPageView({
   onSubmitted
 }: RegistrationPageViewProps) {
   const { confirmAction, presentNotice } = useFeedback();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -47,13 +53,30 @@ export function RegistrationPageView({
   const [submitting, setSubmitting] = useState(false);
   const [availableCodes, setAvailableCodes] = useState<MemberActivationCodeCenter['inventory']>([]);
   const [codeLoading, setCodeLoading] = useState(false);
+  const [isHiddenForFeedback, setIsHiddenForFeedback] = useState(false);
   const isModal = variant === 'modal';
   const origin = isModal ? 'genealogy-slot' : 'referral-link';
   const referralCode = initialContext?.referralCode ?? searchParams.get('ref') ?? '';
-  const placementParentUsername = initialContext?.placementParentUsername ?? searchParams.get('placementParentUsername') ?? '';
+  const queryPlacementParentUsername = searchParams.get('parent') ?? searchParams.get('placementParentUsername') ?? '';
+  const queryPlacementSide = searchParams.get('side') === 'right' ? 'right' : (searchParams.get('slot') === 'right' ? 'right' : 'left');
+  const resolvedPlacementContext =
+    initialContext?.placementContext ??
+    (initialContext?.placementParentUsername
+      ? {
+          parentUsername: initialContext.placementParentUsername,
+          side: initialContext.placementSide ?? 'left'
+        }
+      : queryPlacementParentUsername
+        ? {
+            parentUsername: queryPlacementParentUsername,
+            side: queryPlacementSide
+          }
+        : null);
+  const placementParentUsername = resolvedPlacementContext?.parentUsername ?? '';
   const placementParentLabel = initialContext?.placementParentLabel ?? placementParentUsername;
-  const placementSide = initialContext?.placementSide ?? (searchParams.get('placementSide') === 'right' ? 'right' : 'left');
-  const hasLockedPlacement = Boolean(placementParentUsername);
+  const placementSide = resolvedPlacementContext?.side ?? null;
+  const placementToken = initialContext?.placementToken ?? searchParams.get('token') ?? '';
+  const hasLockedPlacement = Boolean(resolvedPlacementContext);
   const [form, setForm] = useState({
     fullName: '',
     username: '',
@@ -113,11 +136,6 @@ export function RegistrationPageView({
     };
   }, [isModal]);
 
-  const selectedOwnedCode = useMemo(
-    () => availableCodes.find((item) => item.code === form.activationCode) ?? null,
-    [availableCodes, form.activationCode]
-  );
-
   useEffect(() => {
     if (!form.activationCode.trim()) {
       setPreview(null);
@@ -136,8 +154,13 @@ export function RegistrationPageView({
         password: form.password,
         activationCode: form.activationCode,
         referralCode: origin === 'referral-link' ? referralCode : undefined,
-        placementParentUsername: hasLockedPlacement ? placementParentUsername : undefined,
-        placementSide: hasLockedPlacement ? placementSide : undefined
+        placementContext: hasLockedPlacement && placementParentUsername && placementSide
+          ? {
+              parentUsername: placementParentUsername,
+              side: placementSide
+            }
+          : undefined,
+        placementToken: placementToken || undefined
       })
         .then((result) => {
           if (!cancelled) {
@@ -171,16 +194,26 @@ export function RegistrationPageView({
     origin,
     placementParentUsername,
     placementSide,
+    placementToken,
     referralCode
   ]);
 
-  const derivedPackageTier = selectedOwnedCode?.packageTier ?? preview?.selectedPackage ?? '';
-  const derivedAccountType = selectedOwnedCode?.accountType ?? preview?.resolvedAccountType ?? '';
-  const placementSummary = preview?.placement
-    ? `${preview.placement.placementUsername} / ${toDisplaySide(preview.placement.placementSide)}`
-    : hasLockedPlacement
-      ? `${placementParentLabel} / ${toDisplaySide(placementSide)}`
-      : 'Auto-balanced by the system after code validation';
+  const derivedPackageTier = preview?.selectedPackage ?? '';
+  const derivedAccountType = preview?.resolvedAccountType ?? '';
+  const placementSummary = hasLockedPlacement
+    ? preview?.placement
+      ? `${preview.placement.placementUsername} / ${toDisplaySide(preview.placement.placementSide)}`
+      : `${placementParentLabel} / ${toDisplaySide(placementSide ?? 'left')}`
+    : 'Pending — your sponsor will assign your position.';
+
+  function handleBack() {
+    if (location.key && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate('/');
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -212,26 +245,29 @@ export function RegistrationPageView({
       return;
     }
 
-    const confirmed = await confirmAction({
-      title: 'Register member?',
-      description: [
-        derivedPackageTier ? `Package: ${derivedPackageTier}` : null,
-        derivedAccountType ? `Account type: ${derivedAccountType}` : null,
-        `Placement: ${placementSummary}`
-      ]
-        .filter(Boolean)
-        .join('\n'),
-      confirmLabel: 'Register',
-      tone: 'warning'
-    });
-
-    if (!confirmed) {
-      return;
-    }
-
-    setSubmitting(true);
+    setIsHiddenForFeedback(true);
 
     try {
+      const confirmed = await confirmAction({
+        title: 'Register member?',
+        description: [
+          derivedPackageTier ? `Package: ${derivedPackageTier}` : null,
+          derivedAccountType ? `Account type: ${derivedAccountType}` : null,
+          `Placement: ${placementSummary}`
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        confirmLabel: 'Register',
+        tone: 'warning'
+      });
+
+      if (!confirmed) {
+        setIsHiddenForFeedback(false);
+        return;
+      }
+
+      setSubmitting(true);
+
       const result = await submitRegistration({
         origin,
         fullName: form.fullName,
@@ -241,8 +277,13 @@ export function RegistrationPageView({
         password: form.password,
         activationCode: form.activationCode,
         referralCode: origin === 'referral-link' ? referralCode : undefined,
-        placementParentUsername: hasLockedPlacement ? placementParentUsername : undefined,
-        placementSide: hasLockedPlacement ? placementSide : undefined
+        placementContext: hasLockedPlacement && placementParentUsername && placementSide
+          ? {
+              parentUsername: placementParentUsername,
+              side: placementSide
+            }
+          : undefined,
+        placementToken: placementToken || undefined
       });
 
       await presentNotice({
@@ -265,6 +306,7 @@ export function RegistrationPageView({
         description: cause instanceof Error ? cause.message : 'Please try again.',
         tone: 'destructive'
       });
+      setIsHiddenForFeedback(false);
     } finally {
       setSubmitting(false);
     }
@@ -272,7 +314,7 @@ export function RegistrationPageView({
 
   return (
     <section
-      className={`registration-page registration-page--clean ${isModal ? 'registration-page--modal-shell' : ''}`}
+      className={`registration-page registration-page--clean ${isModal ? 'registration-page--modal-shell' : ''} ${isHiddenForFeedback ? 'hidden-for-feedback' : ''}`}
       role={isModal ? 'dialog' : undefined}
       aria-modal={isModal ? 'true' : undefined}
       aria-labelledby={isModal ? 'registration-modal-title' : undefined}
@@ -296,7 +338,14 @@ export function RegistrationPageView({
               </button>
             </div>
           ) : (
-            <BackToExperienceLink />
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 text-sm font-medium text-[var(--yor-copper-soft)] transition hover:text-[var(--yor-gold)]"
+              onClick={handleBack}
+            >
+              <span aria-hidden="true">←</span>
+              Back
+            </button>
           )}
 
           <div className="registration-clean-header">
@@ -312,15 +361,15 @@ export function RegistrationPageView({
           </div>
 
           <div className="registration-context-grid">
-            <div className="registration-context-card">
-              <span>Placement</span>
-              <strong>{placementSummary}</strong>
-              <p>{hasLockedPlacement ? 'Locked from the clicked genealogy slot.' : 'No side picker is shown because the backend auto-balances this referral flow.'}</p>
-            </div>
-            <div className="registration-context-card">
-              <span>Activation Result</span>
-              <strong>{derivedPackageTier || 'Waiting for activation code'}</strong>
-              <p>{derivedAccountType ? `${derivedAccountType} account type` : 'Package and account type appear after code validation.'}</p>
+              <div className="registration-context-card">
+                <span>Placement</span>
+                <strong>{placementSummary}</strong>
+                <p>{hasLockedPlacement ? 'Locked from the clicked genealogy slot.' : 'No side picker is shown because the sponsor will assign your position after registration.'}</p>
+              </div>
+              <div className="registration-context-card">
+                <span>Activation Result</span>
+                <strong>{derivedPackageTier || 'Waiting for activation code'}</strong>
+                <p>{derivedAccountType ? `${derivedAccountType} account type` : 'Package and account type appear after code validation.'}</p>
             </div>
           </div>
 
@@ -348,12 +397,12 @@ export function RegistrationPageView({
                   </div>
                 </label>
                 <div className="reg-field-row">
-                  <label className="reg-field">
-                    <span>Username</span>
+                <label className="reg-field">
+                  <span>Username</span>
                     <div className="reg-input-wrap">
                       <User className="reg-input-icon" size={15} />
                       <input
-                        placeholder="e.g. YOR0002"
+                        placeholder="Choose a username"
                         type="text"
                         value={form.username}
                         onChange={(event) => setForm((current) => ({ ...current, username: normalizeUsername(event.target.value) }))}
@@ -436,10 +485,10 @@ export function RegistrationPageView({
                 </label>
                 <div className="registration-derived-grid">
                   <label className="reg-field">
-                    <span>Package Tier</span>
+                    <span>Derived Package</span>
                     <div className="reg-input-wrap">
                       <KeyRound className="reg-input-icon" size={15} />
-                      <input readOnly type="text" value={derivedPackageTier || 'Waiting for code validation'} />
+                      <input readOnly type="text" value={derivedPackageTier ? `${derivedPackageTier}` : 'Waiting for code validation'} />
                     </div>
                   </label>
                   <label className="reg-field">

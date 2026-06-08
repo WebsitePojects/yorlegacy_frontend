@@ -358,6 +358,17 @@ function renderBonusVisual(content: PageContent) {
   }
 }
 
+const bonusImages: Record<string, string> = {
+  'earn/direct-selling': '/assets/yor/generated/direct_selling_bonus.png',
+  'earn/direct-referral': '/assets/yor/generated/direct_referral_bonus.png',
+  'earn/salesmatch': '/assets/yor/generated/salesmatch_bonus.png',
+  'earn/binary-cycle': '/assets/yor/generated/binary_cycle_bonus.png',
+  'earn/get-five': '/assets/yor/generated/get_yor_five_bonus.png',
+  'earn/lifestyle-rewards': '/assets/yor/generated/lifestyle_rewards.png',
+  'earn/unilevel-rank': '/assets/yor/generated/unilevel_bonus.png',
+  'earn/global': '/assets/yor/generated/global_bonus.png'
+};
+
 export function BonusDetailPageView({ content }: { content: PageContent }) {
   const routeContent = bonusRouteContent[content.slug];
 
@@ -373,57 +384,94 @@ export function BonusDetailPageView({ content }: { content: PageContent }) {
           <EarnExperienceHeader title={content.title} subtitle={content.summary} />
         </motion.div>
 
-        {routeContent ? (
-          <motion.article
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-panel content-card bonus-text-summary-card"
-            initial={{ opacity: 0, y: 28 }}
-            transition={{ delay: 0.08, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <span className="bonus-kicker">{routeContent.kicker}</span>
-            <h2>{routeContent.spotlight}</h2>
-            <div className="bonus-text-detail-list">
-              {routeContent.metrics.map((metric) => (
-                <p key={`${metric.label}-${metric.value}`}>
-                  <strong>{metric.label}:</strong> {metric.value}
-                  {metric.note ? ` - ${metric.note}` : ''}
-                </p>
-              ))}
-            </div>
-          </motion.article>
-        ) : null}
-
-        <section className="bonus-story-grid">
-          {content.sections.map((section, index) => (
-            <motion.article
-              key={section.key}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass-panel content-card bonus-story-card"
-              initial={{ opacity: 0, y: 28 }}
-              transition={{ delay: 0.24 + index * 0.06, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <h2>{section.heading}</h2>
-              <p>{section.body}</p>
-            </motion.article>
-          ))}
-        </section>
-
-        {routeContent?.insights.length ? (
-          <section className="bonus-story-grid bonus-text-insight-grid">
-            {routeContent.insights.map((insight, index) => (
+        {/* Two-column layout grid: details left, visualization right */}
+        <div className="bonus-grid-container">
+          <div className="bonus-left-col">
+            {routeContent ? (
               <motion.article
-                key={insight.title}
                 animate={{ opacity: 1, y: 0 }}
-                className="glass-panel content-card bonus-story-card"
+                className="glass-panel content-card bonus-text-summary-card"
                 initial={{ opacity: 0, y: 28 }}
-                transition={{ delay: 0.3 + index * 0.06, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ delay: 0.08, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
               >
-                <h2>{insight.title}</h2>
-                <p>{insight.body}</p>
+                <span className="bonus-kicker">{routeContent.kicker}</span>
+                <h2>{routeContent.spotlight}</h2>
+                <div className="bonus-text-detail-list">
+                  {routeContent.metrics.map((metric) => (
+                    <p key={`${metric.label}-${metric.value}`}>
+                      <strong>{metric.label}:</strong> {metric.value}
+                      {metric.note ? ` - ${metric.note}` : ''}
+                    </p>
+                  ))}
+                </div>
               </motion.article>
-            ))}
-          </section>
-        ) : null}
+            ) : null}
+
+            <section className="bonus-story-grid">
+              {content.sections.map((section, index) => (
+                <motion.article
+                  key={section.key}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="glass-panel content-card bonus-story-card"
+                  initial={{ opacity: 0, y: 28 }}
+                  transition={{ delay: 0.24 + index * 0.06, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <h2>{section.heading}</h2>
+                  <p>{section.body}</p>
+                </motion.article>
+              ))}
+            </section>
+
+            {routeContent?.insights.length ? (
+              <section className="bonus-story-grid bonus-text-insight-grid">
+                {routeContent.insights.map((insight, index) => (
+                  <motion.article
+                    key={insight.title}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="glass-panel content-card bonus-story-card"
+                    initial={{ opacity: 0, y: 28 }}
+                    transition={{ delay: 0.3 + index * 0.06, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <h2>{insight.title}</h2>
+                    <p>{insight.body}</p>
+                  </motion.article>
+                ))}
+              </section>
+            ) : null}
+          </div>
+
+          <div className="bonus-right-col">
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-panel content-card bonus-visual-card"
+              initial={{ opacity: 0, y: 32 }}
+              transition={{ delay: 0.15, duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="visual-header">
+                <span className="bonus-kicker">Complan Visualization</span>
+                <h3>System Diagram</h3>
+              </div>
+              <div className="visual-image-wrapper">
+                {bonusImages[content.slug] && (
+                  <img
+                    src={bonusImages[content.slug]}
+                    alt={`${content.title} visual representation`}
+                    className="visual-img"
+                  />
+                )}
+                <div className="glow-effect" />
+              </div>
+              
+              {/* Interactive CSS Visualization */}
+              <div className="interactive-visualization-wrapper">
+                <div className="visual-header-sub">
+                  <span className="bonus-kicker">Interactive Flow</span>
+                </div>
+                {renderBonusVisual(content)}
+              </div>
+            </motion.div>
+          </div>
+        </div>
 
         <EarnExperienceFooter />
       </div>

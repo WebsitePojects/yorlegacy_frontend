@@ -142,7 +142,7 @@ describe('GenealogyTree', () => {
     const onSelect = vi.fn();
     renderTree({ onSelect });
 
-    const searchInput = screen.getByPlaceholderText(/Search username, name, or YOU 2/i);
+    const searchInput = screen.getByPlaceholderText(/Search username, name, or YOU/i);
     fireEvent.focus(searchInput);
 
     const results = screen.getByRole('listbox', { name: /placement tree search results/i });
@@ -160,6 +160,10 @@ describe('GenealogyTree', () => {
   it('emits the selected open-slot placement instead of forcing a page navigation', () => {
     const onOpenSlot = vi.fn();
     renderTree({ onOpenSlot });
+
+    // Change depth select to 4 so Alice Alpha (level 2) children are generated
+    const select = screen.getByLabelText(/depth/i);
+    fireEvent.change(select, { target: { value: '4' } });
 
     fireEvent.click(screen.getByRole('button', { name: /open slot left under alpha001/i }));
 
