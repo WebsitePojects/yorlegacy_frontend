@@ -11,8 +11,8 @@ type EarnExperienceChromeProps = {
 export function EarnExperienceHeader({
   title,
   subtitle,
-  backHref = '/#scene-complan',
-  backLabel = 'Back to Ways of Wealth'
+  backHref = '/earn',
+  backLabel = 'Ways of Wealth'
 }: EarnExperienceChromeProps) {
   return (
     <header className="earn-experience-header">

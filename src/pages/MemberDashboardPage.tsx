@@ -19,6 +19,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { searchMemberTransferTargets } from '@/lib/api';
+import { createMemberPlacementReservation } from '@/lib/api';
 import type {
   DashboardSummary,
   GenealogyCenter,
@@ -178,6 +180,12 @@ type GenealogyOpenSlotSelection = {
   side: 'left' | 'right';
 };
 
+type MemberTransferSearchResult = {
+  username: string;
+  displayName: string;
+  packageTier: string;
+};
+
 export function MemberDashboardPage() {
   const {
     getMemberActivationCodes,
@@ -219,9 +227,19 @@ export function MemberDashboardPage() {
   const [isEncashPreviewLoading, setIsEncashPreviewLoading] = useState(false);
   const [selectedCode, setSelectedCode] = useState('');
   const [transferTarget, setTransferTarget] = useState('');
+  const [transferSearchQuery, setTransferSearchQuery] = useState('');
+  const [transferSearchResults, setTransferSearchResults] = useState<MemberTransferSearchResult[]>([]);
+  const [transferSearchLoading, setTransferSearchLoading] = useState(false);
+  const [transferSearchError, setTransferSearchError] = useState<string | null>(null);
+  const [selectedTransferTarget, setSelectedTransferTarget] = useState<MemberTransferSearchResult | null>(null);
   const [maintenanceCode, setMaintenanceCode] = useState('');
+  const [codeInventorySearch, setCodeInventorySearch] = useState('');
+  const [codeFamilyFilter, setCodeFamilyFilter] = useState('all');
+  const [codeStatusFilter, setCodeStatusFilter] = useState('all');
+  const [codeInventoryPage, setCodeInventoryPage] = useState(1);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [copiedCodeCount, setCopiedCodeCount] = useState<Record<string, number>>({});
+  const [isShareLinkLoading, setIsShareLinkLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isContentLoading, setIsContentLoading] = useState(true);
   const [reloadNonce, setReloadNonce] = useState(0);
@@ -250,7 +268,11 @@ export function MemberDashboardPage() {
       if (bundle.activationCodes) {
         setSelectedCode(bundle.activationCodes.inventory[0]?.code ?? '');
         setMaintenanceCode(bundle.activationCodes.inventory[0]?.code ?? '');
-        setTransferTarget(bundle.activationCodes.transferTargets[0]?.username ?? '');
+        setTransferTarget('');
+        setTransferSearchQuery('');
+        setTransferSearchResults([]);
+        setTransferSearchError(null);
+        setSelectedTransferTarget(null);
       }
     },
     []
@@ -346,12 +368,38 @@ export function MemberDashboardPage() {
   const encashAmount = useMemo(() => parseEncashmentAmount(encashAmountInput) ?? 0, [encashAmountInput]);
   const renderedEncashmentPreview =
     encashPreview ?? walletDetail?.preview ?? createEmptyEncashmentPreview('Enter an amount to see the live encashment breakdown.');
+  const memberCodeRows = useMemo(() => {
+    const query = codeInventorySearch.trim().toUpperCase();
+    return (activationCodes?.inventory ?? []).filter((item) => {
+      const familyMatch = codeFamilyFilter === 'all' || item.codeFamily === codeFamilyFilter;
+      const statusMatch = codeStatusFilter === 'all' || item.status.toUpperCase() === codeStatusFilter.toUpperCase();
+      const searchMatch =
+        !query ||
+        item.code.toUpperCase().includes(query) ||
+        item.codeFamily.toUpperCase().includes(query) ||
+        item.packageTier.toUpperCase().includes(query) ||
+        item.status.toUpperCase().includes(query) ||
+        item.assignedTo.toUpperCase().includes(query);
+
+      return familyMatch && statusMatch && searchMatch;
+    });
+  }, [activationCodes?.inventory, codeFamilyFilter, codeInventorySearch, codeStatusFilter]);
+  const codeInventoryPageSize = 50;
+  const codeInventoryTotalPages = Math.max(1, Math.ceil(memberCodeRows.length / codeInventoryPageSize));
+  const visibleMemberCodeRows = memberCodeRows.slice(
+    (Math.min(codeInventoryPage, codeInventoryTotalPages) - 1) * codeInventoryPageSize,
+    Math.min(codeInventoryPage, codeInventoryTotalPages) * codeInventoryPageSize
+  );
 
   useEffect(() => {
     if (moduleId !== 'genealogy' && pendingRegistrationSlot) {
       setPendingRegistrationSlot(null);
     }
   }, [moduleId, pendingRegistrationSlot]);
+
+  useEffect(() => {
+    setCodeInventoryPage(1);
+  }, [codeFamilyFilter, codeInventorySearch, codeStatusFilter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -504,9 +552,18 @@ export function MemberDashboardPage() {
   }
 
   async function handleTransferCodes() {
+    if (!transferTarget.trim()) {
+      notify({
+        title: 'Search for a target first',
+        description: 'Use the username search to select the member who will receive the code.',
+        tone: 'warning'
+      });
+      return;
+    }
+
     const confirmed = await confirmAction({
       title: 'Transfer activation code?',
-      description: `Transfer ${selectedCode || 'the selected code'} to ${transferTarget || 'the selected member'} in the branch sandbox inventory.`,
+      description: `Transfer ${selectedCode || 'the selected code'} to ${selectedTransferTarget?.username ?? transferTarget} in the branch sandbox inventory.`,
       confirmLabel: 'Transfer Code',
       tone: 'warning'
     });
@@ -603,6 +660,16 @@ export function MemberDashboardPage() {
       return;
     }
 
+    const selectedInventoryCode = activationCodes?.inventory.find((item) => item.code === selectedCode);
+    if (selectedInventoryCode && !selectedInventoryCode.copyEnabled) {
+      await notify({
+        title: 'Code is not copy-ready',
+        description: 'Only released registration-ready YOR CODES can be copied for public registration.',
+        tone: 'warning'
+      });
+      return;
+    }
+
     try {
       await navigator.clipboard.writeText(selectedCode);
       setCopiedCode(selectedCode);
@@ -621,6 +688,80 @@ export function MemberDashboardPage() {
         description: cause instanceof Error ? cause.message : 'Please try again.',
         tone: 'destructive'
       });
+    }
+  }
+
+  async function handleSearchTransferTargets() {
+    const query = transferSearchQuery.trim();
+
+    if (query.length < 3) {
+      notify({
+        title: 'Enter at least 3 characters',
+        description: 'Search by username needs a short query before we can look up transfer targets.',
+        tone: 'warning'
+      });
+      return;
+    }
+
+    setTransferSearchLoading(true);
+    setTransferSearchError(null);
+
+    try {
+      const result = await searchMemberTransferTargets(query);
+      const nextResults = result.results.slice(0, 5);
+      setTransferSearchResults(nextResults);
+      setSelectedTransferTarget(null);
+      setTransferTarget('');
+
+      if (nextResults.length === 0) {
+        setTransferSearchError('No member match yet for that username.');
+      }
+    } catch (cause) {
+      setTransferSearchError(cause instanceof Error ? cause.message : 'Unable to search members.');
+      setTransferSearchResults([]);
+      setSelectedTransferTarget(null);
+      setTransferTarget('');
+    } finally {
+      setTransferSearchLoading(false);
+    }
+  }
+
+  async function handleCreateShareLink() {
+    if (!registrationReadiness) {
+      return;
+    }
+
+    const recommendation = registrationReadiness.placementPolicy.recommendation;
+    if (!recommendation.placementUsername || !recommendation.placementSide) {
+      await notify({
+        title: 'Review genealogy first',
+        description: 'Pick or review an open slot before creating the sponsor share link.',
+        tone: 'warning'
+      });
+      return;
+    }
+
+    setIsShareLinkLoading(true);
+    try {
+      const result = await createMemberPlacementReservation({
+        placementParentUsername: recommendation.placementUsername,
+        placementSide: recommendation.placementSide as 'left' | 'right'
+      });
+      await navigator.clipboard.writeText(result.reservation.shareLink);
+      notify({
+        title: 'Share link copied',
+        description: `${result.reservation.placementUsername} / ${result.reservation.placementSide} is now attached to the sponsor registration link.`,
+        tone: 'success'
+      });
+      setReloadNonce((value) => value + 1);
+    } catch (cause) {
+      notify({
+        title: 'Unable to create share link',
+        description: cause instanceof Error ? cause.message : 'Please try again.',
+        tone: 'destructive'
+      });
+    } finally {
+      setIsShareLinkLoading(false);
     }
   }
 
@@ -969,31 +1110,90 @@ export function MemberDashboardPage() {
               <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
                 <CardHeader>
                   <CardTitle>Code Inventory Table</CardTitle>
-                  <CardDescription>Inspect, transfer, upgrade, or reserve codes without burying the main actions under extra panels.</CardDescription>
+                  <CardDescription>All code families are searchable in one table; registration copy remains limited to eligible YOR CODES.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_180px]">
+                    <label className="grid gap-2 text-sm">
+                      <span className="font-medium text-[var(--muted-foreground)]">Search code inventory</span>
+                      <Input
+                        value={codeInventorySearch}
+                        onChange={(event) => setCodeInventorySearch(event.target.value)}
+                        placeholder="Code, family, package, status, owner"
+                      />
+                    </label>
+                    <FieldSelect
+                      label="Family"
+                      value={codeFamilyFilter}
+                      onChange={setCodeFamilyFilter}
+                      options={[
+                        { label: 'All families', value: 'all' },
+                        { label: 'YOR CODES', value: 'YOR CODES' },
+                        { label: 'YOR MAINTENANCE', value: 'YOR MAINTENANCE' },
+                        { label: 'YOR PERFUME', value: 'YOR PERFUME' },
+                        { label: 'YOR VISION', value: 'YOR VISION' }
+                      ]}
+                    />
+                    <FieldSelect
+                      label="Status"
+                      value={codeStatusFilter}
+                      onChange={setCodeStatusFilter}
+                      options={[
+                        { label: 'All statuses', value: 'all' },
+                        { label: 'Available', value: 'available' },
+                        { label: 'Used', value: 'used' },
+                        { label: 'Transferred', value: 'transferred' },
+                        { label: 'Expired', value: 'expired' },
+                        { label: 'Generated', value: 'generated' }
+                      ]}
+                    />
+                  </div>
                   <ReportTableView
                     table={{
-                      title: 'Code Inventory Table',
+                      title: `Inventory (${memberCodeRows.length})`,
                       columns: [
                         { key: 'code', label: 'Code' },
-                        { key: 'codeFamily', label: 'Family' },
-                        { key: 'packageTier', label: 'Product/Package' },
-                        { key: 'assignedTo', label: 'Assigned' },
+                        { key: 'family', label: 'Family' },
+                        { key: 'type', label: 'Type' },
                         { key: 'status', label: 'Status' },
-                        { key: 'visibility', label: 'Visibility' }
+                        { key: 'assignedTo', label: 'Assigned' },
+                        { key: 'copyReady', label: 'Copy Ready' }
                       ],
-                      rows: activationCodes.inventory
-                        .map((item) => ({
-                          code: item.code,
-                          codeFamily: item.codeFamily ?? 'YOR CODES',
-                          packageTier: item.packageTier,
-                          assignedTo: item.assignedTo,
-                          status: item.status,
-                          visibility: item.visibility
-                        }))
+                      rows: visibleMemberCodeRows.map((item) => ({
+                        code: item.code,
+                        family: item.codeFamily,
+                        type: item.accountType,
+                        status: item.status,
+                        assignedTo: item.assignedTo,
+                        copyReady: item.copyEnabled ? 'Yes' : 'No'
+                      }))
                     }}
                   />
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--muted-foreground)]">
+                    <span>
+                      Page {Math.min(codeInventoryPage, codeInventoryTotalPages)} of {codeInventoryTotalPages} / {memberCodeRows.length} code(s)
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={codeInventoryPage <= 1}
+                        onClick={() => setCodeInventoryPage((current) => Math.max(1, current - 1))}
+                      >
+                        Prev
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={codeInventoryPage >= codeInventoryTotalPages}
+                        onClick={() => setCodeInventoryPage((current) => Math.min(codeInventoryTotalPages, current + 1))}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
               <Card className="border-[var(--border)] bg-[var(--card)]">
@@ -1010,25 +1210,78 @@ export function MemberDashboardPage() {
                     label="Code"
                     value={selectedCode}
                     onChange={setSelectedCode}
-                    options={activationCodes.inventory.map((item) => ({
+                    options={activationCodes.inventory.filter((item) => item.codeFamily === 'YOR CODES').map((item) => ({
                       label: `${item.code} / ${item.packageTier}`,
                       value: item.code
                     }))}
                   />
-                  <FieldSelect
-                    label="Target member"
-                    value={transferTarget}
-                    onChange={setTransferTarget}
-                    options={activationCodes.transferTargets.map((target) => ({
-                      label: `${target.username} / ${target.packageTier}`,
-                      value: target.username
-                    }))}
-                  />
+                  <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                    <label className="grid gap-2 text-sm">
+                      <span className="font-medium text-[var(--muted-foreground)]">Search by username</span>
+                      <div className="flex gap-2">
+                        <Input
+                          value={transferSearchQuery}
+                          onChange={(event) => setTransferSearchQuery(event.target.value.toUpperCase())}
+                          placeholder="Search target username"
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              void handleSearchTransferTargets();
+                            }
+                          }}
+                        />
+                        <Button type="button" variant="outline" onClick={() => void handleSearchTransferTargets()} disabled={transferSearchLoading}>
+                          {transferSearchLoading ? 'Searching...' : 'Search'}
+                        </Button>
+                      </div>
+                    </label>
+                    {transferSearchError ? (
+                      <p className="text-sm text-amber-200">{transferSearchError}</p>
+                    ) : null}
+                    {transferSearchResults.length ? (
+                      <div className="grid gap-2">
+                        {transferSearchResults.map((result) => {
+                          const isSelected = selectedTransferTarget?.username === result.username;
+
+                          return (
+                            <button
+                              key={result.username}
+                              type="button"
+                              className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition ${
+                                isSelected
+                                  ? 'border-[var(--yor-copper)] bg-[var(--muted)]/40'
+                                  : 'border-[var(--border)] bg-[var(--background)] hover:bg-[var(--muted)]/20'
+                              }`}
+                              onClick={() => {
+                                setSelectedTransferTarget(result);
+                                setTransferTarget(result.username);
+                              }}
+                            >
+                              <span className="font-medium text-[var(--foreground)]">{result.username}</span>
+                              <span className="text-xs text-[var(--muted-foreground)]">
+                                {result.displayName} / {result.packageTier}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : transferSearchQuery.trim().length >= 3 && !transferSearchLoading && !transferSearchError ? (
+                      <p className="text-sm text-[var(--muted-foreground)]">Search results will appear here.</p>
+                    ) : null}
+                    {selectedTransferTarget ? (
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 text-sm">
+                        <p className="font-medium text-[var(--foreground)]">{selectedTransferTarget.username}</p>
+                        <p className="text-[var(--muted-foreground)]">
+                          {selectedTransferTarget.displayName} / {selectedTransferTarget.packageTier}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
                   <div className="member-action-grid grid gap-3 sm:grid-cols-2">
                     <Button type="button" variant="outline" className="member-action-button" onClick={handleCopyCode}>
                       {copiedCode === selectedCode ? 'Copy Again' : 'Copy Code'}
                     </Button>
-                    <Button type="button" className="member-action-button" onClick={handleTransferCodes}>
+                    <Button type="button" className="member-action-button" disabled={!transferTarget.trim()} onClick={handleTransferCodes}>
                       Transfer Code
                     </Button>
                     <Button type="button" variant="outline" className="member-action-button" onClick={handleUpgradeCode}>
@@ -1172,7 +1425,7 @@ export function MemberDashboardPage() {
               <Card className="border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Registration Readiness</CardTitle>
-                  <CardDescription>Keep sponsor, placement, available code, and registration link in one sequence.</CardDescription>
+                  <CardDescription>Reserve the final slot first, then share the placement-aware registration link with one released code.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <DataPoint label="Sponsor" value={registrationReadiness.sponsor.username} />
@@ -1182,13 +1435,25 @@ export function MemberDashboardPage() {
                   <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-sm leading-6 text-[var(--muted-foreground)]">
                     {registrationReadiness.placementPolicy.recommendation.note}
                   </div>
+                  {registrationReadiness.activeReservation ? (
+                    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-sm leading-6 text-[var(--foreground)]">
+                      <p className="font-medium">Active Share Link</p>
+                      <p className="mt-2 break-all">{registrationReadiness.activeReservation.shareLink}</p>
+                      <p className="mt-2 text-[var(--muted-foreground)]">Expires: {registrationReadiness.activeReservation.expiresAt}</p>
+                    </div>
+                  ) : null}
                   <div className="member-action-row flex flex-wrap gap-3">
-                    <Button asChild className="member-action-button">
-                      <Link to={`/register?ref=${registrationReadiness.sponsor.referralCode}`}>
-                        Open Registration
-                        <ArrowRight className="size-4" />
-                      </Link>
+                    <Button type="button" className="member-action-button" onClick={handleCreateShareLink} disabled={isShareLinkLoading}>
+                      {isShareLinkLoading ? 'Creating Link...' : registrationReadiness.activeReservation ? 'Refresh And Copy Share Link' : 'Create And Copy Share Link'}
                     </Button>
+                    {registrationReadiness.activeReservation ? (
+                      <Button asChild variant="outline" className="member-action-button">
+                        <Link to={registrationReadiness.activeReservation.shareLink.replace('https://yor.local', '')}>
+                          Open Registration
+                          <ArrowRight className="size-4" />
+                        </Link>
+                      </Button>
+                    ) : null}
                     <Button asChild variant="outline" className="member-action-button">
                       <Link to="/member/genealogy">
                         Review Tree

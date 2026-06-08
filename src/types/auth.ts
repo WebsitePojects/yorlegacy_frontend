@@ -1,5 +1,5 @@
 export type AppRole = 'member' | 'admin' | 'cashier' | 'bod' | 'superadmin';
-export type MoneyMode = 'playground' | 'sandbox';
+export type MoneyMode = 'playground' | 'sandbox' | 'production';
 
 export type AuthUser = {
   id: string;
@@ -201,16 +201,27 @@ export type MemberActivationCodeCenter = {
   inventory: Array<{
     id: string;
     code: string;
-    codeFamily?: string;
+    codeFamily: string;
     accountType: string;
     packageTier: string;
     assignedTo: string;
     status: string;
+    paymentStatus?: string;
     generatedAt: string;
+    transferredAt?: string | null;
+    releasedAt?: string | null;
+    registrationEligible?: boolean;
+    copyEnabled?: boolean;
     transferable: boolean;
     upgradable: boolean;
     visibility: string;
   }>;
+  groupedInventory?: {
+    registrationCodes: MemberActivationCodeCenter['inventory'];
+    maintenanceCodes: MemberActivationCodeCenter['inventory'];
+    perfumeCodes: MemberActivationCodeCenter['inventory'];
+    visionCodes: MemberActivationCodeCenter['inventory'];
+  };
   history: Array<{
     id: string;
     code: string;
@@ -317,6 +328,14 @@ export type RegistrationReadiness = {
       note: string;
     };
   };
+  activeReservation?: {
+    id: string;
+    placementUsername: string;
+    placementSide: string;
+    shareToken: string;
+    expiresAt: string;
+    shareLink: string;
+  } | null;
   referralLink: string;
   availableCodes: MemberActivationCodeCenter['inventory'];
   checklist: string[];
@@ -385,6 +404,7 @@ export type AdminActivationCodeCenter = {
   inventory: Array<{
     id: string;
     code: string;
+    codeFamily?: string;
     accountType: string;
     packageTier: string;
     assignedTo: string;
@@ -392,9 +412,17 @@ export type AdminActivationCodeCenter = {
     paymentStatus: 'unpaid' | 'paid' | 'externally-paid';
     remarks: string;
     generatedAt: string;
+    registrationEligible?: boolean;
+    copyEnabled?: boolean;
     transferable: boolean;
     releasable: boolean;
   }>;
+  groupedInventory?: {
+    registrationCodes: AdminActivationCodeCenter['inventory'];
+    maintenanceCodes: AdminActivationCodeCenter['inventory'];
+    perfumeCodes: AdminActivationCodeCenter['inventory'];
+    visionCodes: AdminActivationCodeCenter['inventory'];
+  };
   metrics: {
     totalCodes: number;
     availableCodes: number;

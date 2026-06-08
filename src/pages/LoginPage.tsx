@@ -19,16 +19,6 @@ const credentialLabels: Record<AppRole, string> = {
   superadmin: 'Super Admin',
 };
 
-const credentialOrder: AppRole[] = ['member', 'admin', 'cashier', 'bod', 'superadmin'];
-
-const roleIcons: Record<AppRole, typeof Shield> = {
-  member: Shield,
-  admin: Shield,
-  cashier: Shield,
-  bod: Shield,
-  superadmin: Shield,
-};
-
 export function getDefaultDashboardPath(
   role: AppRole | undefined
 ): '/admin' | '/member' | '/cashier' | '/bod' {
@@ -61,7 +51,7 @@ export function getPostLoginPath(
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, getDemoCredentials } = useAuth();
+  const { login } = useAuth();
   const { notify } = useFeedback();
 
   useSeoDocument(
@@ -78,8 +68,8 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [demoInfo, setDemoInfo] = useState<Record<AppRole, { username: string; password: string }> | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
+  const portalLabel = scope === 'office' ? 'Office Login' : 'Member Login';
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -96,16 +86,27 @@ export function LoginPage() {
       navigate(getPostLoginPath(authState.user?.role, nextPath), { replace: true });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Unable to sign in';
-      setError(message);
-      notify({ title: 'Unable to sign in', description: message, tone: 'destructive' });
+      const portalError = message.toLowerCase().includes('office-only')
+        ? 'This portal is for members only.'
+        : message.toLowerCase().includes('members-only')
+          ? 'This portal is for office staff only.'
+          : message.toLowerCase().includes('invalid')
+            ? 'Invalid username or password.'
+            : message;
+      setError(portalError);
+      notify({ title: 'Unable to sign in', description: portalError, tone: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  async function showDemoCredentials() {
-    const credentials = await getDemoCredentials();
-    setDemoInfo(credentials);
+  function handleBack() {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate('/');
   }
 
   return (
@@ -147,16 +148,25 @@ export function LoginPage() {
 
               {/* Form Panel */}
               <div className="login-form-col">
+                <button
+                  type="button"
+                  className="footer-link-btn"
+                  onClick={handleBack}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#c5a880', marginBottom: '1.25rem' }}
+                >
+                  <ArrowLeft size={14} />
+                  Back
+                </button>
                 <div className="login-form-header">
                   <div className="secure-badge">
                     <Lock size={12} />
                     <span>Secure Access</span>
                   </div>
-                  <h2>{scope === 'office' ? 'Office Access' : 'Welcome Back'}</h2>
+                  <h2>{portalLabel}</h2>
                   <p>
                     {scope === 'office'
                       ? 'Sign in to your admin, cashier, or board office account.'
-                      : 'Sign in to your member or office account.'}
+                      : 'Sign in to your Yor member account.'}
                   </p>
                 </div>
 
@@ -226,48 +236,6 @@ export function LoginPage() {
                     {isSubmitting ? 'Signing In...' : 'Sign In'}
                   </button>
                 </form>
-
-                {/* Demo Directory */}
-                <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-                  <button
-                    className="footer-link-btn"
-                    type="button"
-                    onClick={() => void showDemoCredentials()}
-                    style={{ fontSize: '0.8rem', color: '#c5a880', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                  >
-                    View access directory
-                  </button>
-                </div>
-
-                {demoInfo ? (
-                  <div className="login-demo-panel" style={{ marginTop: '1.5rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '12px', padding: '1.25rem' }}>
-                    <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', fontWeight: 700, color: '#eaeaea', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Access Directory</p>
-                    {credentialOrder.map((role) => {
-                      const Icon = roleIcons[role];
-                      return (
-                        <div key={role} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.03)', fontSize: '0.8rem' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#c5a880' }}>
-                            <Icon size={10} />
-                            {credentialLabels[role]}
-                          </span>
-                          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setUsername(demoInfo[role].username);
-                                setPassword(demoInfo[role].password);
-                              }}
-                              style={{ background: 'none', border: 'none', color: '#eaeaea', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
-                            >
-                              {demoInfo[role].username}
-                            </button>
-                            <span style={{ color: '#666' }}>{demoInfo[role].password}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
 
                 {scope === 'member' ? (
                   <p style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)' }}>

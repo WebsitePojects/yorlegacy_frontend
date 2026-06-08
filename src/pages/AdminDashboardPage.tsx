@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { searchAdminTransferTargets } from '@/lib/api';
 import type {
   AdminActivationCodeCenter,
   AdminEncashmentCenter,
@@ -109,6 +110,12 @@ type EncashmentDraft = {
   tax: string;
   cdDeduction: string;
   remarks: string;
+};
+
+type TransferSearchResult = {
+  username: string;
+  displayName: string;
+  packageTier: string;
 };
 
 const EMPTY_MEMBER_PROFILE_DRAFT: MemberProfileDraft = {
@@ -230,6 +237,7 @@ export function AdminDashboardPage() {
   const [codeBatchPackageTier, setCodeBatchPackageTier] = useState('Standard');
   const [codeBatchAccountType, setCodeBatchAccountType] = useState('PD');
   const [codeBatchAssignedTo, setCodeBatchAssignedTo] = useState('');
+  const [codeBatchRemarks, setCodeBatchRemarks] = useState('');
   const [codeSearchQuery, setCodeSearchQuery] = useState('');
   const [codeReviewRemarks, setCodeReviewRemarks] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -237,8 +245,13 @@ export function AdminDashboardPage() {
   const [reloadNonce, setReloadNonce] = useState(0);
   const [selectedAdminCodes, setSelectedAdminCodes] = useState<string[]>([]);
   const [adminTransferTarget, setAdminTransferTarget] = useState('');
+  const [codeTransferSearchQuery, setCodeTransferSearchQuery] = useState('');
+  const [codeTransferSearchResults, setCodeTransferSearchResults] = useState<TransferSearchResult[]>([]);
+  const [codeTransferSearchLoading, setCodeTransferSearchLoading] = useState(false);
+  const [codeTransferSearchError, setCodeTransferSearchError] = useState<string | null>(null);
   const [selectedEncashmentId, setSelectedEncashmentId] = useState('');
   const [encashmentDraft, setEncashmentDraft] = useState<EncashmentDraft>(EMPTY_ENCASHMENT_DRAFT);
+  const [selectedCodeTransferTarget, setSelectedCodeTransferTarget] = useState<TransferSearchResult | null>(null);
 
   const applyAdminBundle = useCallback((bundle: AdminModuleBundle) => {
     setSummary(bundle.summary);
@@ -254,8 +267,13 @@ export function AdminDashboardPage() {
     if (bundle.activationCodes) {
       setSelectedAdminCodes([]);
       setAdminTransferTarget('');
+      setSelectedCodeTransferTarget(null);
+      setCodeTransferSearchQuery('');
+      setCodeTransferSearchResults([]);
+      setCodeTransferSearchError(null);
       setCodeSearchQuery('');
       setCodeReviewRemarks('');
+      setCodeBatchRemarks('');
     }
 
     if (bundle.encashments) {
@@ -461,7 +479,8 @@ export function AdminDashboardPage() {
         quantity: codeBatchQuantity,
         packageTier: codeBatchPackageTier,
         assignedTo: codeBatchAssignedTo.trim() || undefined,
-        accountType: codeBatchAccountType
+        accountType: codeBatchAccountType,
+        remarks: codeBatchRemarks.trim() || undefined
       });
       notify({
         title: 'Code batch generated',
@@ -537,9 +556,18 @@ export function AdminDashboardPage() {
   }
 
   async function handleTransferCodes() {
+    if (!adminTransferTarget.trim()) {
+      notify({
+        title: 'Search for a target first',
+        description: 'Use the username search to select the member who will receive the codes.',
+        tone: 'warning'
+      });
+      return;
+    }
+
     const confirmed = await confirmAction({
       title: 'Transfer selected codes?',
-      description: `Transfer ${selectedAdminCodes.length} selected code(s) to ${adminTransferTarget || 'the selected member'}.`,
+      description: `Transfer ${selectedAdminCodes.length} selected code(s) to ${selectedCodeTransferTarget?.username ?? adminTransferTarget}.`,
       confirmLabel: 'Transfer Codes',
       tone: 'warning'
     });
@@ -569,9 +597,18 @@ export function AdminDashboardPage() {
   }
 
   async function handleReleaseAndTransferCodes() {
+    if (!adminTransferTarget.trim()) {
+      notify({
+        title: 'Search for a target first',
+        description: 'Use the username search to select the member who will receive the codes.',
+        tone: 'warning'
+      });
+      return;
+    }
+
     const confirmed = await confirmAction({
       title: 'Release and transfer selected codes?',
-      description: `Release ${selectedAdminCodes.length} selected code(s), then transfer them to ${adminTransferTarget || 'the selected member'}.`,
+      description: `Release ${selectedAdminCodes.length} selected code(s), then transfer them to ${selectedCodeTransferTarget?.username ?? adminTransferTarget}.`,
       confirmLabel: 'Release + Transfer',
       tone: 'warning'
     });
@@ -598,6 +635,41 @@ export function AdminDashboardPage() {
         description: cause instanceof Error ? cause.message : 'Please try again.',
         tone: 'destructive'
       });
+    }
+  }
+
+  async function handleSearchCodeTransferTargets() {
+    const query = codeTransferSearchQuery.trim();
+
+    if (query.length < 3) {
+      notify({
+        title: 'Enter at least 3 characters',
+        description: 'Search by username needs a short query before we can look up transfer targets.',
+        tone: 'warning'
+      });
+      return;
+    }
+
+    setCodeTransferSearchLoading(true);
+    setCodeTransferSearchError(null);
+
+    try {
+      const result = await searchAdminTransferTargets(query);
+      const nextResults = result.results.slice(0, 5);
+      setCodeTransferSearchResults(nextResults);
+      setSelectedCodeTransferTarget(null);
+      setAdminTransferTarget('');
+
+      if (nextResults.length === 0) {
+        setCodeTransferSearchError('No member match yet for that username.');
+      }
+    } catch (cause) {
+      setCodeTransferSearchError(cause instanceof Error ? cause.message : 'Unable to search members.');
+      setCodeTransferSearchResults([]);
+      setSelectedCodeTransferTarget(null);
+      setAdminTransferTarget('');
+    } finally {
+      setCodeTransferSearchLoading(false);
     }
   }
 
@@ -899,8 +971,6 @@ export function AdminDashboardPage() {
     selectableAdminCodes.length > 0 && selectableAdminCodes.every((code) => selectedAdminCodes.includes(code));
   const financeModulePath = office?.modules.find((module) => module.id === 'finance-accounting')?.path;
   const cdAccountsModulePath = office?.modules.find((module) => module.id === 'cd-accounts')?.path;
-  const selectedTransferTargetPreview =
-    activationCodes?.transferTargets.find((target) => target.username === adminTransferTarget.trim().toUpperCase()) ?? null;
   const selectedEncashment =
     encashments?.encashments.find((item) => item.id === selectedEncashmentId) ?? encashments?.encashments[0] ?? null;
   const summaryCard =
@@ -1038,15 +1108,26 @@ export function AdminDashboardPage() {
                               <option value="FS">FS</option>
                             </select>
                           </label>
-                          <label className="grid gap-2 text-sm">
-                            <span className="font-medium text-[var(--muted-foreground)]">Optional Tagged User</span>
-                            <Input
-                              value={codeBatchAssignedTo}
-                              onChange={(event) => setCodeBatchAssignedTo(event.target.value.toUpperCase())}
-                              placeholder="Leave blank for general pool"
-                            />
-                          </label>
-                        </div>
+                        <label className="grid gap-2 text-sm">
+                          <span className="font-medium text-[var(--muted-foreground)]">Optional Tagged User</span>
+                          <Input
+                            value={codeBatchAssignedTo}
+                            onChange={(event) => setCodeBatchAssignedTo(event.target.value.toUpperCase())}
+                            placeholder="Leave blank for general pool"
+                          />
+                        </label>
+                        <label className="grid gap-2 text-sm sm:col-span-4">
+                          <span className="font-medium text-[var(--muted-foreground)]">Remarks (optional)</span>
+                          <textarea
+                            maxLength={200}
+                            value={codeBatchRemarks}
+                            onChange={(event) => setCodeBatchRemarks(event.target.value)}
+                            placeholder="Internal note for generation batch, audit, or follow-up"
+                            className="min-h-[96px] w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                          />
+                          <span className="text-xs text-[var(--muted-foreground)]">{codeBatchRemarks.length}/200</span>
+                        </label>
+                      </div>
                         <div className="flex flex-wrap gap-3">
                           <Button className="ops-admin-primary-action" type="button" onClick={handleGenerateCodes}>
                             Generate General Codes
@@ -1072,23 +1153,69 @@ export function AdminDashboardPage() {
                             placeholder="Code, username, package, paid state, remarks"
                           />
                         </label>
-                        <label className="grid gap-2 text-sm">
-                          <span className="font-medium text-[var(--muted-foreground)]">Transfer target username</span>
-                          <Input
-                            value={adminTransferTarget}
-                            onChange={(event) => setAdminTransferTarget(event.target.value.toUpperCase())}
-                            placeholder="Search username to transfer selected codes"
-                          />
-                        </label>
-                      </div>
-                      {selectedTransferTargetPreview ? (
-                        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--border)] px-3 py-2 text-sm">
-                          <Badge variant="outline">{selectedTransferTargetPreview.username}</Badge>
-                          <span className="text-[var(--foreground)]">{selectedTransferTargetPreview.fullName}</span>
-                          <span className="text-[var(--muted-foreground)]">{selectedTransferTargetPreview.packageTier}</span>
+                        <div className="grid gap-2 text-sm">
+                          <span className="font-medium text-[var(--muted-foreground)]">Search by username</span>
+                          <div className="flex gap-2">
+                            <Input
+                              value={codeTransferSearchQuery}
+                              onChange={(event) => setCodeTransferSearchQuery(event.target.value.toUpperCase())}
+                              placeholder="Search target username"
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault();
+                                  void handleSearchCodeTransferTargets();
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => void handleSearchCodeTransferTargets()}
+                              disabled={codeTransferSearchLoading}
+                            >
+                              {codeTransferSearchLoading ? 'Searching...' : 'Search'}
+                            </Button>
+                          </div>
                         </div>
-                      ) : adminTransferTarget ? (
-                        <p className="mt-3 text-sm text-[var(--muted-foreground)]">No member match yet for that username.</p>
+                      </div>
+                      {codeTransferSearchError ? (
+                        <p className="mt-3 text-sm text-amber-200">{codeTransferSearchError}</p>
+                      ) : null}
+                      {codeTransferSearchResults.length ? (
+                        <div className="mt-3 grid gap-2">
+                          {codeTransferSearchResults.map((result) => {
+                            const isSelected = selectedCodeTransferTarget?.username === result.username;
+                            return (
+                              <button
+                                key={result.username}
+                                type="button"
+                                className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition ${
+                                  isSelected
+                                    ? 'border-[var(--yor-copper)] bg-[var(--muted)]/40'
+                                    : 'border-[var(--border)] bg-[var(--background)] hover:bg-[var(--muted)]/20'
+                                }`}
+                                onClick={() => {
+                                  setSelectedCodeTransferTarget(result);
+                                  setAdminTransferTarget(result.username);
+                                }}
+                              >
+                                <span className="font-medium text-[var(--foreground)]">{result.username}</span>
+                                <span className="text-xs text-[var(--muted-foreground)]">
+                                  {result.displayName} / {result.packageTier}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : codeTransferSearchQuery.trim().length >= 3 && !codeTransferSearchLoading && !codeTransferSearchError ? (
+                        <p className="mt-3 text-sm text-[var(--muted-foreground)]">Search results will appear here.</p>
+                      ) : null}
+                      {selectedCodeTransferTarget ? (
+                        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--border)] px-3 py-2 text-sm">
+                          <Badge variant="outline">{selectedCodeTransferTarget.username}</Badge>
+                          <span className="text-[var(--foreground)]">{selectedCodeTransferTarget.displayName}</span>
+                          <span className="text-[var(--muted-foreground)]">{selectedCodeTransferTarget.packageTier}</span>
+                        </div>
                       ) : null}
                       {canReviewCodeStates ? (
                         <label className="mt-3 grid gap-2 text-sm">
@@ -1152,7 +1279,7 @@ export function AdminDashboardPage() {
                 rows={[
                   { label: 'Filtered Rows', value: filteredActivationInventory.length },
                   { label: 'Selected Codes', value: selectedAdminCodes.length },
-                  { label: 'Transfer Target', value: selectedTransferTargetPreview?.username ?? adminTransferTarget ?? 'None' },
+                  { label: 'Transfer Target', value: selectedCodeTransferTarget?.username ?? adminTransferTarget ?? 'None' },
                   { label: 'Settlement Note', value: codeReviewRemarks || 'No remarks yet' }
                 ]}
               />

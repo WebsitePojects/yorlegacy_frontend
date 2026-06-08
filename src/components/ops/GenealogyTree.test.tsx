@@ -161,6 +161,10 @@ describe('GenealogyTree', () => {
     const onOpenSlot = vi.fn();
     renderTree({ onOpenSlot });
 
+    // Change depth select to 4 so Alice Alpha (level 2) children are generated
+    const select = screen.getByLabelText(/depth/i);
+    fireEvent.change(select, { target: { value: '4' } });
+
     fireEvent.click(screen.getByRole('button', { name: /open slot left under alpha001/i }));
 
     expect(onOpenSlot).toHaveBeenCalledWith({

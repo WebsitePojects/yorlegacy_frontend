@@ -8,6 +8,12 @@ type ProtectedRouteProps = {
   children: ReactElement;
 };
 
+export function getLoginPathForRoute(pathname: string) {
+  return pathname.startsWith('/admin') || pathname.startsWith('/cashier') || pathname.startsWith('/bod')
+    ? '/admin/login'
+    : '/login';
+}
+
 export function ProtectedRoute({
   allowedRoles,
   children
@@ -29,7 +35,7 @@ export function ProtectedRoute({
   }
 
   if (!authenticated) {
-    return <Navigate replace state={{ from: location.pathname }} to="/login" />;
+    return <Navigate replace state={{ from: location.pathname }} to={getLoginPathForRoute(location.pathname)} />;
   }
 
   if (!canAccessRole(user?.role, allowedRoles)) {
