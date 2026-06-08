@@ -50,6 +50,7 @@ type CanvasNode = {
   parentUsername?: string;
   parentReferralCode?: string;
   placementParentUsername?: string;
+  placementSide?: 'left' | 'right';
   children: CanvasNode[];
 };
 
@@ -187,7 +188,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
   const [isActive, setIsActive] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [visibleDepth, setVisibleDepth] = useState(4);
+  const [visibleDepth, setVisibleDepth] = useState(3);
   const [nodeSearch, setNodeSearch] = useState('');
   const [focusedNodeKey, setFocusedNodeKey] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -229,7 +230,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
   );
 
   function clampScale(nextScale: number) {
-    return Math.min(1.5, Math.max(0.42, Number(nextScale.toFixed(2))));
+    return Math.min(1.5, Math.max(0.01, Number(nextScale.toFixed(2))));
   }
 
   function updateScale(delta: number) {
@@ -831,20 +832,20 @@ function toCanvasNode(
   const children: CanvasNode[] = [];
   const shadowSlot = isShadow && parentShadowSlots ? parentShadowSlots[side as 'left' | 'right'] : undefined;
 
-  if (level < maxDepth) {
+  if (level < maxDepth - 1) {
     const leftChild = node.children.find((child) => child.placement === 'left');
     const rightChild = node.children.find((child) => child.placement === 'right');
 
     if (leftChild) {
       children.push(toCanvasNode(leftChild, level + 1, 'left', maxDepth, node.shadowSlots, node.username, node.referralCode));
-    } else if (node.openSlots?.left) {
-      children.push(toOpenSlot(node, level + 1, 'left'));
+    } else {
+      children.push(toOpenSlot(node.username, node.referralCode, level + 1, 'left', maxDepth, node.nodeId, 'left'));
     }
 
     if (rightChild) {
       children.push(toCanvasNode(rightChild, level + 1, 'right', maxDepth, node.shadowSlots, node.username, node.referralCode));
-    } else if (node.openSlots?.right) {
-      children.push(toOpenSlot(node, level + 1, 'right'));
+    } else {
+      children.push(toOpenSlot(node.username, node.referralCode, level + 1, 'right', maxDepth, node.nodeId, 'right'));
     }
   }
 
@@ -859,21 +860,37 @@ function toCanvasNode(
     parentUsername: isShadow ? parentUsername : node.username,
     parentReferralCode: isShadow ? parentReferralCode : node.referralCode,
     placementParentUsername: parentUsername,
+    placementSide: side === 'root' ? undefined : side,
     children
   };
 }
 
-function toOpenSlot(parent: GenealogyTreeNode, level: number, side: 'left' | 'right'): CanvasNode {
+function toOpenSlot(
+  parentUsername: string,
+  parentReferralCode: string,
+  level: number,
+  side: 'left' | 'right',
+  maxDepth: number,
+  parentKey: string,
+  placementSide: 'left' | 'right'
+): CanvasNode {
+  const key = `${parentKey}-${side}-open-${level}`;
+  const children: CanvasNode[] = [];
+  if (level < maxDepth - 1) {
+    children.push(toOpenSlot(parentUsername, parentReferralCode, level + 1, 'left', maxDepth, key, placementSide));
+    children.push(toOpenSlot(parentUsername, parentReferralCode, level + 1, 'right', maxDepth, key, placementSide));
+  }
+
   return {
-    key: `${parent.nodeId}-${side}-open-${level}`,
+    key,
     side,
     level,
     isOpenSlot: true,
-    shadowSlot: parent.shadowSlots?.[side],
-    parentUsername: parent.username,
-    parentReferralCode: parent.referralCode,
-    placementParentUsername: parent.username,
-    children: []
+    parentUsername,
+    parentReferralCode,
+    placementParentUsername: parentUsername,
+    placementSide,
+    children
   };
 }
 
@@ -956,7 +973,7 @@ function BinaryBranch({
       onOpenSlot?.({
         parentUsername: node.parentUsername,
         parentReferralCode: node.parentReferralCode,
-        side: node.side
+        side: node.placementSide ?? node.side
       });
     }
   };

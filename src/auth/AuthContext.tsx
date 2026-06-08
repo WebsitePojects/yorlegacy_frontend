@@ -74,7 +74,7 @@ type LoginPayload = {
   username: string;
   password: string;
   rememberMe?: boolean;
-  scope?: 'member' | 'office';
+  scope: 'member' | 'office';
 };
 
 type AuthContextValue = AuthState & {
@@ -107,7 +107,13 @@ type AuthContextValue = AuthState & {
   getMemberBinaryTree: (rootUsername?: string) => Promise<GenealogyCenter>;
   getMemberShadowAccounts: (ownerUsername?: string) => Promise<ShadowAccountCenter>;
   getAdminActivationCodes: () => Promise<AdminActivationCodeCenter>;
-  generateActivationCodes: (payload: { quantity: number; packageTier?: string; assignedTo?: string; accountType?: string }) => Promise<GatedActionResponse>;
+  generateActivationCodes: (payload: {
+    quantity: number;
+    packageTier?: string;
+    assignedTo?: string;
+    accountType?: string;
+    remarks?: string;
+  }) => Promise<GatedActionResponse>;
   releaseActivationCodes: (codes: string[]) => Promise<GatedActionResponse>;
   transferAdminCodes: (payload: { targetUsername: string; codes: string[] }) => Promise<GatedActionResponse>;
   reviewActivationCodes: (payload: {
@@ -243,8 +249,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     getMemberBinaryTree: fetchMemberBinaryTree,
     getMemberShadowAccounts: fetchMemberShadowAccounts,
     getAdminActivationCodes: fetchAdminActivationCodes,
-    generateActivationCodes: ({ quantity, packageTier, assignedTo, accountType }) =>
-      generateAdminActivationCodes(quantity, packageTier, assignedTo, accountType),
+    generateActivationCodes: ({ quantity, packageTier, assignedTo, accountType, remarks }) =>
+      generateAdminActivationCodes(quantity, packageTier, assignedTo, accountType, remarks),
     releaseActivationCodes: releaseAdminActivationCodes,
     transferAdminCodes: transferAdminActivationCodes,
     reviewActivationCodes: reviewAdminActivationCodes,

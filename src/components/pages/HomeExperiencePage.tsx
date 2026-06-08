@@ -1313,10 +1313,10 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
 
             <div className="premium-earn-grid">
               {earningCards.map((card) => (
-                <button
+                <NavLink
                   key={card.title}
-                  onClick={() => scrollToAnchor('#scene-packages-accordion')}
-                  className="premium-earn-card text-left-btn"
+                  to={card.href}
+                  className="premium-earn-card text-left-btn block"
                 >
                   <span className="premium-earn-number">{card.number}</span>
                   <h3>{card.title}</h3>
@@ -1325,7 +1325,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
                     Explore detail
                     <ArrowRight size={14} />
                   </span>
-                </button>
+                </NavLink>
               ))}
             </div>
           </div>
@@ -1575,6 +1575,21 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
             <p className="build-global-paragraph">
               Connect with aspiring entrepreneurs, establish local sales teams, and scale your business across borders. Under the leadership of Yoren B. Abihay, YOR International is expanding its footprint across the major economic hubs of the Philippines and beyond.
             </p>
+
+            <img
+              src="/assets/yor/networks.jpg"
+              alt="Yor International network"
+              style={{
+                width: 'min(100%, 760px)',
+                aspectRatio: '16 / 9',
+                objectFit: 'cover',
+                borderRadius: '18px',
+                border: '1px solid rgba(197, 168, 128, 0.28)',
+                boxShadow: '0 24px 70px rgba(0, 0, 0, 0.42)',
+                margin: '1.5rem auto 0',
+                display: 'block'
+              }}
+            />
             
             {/* Stats Counter Row */}
             <div className="global-stats-row">

@@ -34,13 +34,38 @@ const API_BASE_URL = (
     ? ''
     : requestedApiBaseUrl
 ).replace(/\/+$/, '');
+const CSRF_COOKIE_NAME = 'yor_csrf';
+
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  const cookies = document.cookie.split(';');
+  for (const part of cookies) {
+    const [key, ...rest] = part.trim().split('=');
+    if (key === name) {
+      return rest.join('=');
+    }
+  }
+
+  return null;
+}
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers ?? {});
+  const method = (init?.method ?? 'GET').toUpperCase();
 
   // Avoid forcing CORS preflights on simple GET/HEAD requests.
   if (init?.body != null && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
+  }
+
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && !headers.has('x-yor-csrf-token')) {
+    const csrfToken = readCookie(CSRF_COOKIE_NAME);
+    if (csrfToken) {
+      headers.set('x-yor-csrf-token', csrfToken);
+    }
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -149,6 +174,22 @@ export function searchMemberProfile(username: string): Promise<{ username: strin
   });
 }
 
+export function searchMemberTransferTargets(query: string): Promise<{
+  results: Array<{ username: string; displayName: string; packageTier: string }>;
+}> {
+  return fetchJson(`/api/member/members/search?q=${encodeURIComponent(query)}`, {
+    method: 'GET'
+  });
+}
+
+export function searchAdminTransferTargets(query: string): Promise<{
+  results: Array<{ username: string; displayName: string; packageTier: string }>;
+}> {
+  return fetchJson(`/api/admin/members/search?q=${encodeURIComponent(query)}`, {
+    method: 'GET'
+  });
+}
+
 export function transferMemberActivationCodes(payload: {
   targetUsername: string;
   codes: string[];
@@ -212,6 +253,28 @@ export function fetchMemberRegistrationReadiness(): Promise<RegistrationReadines
   return fetchJson('/api/member/registration-readiness', { method: 'GET' });
 }
 
+export function createMemberPlacementReservation(payload: {
+  placementParentUsername: string;
+  placementSide: 'left' | 'right';
+  expiresInHours?: number;
+}): Promise<{
+  moneyMode: 'production';
+  status: 'completed';
+  reservation: {
+    id: string;
+    placementUsername: string;
+    placementSide: 'left' | 'right';
+    expiresAt: string;
+    shareToken: string;
+    shareLink: string;
+  };
+}> {
+  return fetchJson('/api/member/placement-reservations', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
 export function fetchMemberBinaryTree(rootUsername?: string): Promise<GenealogyCenter> {
   const suffix = rootUsername ? `?rootUsername=${encodeURIComponent(rootUsername)}` : '';
   return fetchJson(`/api/member/genealogy/binary-tree${suffix}`, { method: 'GET' });
@@ -230,11 +293,12 @@ export function generateAdminActivationCodes(
   quantity: number,
   packageTier?: string,
   assignedTo?: string,
-  accountType?: string
+  accountType?: string,
+  remarks?: string
 ): Promise<GatedActionResponse> {
   return fetchJson('/api/admin/activation-codes/generate', {
     method: 'POST',
-    body: JSON.stringify({ quantity, packageTier, assignedTo, accountType })
+    body: JSON.stringify({ quantity, packageTier, assignedTo, accountType, remarks })
   });
 }
 
@@ -376,35 +440,53 @@ export function fetchAdminSponsorTree(rootUsername?: string): Promise<GenealogyC
 export function fetchRegistrationPreview(payload: {
   origin: 'referral-link' | 'genealogy-slot';
   fullName: string;
-  username?: string;
-  email: string;
+  username: string;
+  email?: string;
   phone: string;
   password: string;
   activationCode: string;
   referralCode?: string;
-  placementParentUsername?: string;
-  placementSide?: 'left' | 'right';
+  sponsorReferralCode?: string;
+  placementContext?: {
+    parentUsername: string;
+    side: 'left' | 'right';
+  };
+  placementToken?: string;
+  placementReservationId?: string;
 }): Promise<RegistrationPreview> {
   return fetchJson('/api/registration/preview', {
     method: 'POST',
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      ...payload,
+      placementParentUsername: payload.placementContext?.parentUsername,
+      placementSide: payload.placementContext?.side
+    })
   });
 }
 
 export function submitRegistration(payload: {
   origin: 'referral-link' | 'genealogy-slot';
   fullName: string;
-  username?: string;
-  email: string;
+  username: string;
+  email?: string;
   phone: string;
   password: string;
   activationCode: string;
   referralCode?: string;
-  placementParentUsername?: string;
-  placementSide?: 'left' | 'right';
+  sponsorReferralCode?: string;
+  placementContext?: {
+    parentUsername: string;
+    side: 'left' | 'right';
+  };
+  placementToken?: string;
+  placementReservationId?: string;
 }): Promise<RegistrationSubmitResponse> {
   return fetchJson('/api/registration/submit', {
     method: 'POST',
-    body: JSON.stringify(payload)
+    body: JSON.stringify({
+      ...payload,
+      placementParentUsername: payload.placementContext?.parentUsername,
+      placementSide: payload.placementContext?.side
+    })
   });
 }
