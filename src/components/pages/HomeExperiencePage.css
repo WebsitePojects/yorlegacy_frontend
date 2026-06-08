@@ -4769,4 +4769,393 @@ body.story-scroll-locked {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   LANDING PAGE IMPROVEMENTS — v2
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── IMG 1: Persistent "Keep Scrolling" indicator (always visible during video) ── */
+.home-scroll-indicator--persistent {
+  bottom: 2.5rem;
+  flex-direction: row;
+  gap: 0.6rem;
+  padding: 0.55rem 1.1rem 0.55rem 0.9rem;
+  animation: scrollPulse 2.2s ease-in-out infinite;
+  pointer-events: auto;
+}
+
+.home-scroll-indicator--persistent span {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.home-scroll-indicator-chevron {
+  animation: bounceChevron 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes bounceChevron {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+@keyframes scrollPulse {
+  0%, 100% {
+    background: rgba(3, 3, 3, 0.42);
+    border-color: rgba(255, 225, 168, 0.28);
+    box-shadow: 0 0 0 0 rgba(255, 225, 168, 0);
+  }
+  50% {
+    background: rgba(12, 8, 3, 0.55);
+    border-color: rgba(255, 225, 168, 0.55);
+    box-shadow: 0 0 14px 3px rgba(255, 199, 103, 0.18);
+  }
+}
+
+
+@media (max-width: 430px) {
+  .home-scroll-indicator--persistent {
+    bottom: 2rem;
+  }
+}
+
+/* ── IMG 2: Premium Vision/Mission cards ── */
+.vision-card,
+.mission-card {
+  background:
+    linear-gradient(145deg, rgba(25, 22, 18, 0.96) 0%, rgba(14, 12, 10, 0.98) 100%),
+    radial-gradient(circle at top right, rgba(243, 212, 138, 0.12), transparent 40%);
+  border: 1px solid rgba(197, 168, 128, 0.14);
+  box-shadow:
+    0 32px 64px rgba(0, 0, 0, 0.52),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 1px rgba(197, 168, 128, 0.06);
+  transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
+}
+
+.vision-card:hover,
+.mission-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(197, 168, 128, 0.28);
+  box-shadow:
+    0 40px 80px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(197, 168, 128, 0.14);
+}
+
+.vision-card .card-accent,
+.mission-card .card-accent {
+  height: 3px;
+  background: linear-gradient(90deg, #bf953f 0%, #fcf6ba 35%, #b38728 60%, #e8d5a3 80%, #aa771c 100%);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 0 20px rgba(197, 168, 128, 0.35);
+}
+
+.vision-card h2,
+.mission-card h2 {
+  font-size: 3rem;
+  background: linear-gradient(135deg, #ffffff 0%, #e8d5a3 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+
+.mission-node-icon {
+  background: rgba(197, 168, 128, 0.08);
+  border: 1px solid rgba(197, 168, 128, 0.18);
+  box-shadow: 0 0 12px rgba(197, 168, 128, 0.1);
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.mission-node:hover .mission-node-icon {
+  background: rgba(197, 168, 128, 0.15);
+  box-shadow: 0 0 20px rgba(197, 168, 128, 0.2);
+}
+
+.mission-node span {
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 0.08em;
+}
+
+/* ── IMG 3: Founder Section "Meet the Founder" heading + scroll animation ── */
+.founder-section-header {
+  text-align: center;
+  margin-bottom: 4rem;
+  opacity: 0;
+  transform: translateY(30px);
+  animation: founderHeaderReveal 0.8s cubic-bezier(0.25, 1, 0.5, 1) 0.2s forwards;
+}
+
+@keyframes founderHeaderReveal {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.founder-section-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  color: #ffffff;
+  margin: 0.5rem 0 1.5rem 0;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.founder-section-rule {
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #c5a880, transparent);
+  margin: 0 auto;
+}
+
+/* Scroll-in animation for founder grid children */
+.founder-grid--animated > * {
+  opacity: 0;
+  transform: translateY(40px);
+  animation: founderItemReveal 0.9s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.founder-grid--animated > *:nth-child(1) { animation-delay: 0.3s; }
+.founder-grid--animated > *:nth-child(2) { animation-delay: 0.5s; }
+
+@keyframes founderItemReveal {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── IMG 4: Earnings number "01" fix — premium number display ── */
+.premium-earn-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #1a1208;
+  background: linear-gradient(135deg, #f3d48a 0%, #d4af37 100%);
+  box-shadow:
+    0 4px 12px rgba(212, 175, 55, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+  margin-bottom: 0.5rem;
+}
+
+.premium-earn-card {
+  gap: 0.6rem;
+  padding: 1.5rem;
+  min-height: 200px;
+}
+
+.premium-earn-card h3 {
+  font-size: 1.1rem;
+  line-height: 1.25;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.premium-earn-card p {
+  font-size: 0.84rem;
+  line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 640px) {
+  .premium-earn-number {
+    width: 30px;
+    height: 30px;
+    font-size: 0.65rem;
+    border-radius: 8px;
+  }
+
+  .premium-earn-card {
+    padding: 1.25rem;
+    min-height: auto;
+    gap: 0.5rem;
+  }
+
+  .premium-earn-card h3 {
+    font-size: 1rem;
+  }
+
+  .premium-earn-card p {
+    font-size: 0.82rem;
+  }
+}
+
+/* ── IMG 5: Featured Product — glassmorphism backdrop blur ── */
+.featured-product-card {
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  background:
+    linear-gradient(145deg, rgba(14, 11, 8, 0.88) 0%, rgba(8, 6, 4, 0.92) 100%),
+    radial-gradient(circle at 70% 30%, rgba(197, 168, 128, 0.08), transparent 50%);
+  border: 1px solid rgba(197, 168, 128, 0.12);
+  box-shadow:
+    0 40px 80px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 1px rgba(197, 168, 128, 0.05);
+}
+
+.featured-product-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  filter: blur(0);
+  z-index: 0;
+}
+
+.featured-product-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.product-visual-panel {
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(197, 168, 128, 0.12) 0%, rgba(3, 3, 3, 0) 70%);
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(197, 168, 128, 0.08);
+  padding: 1.5rem;
+}
+
+/* ── IMG 6: Fragrance grid — 2 cards per row ── */
+.fragrance-list--grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+  flex-direction: unset;
+}
+
+.fragrance-list--grid .fragrance-item {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 1.25rem;
+}
+
+.fragrance-list--grid .fragrance-item .item-details {
+  gap: 0.2rem;
+}
+
+.fragrance-list--grid .fragrance-item span {
+  font-size: 0.92rem;
+}
+
+.fragrance-list--grid .fragrance-item svg {
+  align-self: flex-end;
+  margin-top: auto;
+}
+
+@media (max-width: 480px) {
+  .fragrance-list--grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+  }
+
+  .fragrance-list--grid .fragrance-item {
+    padding: 1rem;
+  }
+
+  .fragrance-list--grid .fragrance-item span {
+    font-size: 0.82rem;
+  }
+
+  .fragrance-list--grid .fragrance-item small {
+    font-size: 0.7rem;
+  }
+}
+
+/* ── IMG 7: Expanding Horizons stats — mobile 2+1 layout ── */
+.global-stats-row--optimized {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 1.25rem;
+  max-width: 700px;
+}
+
+.global-stats-row--optimized .global-stat-card:nth-child(1),
+.global-stats-row--optimized .global-stat-card:nth-child(2) {
+  grid-column: span 1;
+}
+
+.global-stats-row--optimized .global-stat-card--ways {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 1.5rem 2rem;
+}
+
+.global-stats-row--optimized .global-stat-card--ways .stat-value {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+}
+
+.global-stats-row--optimized .global-stat-card--ways .stat-label {
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+@media (min-width: 769px) {
+  .global-stats-row--optimized {
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto;
+  }
+
+  .global-stats-row--optimized .global-stat-card--ways {
+    grid-column: span 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 2rem;
+  }
+
+  .global-stats-row--optimized .global-stat-card--ways .stat-label {
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .global-stats-row--optimized {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+  }
+
+  .global-stats-row--optimized .global-stat-card--ways {
+    padding: 1.25rem;
+    gap: 1rem;
+  }
+
+  .global-stats-row--optimized .global-stat-card--ways .stat-value {
+    font-size: 2.2rem;
+  }
+}
+
+/* ── Founder section mobile ── */
+@media (max-width: 768px) {
+  .founder-section-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .founder-section-title {
+    font-size: clamp(2rem, 8vw, 2.8rem);
+  }
+}
+
+/* Founder portrait shell fills col */
+.founder-portrait-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 
