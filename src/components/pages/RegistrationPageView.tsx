@@ -32,7 +32,7 @@ function toDisplaySide(side: 'left' | 'right') {
 }
 
 function normalizeUsername(value: string) {
-  return value.trimStart().toUpperCase();
+  return value.trimStart();
 }
 
 export function RegistrationPageView({
@@ -116,7 +116,10 @@ export function RegistrationPageView({
 
         setAvailableCodes(
           bundle.inventory.filter(
-            (item) => item.status === 'available' && REGISTRATION_PACKAGES.has(item.packageTier.toUpperCase())
+            (item) =>
+              item.status === 'available' &&
+              item.assignedTo === bundle.member.username &&
+              REGISTRATION_PACKAGES.has(item.packageTier.toUpperCase())
           )
         );
       })
@@ -326,7 +329,7 @@ export function RegistrationPageView({
             <div className="registration-modal-topbar">
               <div>
                 <span className="eyebrow">Genealogy Encode</span>
-                <p>Stay on the binary tree while you register the next downline.</p>
+                <p>Stay on the binary tree while you register the next downline under {placementParentUsername} / {toDisplaySide(placementSide ?? 'left')}.</p>
               </div>
               <button
                 type="button"
@@ -353,25 +356,26 @@ export function RegistrationPageView({
             <h1 id={isModal ? 'registration-modal-title' : undefined}>
               {isModal ? 'Encode Member In Open Slot' : 'Create Member Account'}
             </h1>
-            <p>
-              {isModal
-                ? 'Sponsor is resolved from your active member session. The selected open slot stays locked while the activation code decides the new member package and account type.'
-                : 'This page is attached to a sponsor referral link. Paste the activation code your sponsor gave you and the backend will auto-balance placement after final validation.'}
-            </p>
           </div>
 
-          <div className="registration-context-grid">
-              <div className="registration-context-card">
-                <span>Placement</span>
-                <strong>{placementSummary}</strong>
-                <p>{hasLockedPlacement ? 'Locked from the clicked genealogy slot.' : 'No side picker is shown because the sponsor will assign your position after registration.'}</p>
-              </div>
-              <div className="registration-context-card">
-                <span>Activation Result</span>
-                <strong>{derivedPackageTier || 'Waiting for activation code'}</strong>
-                <p>{derivedAccountType ? `${derivedAccountType} account type` : 'Package and account type appear after code validation.'}</p>
+          {isModal && placementParentUsername && placementSide ? (
+            <div className="registration-derived-grid" style={{ marginBottom: '24px' }}>
+              <label className="reg-field">
+                <span>Placement Under</span>
+                <div className="reg-input-wrap">
+                  <User className="reg-input-icon" size={15} />
+                  <input readOnly type="text" value={placementParentUsername} style={{ color: 'var(--yor-gold, #c9a227)' }} />
+                </div>
+              </label>
+              <label className="reg-field">
+                <span>Placement Leg</span>
+                <div className="reg-input-wrap">
+                  <KeyRound className="reg-input-icon" size={15} />
+                  <input readOnly type="text" value={toDisplaySide(placementSide).toUpperCase()} style={{ color: 'var(--yor-gold, #c9a227)' }} />
+                </div>
+              </label>
             </div>
-          </div>
+          ) : null}
 
           <form className="registration-form-core registration-form-core--clean" id="registration-form" onSubmit={handleSubmit}>
             <div className="registration-form-group">
@@ -444,7 +448,7 @@ export function RegistrationPageView({
                 <span className="reg-step-badge">02</span>
                 <div>
                   <div className="registration-form-group-title">Activation Code</div>
-                  <div className="reg-step-sub">{isModal ? 'Choose one of your usable registration codes.' : 'Paste the code your sponsor gave you together with the referral link.'}</div>
+                  <div className="reg-step-sub">{isModal ? 'Choose a released code from your registration inventory.' : 'Paste the code your sponsor gave you together with the referral link.'}</div>
                 </div>
               </div>
               <div className="reg-field-stack">
@@ -456,9 +460,16 @@ export function RegistrationPageView({
                       <select
                         value={form.activationCode}
                         onChange={(event) => setForm((current) => ({ ...current, activationCode: event.target.value }))}
+                        disabled={codeLoading || availableCodes.length === 0}
                         required
                       >
-                        <option value="">{codeLoading ? 'Loading usable codes...' : 'Select usable activation code'}</option>
+                        <option value="">
+                          {codeLoading
+                            ? 'Loading usable codes...'
+                            : availableCodes.length === 0
+                              ? 'No available activation codes'
+                              : 'Select usable activation code'}
+                        </option>
                         {availableCodes.map((item) => (
                           <option key={item.code} value={item.code}>
                             {`${item.code} - ${item.accountType} - ${item.packageTier}`}
@@ -479,7 +490,9 @@ export function RegistrationPageView({
                   </div>
                   <p className="registration-inline-note">
                     {isModal
-                      ? 'Only released and unused registration codes are shown here.'
+                      ? availableCodes.length === 0 && !codeLoading
+                        ? 'No released registration code is assigned to this account yet. Ask admin or your sponsor to release and transfer one first.'
+                        : 'Only released and unused registration codes are shown here.'
                       : 'Your sponsor should send this code privately. The form does not expose sponsor-owned codes.'}
                   </p>
                 </label>
@@ -488,14 +501,33 @@ export function RegistrationPageView({
                     <span>Derived Package</span>
                     <div className="reg-input-wrap">
                       <KeyRound className="reg-input-icon" size={15} />
-                      <input readOnly type="text" value={derivedPackageTier ? `${derivedPackageTier}` : 'Waiting for code validation'} />
+                      <input
+                        readOnly
+                        type="text"
+                        value={
+                          derivedPackageTier
+                            ? `${derivedPackageTier}`
+                            : isModal && availableCodes.length === 0 && !codeLoading
+                              ? 'Waiting for released code'
+                              : 'Waiting for code validation'
+                        }
+                      />
                     </div>
                   </label>
                   <label className="reg-field">
                     <span>Account Type</span>
                     <div className="reg-input-wrap">
                       <KeyRound className="reg-input-icon" size={15} />
-                      <input readOnly type="text" value={derivedAccountType || 'Waiting for code validation'} />
+                      <input
+                        readOnly
+                        type="text"
+                        value={
+                          derivedAccountType ||
+                          (isModal && availableCodes.length === 0 && !codeLoading
+                            ? 'Waiting for released code'
+                            : 'Waiting for code validation')
+                        }
+                      />
                     </div>
                   </label>
                 </div>
@@ -569,7 +601,7 @@ export function RegistrationPageView({
             </div>
 
             <div className="registration-form-actions registration-form-actions--single">
-              <button className="site-cta registration-primary-action" disabled={submitting || loadingPreview} type="submit">
+              <button className="site-cta registration-primary-action" disabled={submitting || loadingPreview || (isModal && availableCodes.length === 0 && !codeLoading)} type="submit">
                 {submitting ? 'Registering...' : 'Register'}
               </button>
             </div>

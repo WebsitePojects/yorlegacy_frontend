@@ -453,9 +453,9 @@ describe('routes', () => {
 
     expect(await screen.findByRole('heading', { name: /e-wallet/i })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: /wallet ledger/i })).toBeInTheDocument();
-    expect(await screen.findByText(/submit request/i)).toBeInTheDocument();
+    expect(await screen.findByText(/submit encashment request/i)).toBeInTheDocument();
     expect((await screen.findAllByText(/PHP 15,200.75/i)).length).toBeGreaterThan(0);
-    expect(await screen.findByRole('heading', { name: /wallet summary/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /income breakdown/i })).toBeInTheDocument();
     expect((screen.getByLabelText(/requested amount/i) as HTMLInputElement).value).toBe('0');
     expect(screen.queryByText(/System Maintenance Fee/i)).not.toBeInTheDocument();
 
@@ -591,7 +591,7 @@ describe('routes', () => {
       </ThemeProvider>
     );
 
-    expect(await screen.findByRole('heading', { name: /placement network view/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /placement network/i })).toBeInTheDocument();
 
     // Change depth select to 4 so Alice Alpha (level 2) children are generated
     const select = await screen.findByLabelText(/depth/i);

@@ -27,7 +27,7 @@ import { useFeedback } from '@/components/feedback/FeedbackProvider';
 import { ProtectedOfficeFrame } from '@/components/layout/ProtectedOfficeFrame';
 import { RegistrationPageView } from '@/components/pages/RegistrationPageView';
 import { GenealogyTree } from '../components/ops/GenealogyTree';
-import { readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
+import { clearAllOfficeCache, readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
 import {
   DataListCard,
   GatedActionsCard,
@@ -181,7 +181,9 @@ function countSubtreeNodes(node: GenealogyCenter['root'] | undefined): number {
     return 0;
   }
 
-  return 1 + node.children.reduce((total, child) => total + countSubtreeNodes(child), 0);
+  const isShadow = node.status === 'shadow';
+  const selfCount = isShadow ? 0 : 1;
+  return selfCount + node.children.reduce((total, child) => total + countSubtreeNodes(child), 0);
 }
 
 type MemberModuleBundle = {
@@ -1179,7 +1181,7 @@ export function MemberDashboardPage() {
                   <label className="grid gap-2 text-sm">
                     <span className="font-medium text-[var(--muted-foreground)]">Transfer to username</span>
                     <div className="flex gap-2">
-                      <Input value={transferSearchQuery} onChange={(e) => setTransferSearchQuery(e.target.value.toUpperCase())} placeholder="Search username" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleSearchTransferTargets(); } }} />
+                      <Input value={transferSearchQuery} onChange={(e) => setTransferSearchQuery(e.target.value)} placeholder="Search username" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleSearchTransferTargets(); } }} />
                       <Button type="button" variant="outline" onClick={() => void handleSearchTransferTargets()} disabled={transferSearchLoading}>{transferSearchLoading ? '...' : 'Search'}</Button>
                     </div>
                   </label>
@@ -1730,6 +1732,7 @@ export function MemberDashboardPage() {
           onClose={() => setPendingRegistrationSlot(null)}
           onSubmitted={() => {
             setPendingRegistrationSlot(null);
+            clearAllOfficeCache();
             setReloadNonce((current) => current + 1);
           }}
         />
@@ -1822,6 +1825,7 @@ const nogaColorMap: Record<NogaColor, { bg: string; text: string; glow: string; 
   emerald: { bg: 'bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400', glow: 'shadow-emerald-500/20', border: 'border-emerald-500/25' },
   violet:  { bg: 'bg-violet-500/15',  text: 'text-violet-600 dark:text-violet-400',  glow: 'shadow-violet-500/20',  border: 'border-violet-500/25' },
 };
+
 
 function NogaStatCard({
   icon,

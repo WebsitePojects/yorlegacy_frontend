@@ -55,6 +55,11 @@ function readCookie(name: string): string | null {
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers ?? {});
   const method = (init?.method ?? 'GET').toUpperCase();
+  const isProtectedOfficeRequest =
+    path.startsWith('/api/auth/') ||
+    path.startsWith('/api/member/') ||
+    path.startsWith('/api/admin/') ||
+    path.startsWith('/api/registration/');
 
   // Avoid forcing CORS preflights on simple GET/HEAD requests.
   if (init?.body != null && !headers.has('Content-Type')) {
@@ -71,6 +76,7 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: 'include',
     headers,
+    cache: isProtectedOfficeRequest ? 'no-store' : init?.cache,
     ...init
   });
 
@@ -292,13 +298,14 @@ export function fetchAdminActivationCodes(): Promise<AdminActivationCodeCenter> 
 export function generateAdminActivationCodes(
   quantity: number,
   packageTier?: string,
+  codeFamily?: string,
   assignedTo?: string,
   accountType?: string,
   remarks?: string
 ): Promise<GatedActionResponse> {
   return fetchJson('/api/admin/activation-codes/generate', {
     method: 'POST',
-    body: JSON.stringify({ quantity, packageTier, assignedTo, accountType, remarks })
+    body: JSON.stringify({ quantity, packageTier, codeFamily, assignedTo, accountType, remarks })
   });
 }
 

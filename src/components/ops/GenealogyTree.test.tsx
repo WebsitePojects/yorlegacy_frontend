@@ -173,4 +173,22 @@ describe('GenealogyTree', () => {
       side: 'left'
     });
   }, 10000);
+
+  it('blocks clicking on a disabled open slot (under another open slot)', () => {
+    const onOpenSlot = vi.fn();
+    renderTree({ onOpenSlot });
+
+    const select = screen.getByLabelText(/depth/i);
+    fireEvent.change(select, { target: { value: '5' } });
+
+    const nodes = screen.getAllByRole('button');
+    const disabledSlot = nodes.find(
+      (n) => n.className.includes('is-open-slot') && n.className.includes('is-disabled')
+    );
+
+    expect(disabledSlot).toBeInTheDocument();
+
+    fireEvent.click(disabledSlot!);
+    expect(onOpenSlot).not.toHaveBeenCalled();
+  }, 10000);
 });

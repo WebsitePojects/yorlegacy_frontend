@@ -64,3 +64,41 @@ export async function warmOfficeCache<T>(key: string, loader: () => Promise<T>):
   inflightRequests.set(key, request);
   return request;
 }
+
+export function clearOfficeCache(key: string): void {
+  inflightRequests.delete(key);
+
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(storageKey(key));
+  } catch {
+    // Ignore storage access failures during invalidation.
+  }
+}
+
+export function clearAllOfficeCache(): void {
+  inflightRequests.clear();
+
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    const keysToRemove: string[] = [];
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (key?.startsWith(OFFICE_CACHE_PREFIX)) {
+        keysToRemove.push(key);
+      }
+    }
+
+    for (const key of keysToRemove) {
+      window.localStorage.removeItem(key);
+    }
+  } catch {
+    // Ignore storage access failures during invalidation.
+  }
+}

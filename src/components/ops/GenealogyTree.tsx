@@ -45,6 +45,7 @@ type CanvasNode = {
   level: number;
   source?: GenealogyTreeNode;
   isOpenSlot?: boolean;
+  isDisableOpenSlot?: boolean;
   shadowSlot?: GenealogyTreeNode['shadowSlots']['left'] | GenealogyTreeNode['shadowSlots']['right'];
   isShadowNode?: boolean;
   parentUsername?: string;
@@ -53,6 +54,20 @@ type CanvasNode = {
   placementSide?: 'left' | 'right';
   children: CanvasNode[];
 };
+
+function getRealNetworkDepth(node: GenealogyTreeNode): number {
+  let maxDepth = 1;
+  const traverse = (n: GenealogyTreeNode, currentDepth: number) => {
+    if (currentDepth > maxDepth) {
+      maxDepth = currentDepth;
+    }
+    if (n.children && n.children.length > 0) {
+      n.children.forEach((child) => traverse(child, currentDepth + 1));
+    }
+  };
+  traverse(node, 1);
+  return maxDepth;
+}
 
 const DEFAULT_SCALE = 0.82;
 const DEFAULT_OFFSET = { x: 0, y: 72 };
@@ -188,7 +203,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
   const [isActive, setIsActive] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [visibleDepth, setVisibleDepth] = useState(3);
+  const [visibleDepth, setVisibleDepth] = useState(4);
   const [nodeSearch, setNodeSearch] = useState('');
   const [focusedNodeKey, setFocusedNodeKey] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -203,7 +218,89 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
   const dragRef = useRef<{ pointerId: number; x: number; y: number; offsetX: number; offsetY: number; dragging: boolean } | null>(null);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const pinchDistanceRef = useRef<number | null>(null);
-  const canvasRoot = useMemo(() => toCanvasNode(root, 0, 'root', visibleDepth), [root, visibleDepth]);
+
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const [connections, setConnections] = useState<Array<{ id: string; x1: number; y1: number; x2: number; y2: number }>>([]);
+
+  const depthOptions = useMemo(() => {
+    const opts = [];
+    for (let d = 2; d <= 20; d++) {
+      opts.push(d);
+    }
+    return opts;
+  }, []);
+
+  const canvasDepth = Math.max(2, visibleDepth * 2);
+  const canvasRoot = useMemo(() => toCanvasNode(root, 0, 'root', canvasDepth), [canvasDepth, root]);
+
+  useEffect(() => {
+    let active = true;
+
+    const updateConnections = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const newConnections: typeof connections = [];
+
+      const getLayoutPos = (el: HTMLElement, container: HTMLElement) => {
+        let left = 0;
+        let top = 0;
+        let current: HTMLElement | null = el;
+        while (current && current !== container) {
+          left += current.offsetLeft;
+          top += current.offsetTop;
+          current = current.offsetParent as HTMLElement | null;
+        }
+        return { left, top };
+      };
+
+      const traverse = (node: CanvasNode) => {
+        const parentEl = nodeRefs.current.get(node.key);
+        if (parentEl) {
+          node.children.forEach((child) => {
+            const childEl = nodeRefs.current.get(child.key);
+            if (childEl) {
+              const parentPos = getLayoutPos(parentEl, canvas);
+              const childPos = getLayoutPos(childEl, canvas);
+
+              const x1 = parentPos.left + parentEl.offsetWidth / 2;
+              const y1 = parentPos.top + parentEl.offsetHeight;
+
+              const x2 = childPos.left + childEl.offsetWidth / 2;
+              const y2 = childPos.top;
+
+              newConnections.push({
+                id: `${node.key}-${child.key}`,
+                x1,
+                y1,
+                x2,
+                y2
+              });
+            }
+            traverse(child);
+          });
+        }
+      };
+
+      traverse(canvasRoot);
+      if (active) {
+        setConnections(newConnections);
+      }
+    };
+
+    updateConnections();
+    const frameId = requestAnimationFrame(updateConnections);
+    const timerId = setTimeout(updateConnections, 50);
+
+    window.addEventListener('resize', updateConnections);
+
+    return () => {
+      active = false;
+      cancelAnimationFrame(frameId);
+      clearTimeout(timerId);
+      window.removeEventListener('resize', updateConnections);
+    };
+  }, [canvasRoot, visibleDepth]);
   const searchableNodes = useMemo(() => flattenCanvasNodes(canvasRoot), [canvasRoot]);
   const selectedCanvasNode = useMemo(
     () =>
@@ -445,6 +542,10 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
   }, [root.nodeId, visibleDepth]);
 
   useEffect(() => {
+    setVisibleDepth((current) => Math.max(current, 4));
+  }, [root.nodeId]);
+
+  useEffect(() => {
     const viewport = viewportRef.current;
 
     if (!viewport) {
@@ -575,11 +676,14 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
         <label className="genealogy-canvas-depth">
           <span>Depth</span>
           <select value={visibleDepth} onChange={(event) => setVisibleDepth(Number(event.target.value))}>
-            {[2, 3, 4, 5, 6].map((depth) => (
-              <option key={depth} value={depth}>
-                {depth} levels
-              </option>
-            ))}
+            {depthOptions.map((depth) => {
+              const isDisabled = false;
+              return (
+                <option key={depth} value={depth} disabled={isDisabled}>
+                  {depth} logical levels / {depth * 2} tree levels
+                </option>
+              );
+            })}
           </select>
         </label>
         <div ref={searchRef} className="genealogy-canvas-search">
@@ -758,7 +862,39 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
         ) : null}
 
         <div className="genealogy-canvas-pan" style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0)` }}>
-          <div className="genealogy-canvas" style={{ transform: `scale(${scale})` }}>
+          <div className="genealogy-canvas" style={{ transform: `scale(${scale})` }} ref={canvasRef}>
+            <svg
+              className="genealogy-connections-svg"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+                zIndex: 1
+              }}
+            >
+              <defs>
+                <linearGradient id="connector-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="rgba(245, 200, 66, 0.65)" />
+                  <stop offset="100%" stopColor="rgba(122, 64, 32, 0.25)" />
+                </linearGradient>
+              </defs>
+              {connections.map((conn) => {
+                const dy = (conn.y2 - conn.y1) / 2;
+                const path = `M ${conn.x1} ${conn.y1} C ${conn.x1} ${conn.y1 + dy}, ${conn.x2} ${conn.y2 - dy}, ${conn.x2} ${conn.y2}`;
+                return (
+                  <path
+                    key={conn.id}
+                    d={path}
+                    stroke="url(#connector-gradient)"
+                    strokeWidth="2"
+                    fill="none"
+                  />
+                );
+              })}
+            </svg>
             <BinaryBranch
               node={canvasRoot}
               onSelect={onSelect}
@@ -831,6 +967,8 @@ function toCanvasNode(
   const isShadow = node.status === 'shadow';
   const children: CanvasNode[] = [];
   const shadowSlot = isShadow && parentShadowSlots ? parentShadowSlots[side as 'left' | 'right'] : undefined;
+  const openSlotParentUsername = node.username;
+  const openSlotParentReferralCode = isShadow ? parentReferralCode ?? node.referralCode : node.referralCode;
 
   if (level < maxDepth - 1) {
     const leftChild = node.children.find((child) => child.placement === 'left');
@@ -839,13 +977,13 @@ function toCanvasNode(
     if (leftChild) {
       children.push(toCanvasNode(leftChild, level + 1, 'left', maxDepth, node.shadowSlots, node.username, node.referralCode));
     } else {
-      children.push(toOpenSlot(node.username, node.referralCode, level + 1, 'left', maxDepth, node.nodeId, 'left'));
+      children.push(toOpenSlot(openSlotParentUsername, openSlotParentReferralCode, level + 1, 'left', maxDepth, node.nodeId, 'left', false));
     }
 
     if (rightChild) {
       children.push(toCanvasNode(rightChild, level + 1, 'right', maxDepth, node.shadowSlots, node.username, node.referralCode));
     } else {
-      children.push(toOpenSlot(node.username, node.referralCode, level + 1, 'right', maxDepth, node.nodeId, 'right'));
+      children.push(toOpenSlot(openSlotParentUsername, openSlotParentReferralCode, level + 1, 'right', maxDepth, node.nodeId, 'right', false));
     }
   }
 
@@ -872,13 +1010,14 @@ function toOpenSlot(
   side: 'left' | 'right',
   maxDepth: number,
   parentKey: string,
-  placementSide: 'left' | 'right'
+  placementSide: 'left' | 'right',
+  parentIsOpenSlot = false
 ): CanvasNode {
   const key = `${parentKey}-${side}-open-${level}`;
   const children: CanvasNode[] = [];
   if (level < maxDepth - 1) {
-    children.push(toOpenSlot(parentUsername, parentReferralCode, level + 1, 'left', maxDepth, key, placementSide));
-    children.push(toOpenSlot(parentUsername, parentReferralCode, level + 1, 'right', maxDepth, key, placementSide));
+    children.push(toOpenSlot(parentUsername, parentReferralCode, level + 1, 'left', maxDepth, key, placementSide, true));
+    children.push(toOpenSlot(parentUsername, parentReferralCode, level + 1, 'right', maxDepth, key, placementSide, true));
   }
 
   return {
@@ -886,6 +1025,7 @@ function toOpenSlot(
     side,
     level,
     isOpenSlot: true,
+    isDisableOpenSlot: parentIsOpenSlot,
     parentUsername,
     parentReferralCode,
     placementParentUsername: parentUsername,
@@ -962,6 +1102,14 @@ function BinaryBranch({
     }
 
     if (node.isOpenSlot && node.parentUsername && node.side !== 'root') {
+      if (node.isDisableOpenSlot) {
+        await presentNotice({
+          title: 'Slot Locked',
+          description: 'You must encode a member under a direct active upline node first.',
+          tone: 'warning'
+        });
+        return;
+      }
       if (adminMode) {
         await presentNotice({
           title: 'Admin View Only',
@@ -995,6 +1143,7 @@ function BinaryBranch({
           'genealogy-canvas-node',
           node.side !== 'root' && `is-${node.side}`,
           node.isOpenSlot && 'is-open-slot',
+          node.isDisableOpenSlot && 'is-disabled',
           node.isShadowNode && 'is-shadow-node',
           node.shadowSlot && 'is-shadow-slot',
           node.shadowSlot?.state === 'activated_shadow' && 'is-shadow-activated',
@@ -1103,91 +1252,6 @@ function BinaryBranch({
                 <p>{node.isShadowNode ? 'Shadow Slot' : 'Available'}</p>
               </div>
             </div>
-            
-            {node.isShadowNode ? (
-              <div className="genealogy-canvas-node-popover" role="presentation">
-                <div className="genealogy-popover-header">
-                  <div className="genealogy-popover-avatar">
-                    {node.shadowSlot?.label.slice(0, 2).toUpperCase() ?? 'SH'}
-                  </div>
-                  <div className="genealogy-popover-name">
-                    <strong>{node.shadowSlot?.label ?? 'Shadow Slot'}</strong>
-                    <p>{node.shadowSlot?.id}</p>
-                  </div>
-                </div>
-
-                <div className="genealogy-popover-section-label">Shadow Configuration</div>
-                <div className="genealogy-popover-row">
-                  <span className="genealogy-popover-row-label">Shadow State</span>
-                  <span className={cn('genealogy-popover-row-value', node.shadowSlot?.state === 'activated_shadow' ? 'is-positive' : 'is-warn')}>
-                    {node.shadowSlot?.state === 'activated_shadow' ? 'Activated' : 'Reserved (Inactive)'}
-                  </span>
-                </div>
-                <div className="genealogy-popover-row">
-                  <span className="genealogy-popover-row-label">Wallet</span>
-                  <span className={cn('genealogy-popover-row-value', node.shadowSlot?.walletEnabled ? 'is-positive' : 'is-warn')}>
-                    {node.shadowSlot?.walletEnabled ? 'Enabled' : 'Disabled'}
-                  </span>
-                </div>
-                <div className="genealogy-popover-row">
-                  <span className="genealogy-popover-row-label">Unilevel</span>
-                  <span className={cn('genealogy-popover-row-value', node.shadowSlot?.unilevelEnabled ? 'is-positive' : 'is-warn')}>
-                    {node.shadowSlot?.unilevelEnabled ? 'Enabled' : 'Disabled'}
-                  </span>
-                </div>
-                <div className="genealogy-popover-row">
-                  <span className="genealogy-popover-row-label">Binary Cycle</span>
-                  <span className={cn('genealogy-popover-row-value', node.shadowSlot?.binaryCycleEnabled ? 'is-positive' : 'is-warn')}>
-                    {node.shadowSlot?.binaryCycleEnabled ? 'Enabled' : 'Disabled'}
-                  </span>
-                </div>
-                {node.shadowSlot?.note && (
-                  <div className="genealogy-popover-row">
-                    <span className="genealogy-popover-row-label">Note</span>
-                    <span className="genealogy-popover-row-value">{node.shadowSlot.note}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="genealogy-canvas-node-popover" role="presentation">
-                <div className="genealogy-popover-header">
-                  <div className="genealogy-popover-avatar">
-                    <Plus className="size-4" />
-                  </div>
-                  <div className="genealogy-popover-name">
-                    <strong>Open Registration Slot</strong>
-                    <p>{node.parentUsername} - {node.side.toUpperCase()}</p>
-                  </div>
-                </div>
-
-                <div className="genealogy-popover-section-label">Placement Slot</div>
-                <div className="genealogy-popover-row">
-                  <span className="genealogy-popover-row-label">Placement Under</span>
-                  <span className="genealogy-popover-row-value">{node.parentUsername}</span>
-                </div>
-                <div className="genealogy-popover-row">
-                  <span className="genealogy-popover-row-label">Leg</span>
-                  <span className="genealogy-popover-row-value">{node.side.toUpperCase()}</span>
-                </div>
-                <div className="genealogy-popover-row">
-                  <span className="genealogy-popover-row-label">Level</span>
-                  <span className="genealogy-popover-row-value">Level {node.level}</span>
-                </div>
-                {adminMode ? (
-                  <div className="genealogy-popover-row">
-                    <span className="genealogy-popover-row-value is-warn" style={{ width: '100%', textAlign: 'left', fontSize: '0.62rem' }}>
-                      Admin view: open slots cannot be encoded
-                    </span>
-                  </div>
-                ) : (
-                  <div className="genealogy-popover-row">
-                    <span className="genealogy-popover-row-value is-positive" style={{ width: '100%', textAlign: 'left', fontSize: '0.62rem' }}>
-                      Click to encode a new member here
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
           </>
         )}
       </div>

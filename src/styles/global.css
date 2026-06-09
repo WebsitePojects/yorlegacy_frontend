@@ -1288,6 +1288,7 @@ body {
 }
 
 .genealogy-canvas {
+  position: relative;
   width: max-content;
   min-width: 900px;
   margin: 40px auto 56px;
@@ -1323,6 +1324,12 @@ body {
   justify-items: center;
   gap: 22px;
   position: relative;
+  transition: z-index 100ms step-end;
+}
+
+.genealogy-canvas-branch:hover {
+  z-index: 100;
+  transition: z-index 0s step-start;
 }
 
 .genealogy-canvas-children {
@@ -1334,39 +1341,20 @@ body {
 }
 
 .genealogy-canvas-children::before {
-  content: '';
-  position: absolute;
-  top: -24px;
-  left: 25%;
-  right: 25%;
-  height: 2px;
-  background: linear-gradient(90deg, rgba(245, 200, 66, 0.08), rgba(245, 200, 66, 0.58), rgba(245, 200, 66, 0.08));
+  display: none !important;
 }
 
 .genealogy-canvas-children::after {
-  content: '';
-  position: absolute;
-  top: -34px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 1px;
-  height: 10px;
-  background: linear-gradient(180deg, rgba(245, 200, 66, 0.55), rgba(122, 64, 32, 0.18));
+  display: none !important;
 }
 
 .genealogy-canvas-children > .genealogy-canvas-branch::before {
-  content: '';
-  position: absolute;
-  top: -38px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 1px;
-  height: 38px;
-  background: linear-gradient(180deg, rgba(245, 200, 66, 0.55), rgba(122, 64, 32, 0.18));
+  display: none !important;
 }
 
 .genealogy-canvas-node {
   position: relative;
+  z-index: 2;
   display: grid;
   grid-template-columns: 1fr;
   justify-items: center;
@@ -1388,6 +1376,7 @@ body {
 }
 
 .genealogy-canvas-node:hover {
+  z-index: 150 !important;
   transform: translateY(-3px);
   border-color: color-mix(in oklab, var(--yor-copper) 58%, var(--border));
   box-shadow: 0 24px 52px rgba(180, 103, 52, 0.18);
@@ -1414,6 +1403,21 @@ body {
   border-color: color-mix(in oklab, var(--yor-gold) 62%, var(--border));
   box-shadow: 0 0 0 2px rgba(245, 200, 66, 0.24), 0 22px 58px rgba(180, 103, 52, 0.22);
   cursor: pointer;
+}
+
+.genealogy-canvas-node.is-open-slot.is-disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  filter: grayscale(1) !important;
+  box-shadow: none !important;
+  border-color: var(--border) !important;
+  background: rgba(30, 30, 30, 0.6) !important;
+}
+
+.genealogy-canvas-node.is-open-slot.is-disabled:hover {
+  transform: none !important;
+  border-color: var(--border) !important;
+  box-shadow: none !important;
 }
 
 .genealogy-canvas-node.is-shadow-slot {

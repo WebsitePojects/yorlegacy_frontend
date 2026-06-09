@@ -48,6 +48,7 @@ import {
   upgradeMemberActivationCode,
   useMaintenanceCode
 } from '../lib/api';
+import { clearAllOfficeCache } from '../lib/office-cache';
 import type {
   AdminActivationCodeCenter,
   AdminEncashmentCenter,
@@ -110,6 +111,7 @@ type AuthContextValue = AuthState & {
   generateActivationCodes: (payload: {
     quantity: number;
     packageTier?: string;
+    codeFamily?: string;
     assignedTo?: string;
     accountType?: string;
     remarks?: string;
@@ -178,6 +180,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   async function refresh(): Promise<void> {
     try {
       const authState = await fetchAuthState();
+      clearAllOfficeCache();
 
       startTransition(() => {
         setState({
@@ -187,6 +190,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         });
       });
     } catch {
+      clearAllOfficeCache();
       startTransition(() => {
         setState({
           isLoading: false,
@@ -203,6 +207,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   async function login(payload: LoginPayload): Promise<AuthState> {
     const authState = await loginUser(payload.username, payload.password, payload.rememberMe, payload.scope);
+    clearAllOfficeCache();
 
     setState({
       isLoading: false,
@@ -215,6 +220,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   async function logout(): Promise<void> {
     await logoutUser();
+    clearAllOfficeCache();
     setState({
       isLoading: false,
       authenticated: false,
@@ -249,8 +255,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     getMemberBinaryTree: fetchMemberBinaryTree,
     getMemberShadowAccounts: fetchMemberShadowAccounts,
     getAdminActivationCodes: fetchAdminActivationCodes,
-    generateActivationCodes: ({ quantity, packageTier, assignedTo, accountType, remarks }) =>
-      generateAdminActivationCodes(quantity, packageTier, assignedTo, accountType, remarks),
+    generateActivationCodes: ({ quantity, packageTier, codeFamily, assignedTo, accountType, remarks }) =>
+      generateAdminActivationCodes(quantity, packageTier, codeFamily, assignedTo, accountType, remarks),
     releaseActivationCodes: releaseAdminActivationCodes,
     transferAdminCodes: transferAdminActivationCodes,
     reviewActivationCodes: reviewAdminActivationCodes,

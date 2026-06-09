@@ -29,7 +29,6 @@ import { GenealogyTree } from '../components/ops/GenealogyTree';
 import { readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
 import { cn } from '@/lib/utils';
 import {
-  DataListCard,
   GatedActionsCard,
   MetricGrid,
   ModuleTableCard,
@@ -77,6 +76,71 @@ function formatAuditActionLabel(action: string) {
   return action;
 }
 
+type CodeGenerationOption = {
+  value: string;
+  label: string;
+  packageTier: string;
+  codeFamily: 'YOR CODES' | 'YOR MAINTENANCE';
+  kind: 'package' | 'product';
+};
+
+const CODE_GENERATION_OPTIONS: CodeGenerationOption[] = [
+  { value: 'pkg-basic', label: 'Basic Package', packageTier: 'Basic', codeFamily: 'YOR CODES', kind: 'package' },
+  { value: 'pkg-classic', label: 'Classic Package', packageTier: 'Classic', codeFamily: 'YOR CODES', kind: 'package' },
+  { value: 'pkg-standard', label: 'Standard Package', packageTier: 'Standard', codeFamily: 'YOR CODES', kind: 'package' },
+  { value: 'pkg-business', label: 'Business Package', packageTier: 'Business', codeFamily: 'YOR CODES', kind: 'package' },
+  { value: 'pkg-vip', label: 'VIP Package', packageTier: 'VIP', codeFamily: 'YOR CODES', kind: 'package' },
+  {
+    value: 'product-yor-perfume-hugo-boss',
+    label: 'Yor Perfume - Hugo Boss',
+    packageTier: 'Yor Perfume - Hugo Boss',
+    codeFamily: 'YOR MAINTENANCE',
+    kind: 'product'
+  },
+  {
+    value: 'product-yor-perfume-swiss-army',
+    label: 'Yor Perfume - Swiss Army',
+    packageTier: 'Yor Perfume - Swiss Army',
+    codeFamily: 'YOR MAINTENANCE',
+    kind: 'product'
+  },
+  {
+    value: 'product-yor-perfume-chanel-bleu',
+    label: 'Yor Perfume - Chanel Bleu',
+    packageTier: 'Yor Perfume - Chanel Bleu',
+    codeFamily: 'YOR MAINTENANCE',
+    kind: 'product'
+  },
+  {
+    value: 'product-yor-perfume-paris-hilton',
+    label: 'Yor Perfume - Paris Hilton',
+    packageTier: 'Yor Perfume - Paris Hilton',
+    codeFamily: 'YOR MAINTENANCE',
+    kind: 'product'
+  },
+  {
+    value: 'product-yor-perfume-bvlgari-amethyste',
+    label: 'Yor Perfume - Bvlgari Amethyste',
+    packageTier: 'Yor Perfume - Bvlgari Amethyste',
+    codeFamily: 'YOR MAINTENANCE',
+    kind: 'product'
+  },
+  {
+    value: 'product-yor-perfume-vs-bombshell',
+    label: 'Yor Perfume - VS Bombshell',
+    packageTier: 'Yor Perfume - VS Bombshell',
+    codeFamily: 'YOR MAINTENANCE',
+    kind: 'product'
+  },
+  {
+    value: 'product-yor-vision-mineral-drops',
+    label: 'Yor Vision Mineral Drops 15ml',
+    packageTier: 'Yor Vision Mineral Drops 15ml',
+    codeFamily: 'YOR MAINTENANCE',
+    kind: 'product'
+  }
+];
+
 const customAdminModuleIds = new Set([
   'dashboard',
   'member-management',
@@ -107,7 +171,9 @@ function countSubtreeNodes(node: GenealogyCenter['root'] | undefined): number {
     return 0;
   }
 
-  return 1 + node.children.reduce((total, child) => total + countSubtreeNodes(child), 0);
+  const isShadow = node.status === 'shadow';
+  const selfCount = isShadow ? 0 : 1;
+  return selfCount + node.children.reduce((total, child) => total + countSubtreeNodes(child), 0);
 }
 
 type AdminModuleBundle = {
@@ -234,7 +300,6 @@ export function AdminDashboardPage() {
     getAdminOffice,
     getAdminSummary,
     releaseActivationCodes,
-    reviewActivationCodes,
     reviewEncashment,
     resetSandbox,
     transferAdminCodes,
@@ -264,12 +329,11 @@ export function AdminDashboardPage() {
   const [memberDetailUsername, setMemberDetailUsername] = useState('');
   const [memberProfileDraft, setMemberProfileDraft] = useState<MemberProfileDraft>(EMPTY_MEMBER_PROFILE_DRAFT);
   const [codeBatchQuantity, setCodeBatchQuantity] = useState(5);
-  const [codeBatchPackageTier, setCodeBatchPackageTier] = useState('Standard');
+  const [codeBatchSelection, setCodeBatchSelection] = useState('pkg-standard');
   const [codeBatchAccountType, setCodeBatchAccountType] = useState('PD');
   const [codeBatchAssignedTo, setCodeBatchAssignedTo] = useState('');
   const [codeBatchRemarks, setCodeBatchRemarks] = useState('');
   const [codeSearchQuery, setCodeSearchQuery] = useState('');
-  const [codeReviewRemarks, setCodeReviewRemarks] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isContentLoading, setIsContentLoading] = useState(true);
   const [reloadNonce, setReloadNonce] = useState(0);
@@ -302,7 +366,6 @@ export function AdminDashboardPage() {
       setCodeTransferSearchResults([]);
       setCodeTransferSearchError(null);
       setCodeSearchQuery('');
-      setCodeReviewRemarks('');
       setCodeBatchRemarks('');
     }
 
@@ -494,8 +557,8 @@ export function AdminDashboardPage() {
     const confirmed = await confirmAction({
       title: 'Generate activation code batch?',
       description: codeBatchAssignedTo.trim()
-        ? `Generate ${codeBatchQuantity} ${codeBatchAccountType} ${codeBatchPackageTier} code(s) for ${codeBatchAssignedTo}.`
-        : `Generate ${codeBatchQuantity} ${codeBatchAccountType} ${codeBatchPackageTier} code(s) into the unassigned code pool.`,
+        ? `Generate ${codeBatchQuantity} ${codeBatchAccountType} ${selectedCodeBatchOption.label} code(s) for ${codeBatchAssignedTo}.`
+        : `Generate ${codeBatchQuantity} ${codeBatchAccountType} ${selectedCodeBatchOption.label} code(s) into the unassigned code pool.`,
       confirmLabel: 'Generate Batch',
       tone: 'warning'
     });
@@ -507,7 +570,8 @@ export function AdminDashboardPage() {
     try {
       const result = await generateActivationCodes({
         quantity: codeBatchQuantity,
-        packageTier: codeBatchPackageTier,
+        packageTier: selectedCodeBatchOption.packageTier,
+        codeFamily: selectedCodeBatchOption.codeFamily,
         assignedTo: codeBatchAssignedTo.trim() || undefined,
         accountType: codeBatchAccountType,
         remarks: codeBatchRemarks.trim() || undefined
@@ -626,48 +690,6 @@ export function AdminDashboardPage() {
     }
   }
 
-  async function handleReleaseAndTransferCodes() {
-    if (!adminTransferTarget.trim()) {
-      notify({
-        title: 'Search for a target first',
-        description: 'Use the username search to select the member who will receive the codes.',
-        tone: 'warning'
-      });
-      return;
-    }
-
-    const confirmed = await confirmAction({
-      title: 'Release and transfer selected codes?',
-      description: `Release ${selectedAdminCodes.length} selected code(s), then transfer them to ${selectedCodeTransferTarget?.username ?? adminTransferTarget}.`,
-      confirmLabel: 'Release + Transfer',
-      tone: 'warning'
-    });
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await releaseActivationCodes(selectedAdminCodes);
-      const result = await transferAdminCodes({
-        targetUsername: adminTransferTarget,
-        codes: selectedAdminCodes
-      });
-      notify({
-        title: 'Codes released and transferred',
-        description: result.detail ?? result.reason,
-        tone: 'success'
-      });
-      setReloadNonce((value) => value + 1);
-    } catch (cause) {
-      notify({
-        title: 'Unable to release and transfer codes',
-        description: cause instanceof Error ? cause.message : 'Please try again.',
-        tone: 'destructive'
-      });
-    }
-  }
-
   async function handleSearchCodeTransferTargets() {
     const query = codeTransferSearchQuery.trim();
 
@@ -700,46 +722,6 @@ export function AdminDashboardPage() {
       setAdminTransferTarget('');
     } finally {
       setCodeTransferSearchLoading(false);
-    }
-  }
-
-  async function handleReviewCodes(action: 'mark-paid' | 'mark-external-paid' | 'mark-lost' | 'restore') {
-    const labelMap = {
-      'mark-paid': 'Mark as paid',
-      'mark-external-paid': 'Mark external paid',
-      'mark-lost': 'Flag lost code',
-      restore: 'Restore lost code'
-    } as const;
-
-    const confirmed = await confirmAction({
-      title: `${labelMap[action]}?`,
-      description: `Apply ${labelMap[action].toLowerCase()} to ${selectedAdminCodes.length} selected code(s).`,
-      confirmLabel: labelMap[action],
-      tone: 'warning'
-    });
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      const result = await reviewActivationCodes({
-        codes: selectedAdminCodes,
-        action,
-        remarks: codeReviewRemarks
-      });
-      notify({
-        title: 'Code review updated',
-        description: result.detail ?? result.reason,
-        tone: 'success'
-      });
-      setReloadNonce((value) => value + 1);
-    } catch (cause) {
-      notify({
-        title: 'Unable to update code review state',
-        description: cause instanceof Error ? cause.message : 'Please try again.',
-        tone: 'destructive'
-      });
     }
   }
 
@@ -805,11 +787,11 @@ export function AdminDashboardPage() {
 
   function handleSearchMembers() {
     setMemberPage(1);
-    setMemberSearchQuery(memberSearchDraft.trim().toUpperCase());
+    setMemberSearchQuery(memberSearchDraft.trim());
   }
 
   function handleSelectMember(username: string) {
-    setMemberDetailUsername(username.toUpperCase());
+    setMemberDetailUsername(username);
   }
 
   function handleMemberProfileField<Key extends keyof MemberProfileDraft>(key: Key, value: MemberProfileDraft[Key]) {
@@ -948,7 +930,7 @@ export function AdminDashboardPage() {
         body: 'Inspect placement and open slots using the same left and right slot rules members depend on.'
       },
       'activation-codes': {
-        title: 'Activation Codes',
+        title: 'Manage Codes',
         body: 'Generate, release, and transfer sponsor-owned codes before the next registration pass.'
       },
       'encashment-reports': {
@@ -974,11 +956,12 @@ export function AdminDashboardPage() {
   const showModuleTable = Boolean(activeModule && !customAdminModuleIds.has(moduleId));
   const currentOpsRole = office?.profile.accessScope ?? user?.role ?? 'admin';
   const canGenerateCodes = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
-  const canReviewCodeStates = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
   const canApproveEncashment = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
   const canChangeMemberStatus = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
   const showDashboardActions = moduleId === 'dashboard' && (mvpDashboard?.moneyMode ?? 'playground') !== 'sandbox' && branchNotes.length > 0;
   const visibleMetrics = office ? getVisibleAdminMetrics(moduleId, office.metrics) : [];
+  const selectedCodeBatchOption =
+    CODE_GENERATION_OPTIONS.find((option) => option.value === codeBatchSelection) ?? CODE_GENERATION_OPTIONS[2];
   const filteredActivationInventory = activationCodes?.inventory.filter((item) => {
     const query = codeSearchQuery.trim().toUpperCase();
 
@@ -990,13 +973,15 @@ export function AdminDashboardPage() {
       item.code.toUpperCase().includes(query) ||
       item.assignedTo.toUpperCase().includes(query) ||
       item.packageTier.toUpperCase().includes(query) ||
-      item.paymentStatus.toUpperCase().includes(query) ||
       item.remarks.toUpperCase().includes(query)
     );
   }) ?? [];
   const selectableAdminCodes = filteredActivationInventory.filter((item) => item.status !== 'used').map((item) => item.code);
   const allSelectableAdminCodesSelected =
     selectableAdminCodes.length > 0 && selectableAdminCodes.every((code) => selectedAdminCodes.includes(code));
+  const activationFamilyCount =
+    activationCodes?.inventory.filter((item) => (item.codeFamily ?? 'YOR CODES').trim().toUpperCase() === 'YOR CODES').length ?? 0;
+  const productFamilyCount = (activationCodes?.inventory.length ?? 0) - activationFamilyCount;
   const financeModulePath = office?.modules.find((module) => module.id === 'finance-accounting')?.path;
   const cdAccountsModulePath = office?.modules.find((module) => module.id === 'cd-accounts')?.path;
   const selectedEncashment =
@@ -1061,12 +1046,12 @@ export function AdminDashboardPage() {
 
           {moduleId === 'activation-codes' && activationCodes ? (
             <section className="ops-admin-activation-grid grid gap-4">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <DataPoint label="Tracked Codes" value={activationCodes.metrics.totalCodes} />
+                <DataPoint label="Activation Codes" value={activationFamilyCount} />
+                <DataPoint label="Product Codes" value={productFamilyCount} />
                 <DataPoint label="Released" value={activationCodes.metrics.availableCodes} />
                 <DataPoint label="Awaiting Release" value={activationCodes.metrics.unreleasedCodes} />
-                <DataPoint label="Paid" value={activationCodes.metrics.paidCodes} />
-                <DataPoint label="Lost Codes" value={activationCodes.metrics.lostCodes} />
                 <DataPoint label="Used" value={activationCodes.metrics.usedCodes} />
               </div>
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
@@ -1088,18 +1073,23 @@ export function AdminDashboardPage() {
                             />
                           </label>
                           <label className="grid gap-2 text-sm">
-                            <span className="font-medium text-[var(--muted-foreground)]">Package</span>
+                            <span className="font-medium text-[var(--muted-foreground)]">Package / Product</span>
                             <select
-                              className="flex h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                              value={codeBatchPackageTier}
-                              onChange={(event) => setCodeBatchPackageTier(event.target.value)}
+                              className="flex h-10 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                              value={codeBatchSelection}
+                              onChange={(event) => setCodeBatchSelection(event.target.value)}
                             >
-                              <option value="Basic">Basic</option>
-                              <option value="Classic">Classic</option>
-                              <option value="Standard">Standard</option>
-                              <option value="Business">Business</option>
-                              <option value="VIP">VIP</option>
+                              {CODE_GENERATION_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
                             </select>
+                            <span className="text-xs text-[var(--muted-foreground)]">
+                              {selectedCodeBatchOption.kind === 'product'
+                                ? 'Product repeat-purchase code routed through maintenance-code handling for phase-1 testing.'
+                                : 'Package activation code for registration and encoding.'}
+                            </span>
                           </label>
                           <label className="grid gap-2 text-sm">
                             <span className="font-medium text-[var(--muted-foreground)]">Account Type</span>
@@ -1117,7 +1107,7 @@ export function AdminDashboardPage() {
                           <span className="font-medium text-[var(--muted-foreground)]">Optional Tagged User</span>
                           <Input
                             value={codeBatchAssignedTo}
-                            onChange={(event) => setCodeBatchAssignedTo(event.target.value.toUpperCase())}
+                            onChange={(event) => setCodeBatchAssignedTo(event.target.value)}
                             placeholder="Leave blank for general pool"
                           />
                         </label>
@@ -1154,8 +1144,8 @@ export function AdminDashboardPage() {
                           <span className="font-medium text-[var(--muted-foreground)]">Search codes or owners</span>
                           <Input
                             value={codeSearchQuery}
-                            onChange={(event) => setCodeSearchQuery(event.target.value.toUpperCase())}
-                            placeholder="Code, username, package, paid state, remarks"
+                            onChange={(event) => setCodeSearchQuery(event.target.value)}
+                            placeholder="Code, username, package, remarks"
                           />
                         </label>
                         <div className="grid gap-2 text-sm">
@@ -1163,7 +1153,7 @@ export function AdminDashboardPage() {
                           <div className="flex gap-2">
                             <Input
                               value={codeTransferSearchQuery}
-                              onChange={(event) => setCodeTransferSearchQuery(event.target.value.toUpperCase())}
+                              onChange={(event) => setCodeTransferSearchQuery(event.target.value)}
                               placeholder="Search target username"
                               onKeyDown={(event) => {
                                 if (event.key === 'Enter') {
@@ -1222,16 +1212,6 @@ export function AdminDashboardPage() {
                           <span className="text-[var(--muted-foreground)]">{selectedCodeTransferTarget.packageTier}</span>
                         </div>
                       ) : null}
-                      {canReviewCodeStates ? (
-                        <label className="mt-3 grid gap-2 text-sm">
-                          <span className="font-medium text-[var(--muted-foreground)]">Review remarks</span>
-                          <Input
-                            value={codeReviewRemarks}
-                            onChange={(event) => setCodeReviewRemarks(event.target.value)}
-                            placeholder="Lost-code reason, paid reference, or external settlement note"
-                          />
-                        </label>
-                      ) : null}
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={handleReleaseCodes}>
                           Release
@@ -1239,55 +1219,11 @@ export function AdminDashboardPage() {
                         <Button type="button" variant="outline" disabled={!selectedAdminCodes.length || !adminTransferTarget} onClick={handleTransferCodes}>
                           Transfer
                         </Button>
-                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length || !adminTransferTarget} onClick={handleReleaseAndTransferCodes}>
-                          Release + Transfer
-                        </Button>
-                        {canReviewCodeStates ? (
-                          <>
-                            <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('mark-paid')}>
-                              Mark Paid
-                            </Button>
-                            <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('mark-external-paid')}>
-                              Mark External Paid
-                            </Button>
-                            <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('mark-lost')}>
-                              Mark Lost
-                            </Button>
-                            <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={() => void handleReviewCodes('restore')}>
-                              Restore
-                            </Button>
-                          </>
-                        ) : null}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-                <Card className="border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader>
-                    <CardTitle>Audit Trail</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {activationCodes.auditTrail.map((event) => (
-                      <div key={`${event.occurredAt}-${event.action}`} className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm">
-                        <div className="flex items-start justify-between gap-4">
-                          <span className="text-[var(--foreground)]">{event.action}</span>
-                          <span className="text-right text-[var(--muted-foreground)]">{event.actor}</span>
-                        </div>
-                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">{event.occurredAt}</p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
               </div>
-              <DataListCard
-                title="Code Workflow Notes"
-                rows={[
-                  { label: 'Filtered Rows', value: filteredActivationInventory.length },
-                  { label: 'Selected Codes', value: selectedAdminCodes.length },
-                  { label: 'Transfer Target', value: selectedCodeTransferTarget?.username ?? adminTransferTarget ?? 'None' },
-                  { label: 'Settlement Note', value: codeReviewRemarks || 'No remarks yet' }
-                ]}
-              />
               <Card className="ops-admin-table-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Code Inventory</CardTitle>
@@ -1318,7 +1254,6 @@ export function AdminDashboardPage() {
                             <th className="px-4 py-3">Package</th>
                             <th className="px-4 py-3">Owner</th>
                             <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3">Payment</th>
                             <th className="px-4 py-3">Remarks</th>
                             <th className="px-4 py-3">Generated</th>
                           </tr>
@@ -1361,11 +1296,6 @@ export function AdminDashboardPage() {
                                     {item.status}
                                   </Badge>
                                 </td>
-                                <td className="px-4 py-3">
-                                  <Badge variant={item.paymentStatus === 'paid' ? 'success' : item.paymentStatus === 'externally-paid' ? 'warning' : 'outline'}>
-                                    {item.paymentStatus}
-                                  </Badge>
-                                </td>
                                 <td className="px-4 py-3 text-[var(--muted-foreground)]">{item.remarks || '-'}</td>
                                 <td className="px-4 py-3 text-[var(--muted-foreground)]">{item.generatedAt}</td>
                               </tr>
@@ -1390,7 +1320,7 @@ export function AdminDashboardPage() {
                   <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
                     <Input
                       value={memberSearchDraft}
-                      onChange={(event) => setMemberSearchDraft(event.target.value.toUpperCase())}
+                      onChange={(event) => setMemberSearchDraft(event.target.value)}
                       placeholder="Search username, referral code, or member name"
                     />
                     <Button type="button" className="ops-admin-primary-action" onClick={handleSearchMembers}>
@@ -1790,14 +1720,14 @@ export function AdminDashboardPage() {
                   <div className="ops-admin-tree-search flex w-full max-w-xl flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
                       value={treeSearchInput}
-                      onChange={(event) => setTreeSearchInput(event.target.value.toUpperCase())}
+                      onChange={(event) => setTreeSearchInput(event.target.value)}
                       placeholder="Enter username or referral code"
                     />
                     <Button
                       type="button"
                       className="ops-admin-primary-action"
                       disabled={!treeSearchInput.trim()}
-                      onClick={() => setTreeRootUsername(treeSearchInput.trim().toUpperCase())}
+                      onClick={() => setTreeRootUsername(treeSearchInput.trim())}
                     >
                       Search Tree
                     </Button>
@@ -1948,7 +1878,7 @@ const FALLBACK_QUICK_LINKS: Array<{
     iconBg: 'rgba(236,72,153,0.12)'
   },
   {
-    title: 'Activation Codes',
+    title: 'Manage Codes',
     body: 'Generate, release, and transfer sponsor-owned codes before the next registration pass.',
     href: '/admin/activation-codes',
     icon: KeyRound,
