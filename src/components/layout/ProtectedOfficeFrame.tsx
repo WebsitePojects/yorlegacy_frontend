@@ -135,27 +135,9 @@ export function ProtectedOfficeFrame({
   const officeLabel = officeLabelForBasePath(basePath);
   const workspaceLinks = workspaceLinksForRole(user?.role);
   const profilePath = '/member/account-details';
-  const shellStorageKey = `yor-office-shell:${basePath}:${user?.role ?? 'guest'}`;
-  const [sidebarExpanded, setSidebarExpanded] = useState(() => {
-    if (typeof window === 'undefined') {
-      return true;
-    }
-
-    const stored = window.localStorage.getItem(shellStorageKey);
-    return stored ? stored === 'open' : true;
-  });
   const [scrollElevated, setScrollElevated] = useState(false);
   const [prefetchedModules, setPrefetchedModules] = useState<Set<string>>(() => new Set());
   const stageRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem(shellStorageKey);
-    setSidebarExpanded(stored ? stored === 'open' : false);
-  }, [shellStorageKey]);
-
-  useEffect(() => {
-    window.localStorage.setItem(shellStorageKey, sidebarExpanded ? 'open' : 'closed');
-  }, [shellStorageKey, sidebarExpanded]);
 
   useEffect(() => {
     setScrollElevated(false);
@@ -310,10 +292,9 @@ export function ProtectedOfficeFrame({
           subheading={sidebarSubheading}
           modules={modules}
           footerLinks={footerLinks}
-          expanded={sidebarExpanded}
+          expanded={true}
           onSignOut={() => void handleSignOut()}
           onPrefetchModule={handlePrefetchModule}
-          onExpandedChange={setSidebarExpanded}
         />
 
         <main ref={stageRef} className="ops-content-stage" onScroll={(event) => {

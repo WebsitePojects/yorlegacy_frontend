@@ -520,13 +520,17 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
               setTimeout(() => {
                 ScrollTrigger.refresh();
               }, 50);
+              // Hide the scroll indicator once the page unlocks — user can now scroll freely
+              gsap.to('.home-scroll-indicator', { autoAlpha: 0, duration: 0.4, ease: 'power2.inOut' });
             }
           });
 
-          // Smoothly move the split hero texts out and hide indicator
+          // Smoothly move the split hero texts out, briefly hide then restore indicator
           tl.to('.split-hero-left', { xPercent: -120, autoAlpha: 0, duration: 1.2, ease: 'power2.inOut' }, 0);
           tl.to('.split-hero-right', { xPercent: 120, autoAlpha: 0, duration: 1.2, ease: 'power2.inOut' }, 0);
-          tl.to('.home-scroll-indicator', { autoAlpha: 0, duration: 0.4, ease: 'power2.inOut' }, 0);
+          // Hide indicator briefly while text animates out, then bring it back so user sees "Keep Scrolling"
+          tl.to('.home-scroll-indicator', { autoAlpha: 0, duration: 0.3, ease: 'power2.inOut' }, 0);
+          tl.to('.home-scroll-indicator', { autoAlpha: 1, duration: 0.5, ease: 'power2.out' }, 1.0);
           
           // Spacer block to keep the screen locked in-place until the video finishes
           tl.to({}, { duration: playDuration }, 0);
@@ -1146,7 +1150,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
             
             <button
               aria-label="Explore complan section"
-              className="home-scroll-indicator"
+              className="home-scroll-indicator home-scroll-indicator--persistent"
               onClick={() => {
                 if (triggerTransitionRef.current) {
                   triggerTransitionRef.current();
@@ -1156,8 +1160,8 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
               }}
               type="button"
             >
-              <span>Scroll Down to Start the Journey</span>
-              <ChevronDown size={14} />
+              <ChevronDown size={14} className="home-scroll-indicator-chevron" />
+              <span>Keep Scrolling</span>
             </button>
           </div>
         </section>
@@ -1225,7 +1229,12 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
         {/* Section: Founder Showcase */}
         <section id="scene-founder" className="founder-section-inline">
           <div className="section-container">
-            <div className="founder-grid">
+            <div className="founder-section-header">
+              <span className="build-global-kicker">Leadership</span>
+              <h2 className="founder-section-title">Meet the Founder</h2>
+              <div className="founder-section-rule" />
+            </div>
+            <div className="founder-grid founder-grid--animated">
               <div className="founder-portrait-col">
                 <div className="founder-portrait-shell">
                   <img
@@ -1399,7 +1408,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
                   <h2>Fragrances For Men</h2>
                   <div className="column-line" />
                 </div>
-                <div className="fragrance-list">
+                <div className="fragrance-list fragrance-list--grid">
                   {collectionProducts.filter(p => p.accent === 'For Men').map((prod) => (
                     <div className="glass-panel fragrance-item" key={prod.code}>
                       <div className="item-details">
@@ -1420,7 +1429,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
                   <h2>Fragrances For Women</h2>
                   <div className="column-line" />
                 </div>
-                <div className="fragrance-list">
+                <div className="fragrance-list fragrance-list--grid">
                   {collectionProducts.filter(p => p.accent === 'For Women').map((prod) => (
                     <div className="glass-panel fragrance-item fragrance-item-secondary" key={prod.code}>
                       <div className="item-details">
@@ -1592,7 +1601,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
             />
             
             {/* Stats Counter Row */}
-            <div className="global-stats-row">
+            <div className="global-stats-row global-stats-row--optimized">
               <div className="global-stat-card">
                 <span className="stat-value" id="stat-members">10,000+</span>
                 <span className="stat-label">Active Members</span>
@@ -1601,7 +1610,7 @@ export function HomeExperiencePage({ content }: { content: PageContent }) {
                 <span className="stat-value" id="stat-cities">25+</span>
                 <span className="stat-label">Cities Covered</span>
               </div>
-              <div className="global-stat-card">
+              <div className="global-stat-card global-stat-card--ways">
                 <span className="stat-value" id="stat-bonus">8</span>
                 <span className="stat-label">Ways to Wealth</span>
               </div>

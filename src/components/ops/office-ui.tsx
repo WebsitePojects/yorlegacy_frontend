@@ -15,10 +15,12 @@ import {
   HelpCircle,
   KeyRound,
   LayoutDashboard,
+  Lock,
+  Mail,
   Medal,
-  Menu,
   LogOut,
-  PanelLeftClose,
+  MessageSquare,
+  Newspaper,
   ReceiptText,
   RefreshCcw,
   Shield,
@@ -26,6 +28,7 @@ import {
   ShoppingBag,
   Sparkles,
   Table2,
+  Tag,
   UserCircle2,
   UserPlus,
   Users,
@@ -55,7 +58,7 @@ type OfficeSidebarProps = {
   expanded: boolean;
   onSignOut?: () => void;
   onPrefetchModule?: (moduleId: string) => void;
-  onExpandedChange: (nextExpanded: boolean) => void;
+  onExpandedChange?: (nextExpanded: boolean) => void;
 };
 
 export function OfficeSidebar({
@@ -65,150 +68,96 @@ export function OfficeSidebar({
   subheading,
   modules,
   footerLinks = [],
-  expanded,
   onSignOut,
-  onExpandedChange,
   onPrefetchModule
 }: OfficeSidebarProps) {
   const grouped = useMemo(() => groupModules(modules), [modules]);
-  const sidebarWidth = expanded ? '300px' : '72px';
-  const sidebarFlex = expanded ? '0 0 300px' : '0 0 72px';
 
   return (
     <aside
-      className={cn('relative hidden h-full min-h-0 overflow-hidden lg:block', expanded ? 'ops-sidebar-expanded' : 'ops-sidebar-collapsed')}
-      style={{ width: sidebarWidth, minWidth: sidebarWidth, flex: sidebarFlex }}
+      className="relative hidden h-full min-h-0 overflow-hidden lg:block ops-sidebar-expanded"
+      style={{ width: '300px', minWidth: '300px', flex: '0 0 300px' }}
     >
-      <div className={cn('ops-sidebar-shell', expanded ? 'is-expanded' : 'is-collapsed')}>
-        {expanded ? (
-          <div className="ops-sidebar-panel" aria-hidden={!expanded}>
-            <div className="ops-sidebar-panel-header">
-              <button
-                aria-label="Collapse sidebar"
-                aria-expanded={expanded}
-                className="ops-sidebar-toggle"
-                type="button"
-                onClick={() => onExpandedChange(false)}
-              >
-                <PanelLeftClose className="size-4" />
-              </button>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-                  Yor Office
-                </p>
-                <h1 className="text-lg font-semibold text-[var(--foreground)]">{heading}</h1>
-                <p className="text-sm leading-6 text-[var(--muted-foreground)]">{subheading}</p>
-              </div>
+      <div className="ops-sidebar-shell is-expanded">
+        <div className="ops-sidebar-panel">
+          <div className="ops-sidebar-panel-header">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+                Yor Office
+              </p>
+              <h1 className="text-lg font-semibold text-[var(--foreground)]">{heading}</h1>
+              <p className="text-sm leading-6 text-[var(--muted-foreground)]">{subheading}</p>
             </div>
-
-            <div className="space-y-3">
-              {grouped.map(([group, groupModules]) => (
-                <div key={group} className="space-y-2">
-                  <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
-                    {group}
-                  </p>
-                  <div className="space-y-1">
-                    {groupModules.map((module) => {
-                      const active = module.id === currentModuleId;
-                      return (
-                        <NavLink
-                          key={module.id}
-                          to={module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`}
-                          className={cn(
-                            'block rounded-xl border px-3 py-2.5 transition-colors',
-                            active
-                              ? 'border-[var(--ring)] bg-[var(--accent)]'
-                              : 'border-transparent hover:border-[var(--border)] hover:bg-[var(--accent)]'
-                          )}
-                          onClick={() => onExpandedChange(true)}
-                          onMouseEnter={() => onPrefetchModule?.(module.id)}
-                          onFocus={() => onPrefetchModule?.(module.id)}
-                        >
-                          <div className="flex items-start gap-3">
-                            <span className="ops-sidebar-item-icon mt-0.5">{renderIcon(getModuleIcon(module.id), 'size-4')}</span>
-                            <span className="ops-sidebar-link-text flex-1 whitespace-normal break-words text-sm font-medium leading-5 text-[var(--foreground)]">
-                              {module.label}
-                            </span>
-                          </div>
-                        </NavLink>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {footerLinks.length ? (
-              <>
-                <Separator className="my-4" />
-                <div className="space-y-2">
-                  {footerLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      to={link.href}
-                      className="flex items-center justify-between rounded-lg px-2 py-2 text-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
-                    >
-                      <span className="whitespace-normal break-words">{link.label}</span>
-                      {link.external ? <ExternalLink className="size-4" /> : <ArrowRight className="size-4" />}
-                    </Link>
-                  ))}
-                </div>
-              </>
-            ) : null}
-            {onSignOut ? (
-              <>
-                <Separator className="my-4" />
-                <button
-                  className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
-                  type="button"
-                  onClick={onSignOut}
-                >
-                  <span>Log Out</span>
-                  <LogOut className="size-4" />
-                </button>
-              </>
-            ) : null}
           </div>
-        ) : (
-          <div className="ops-sidebar-rail">
-            <button
-              aria-label="Expand sidebar"
-              className="ops-sidebar-toggle"
-              aria-expanded={expanded}
-              type="button"
-              onClick={() => onExpandedChange(true)}
-            >
-              <Menu className="size-4" />
-            </button>
-            <div className="ops-sidebar-rail-stack">
-              {grouped.map(([group, groupModules]) => (
-                <button
-                  key={group}
-                  className={cn(
-                    'ops-sidebar-rail-chip',
-                    groupModules.some((module) => module.id === currentModuleId) ? 'is-active' : ''
-                  )}
-                  type="button"
-                  title={group}
-                  aria-label={group}
-                  onClick={() => onExpandedChange(true)}
-                >
-                  {renderIcon(getGroupIcon(group), 'size-4')}
-                </button>
-              ))}
-            </div>
-            {onSignOut ? (
+
+          <div className="space-y-3">
+            {grouped.map(([group, groupModules]) => (
+              <div key={group} className="space-y-2">
+                <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+                  {group}
+                </p>
+                <div className="space-y-1">
+                  {groupModules.map((module) => {
+                    const active = module.id === currentModuleId;
+                    return (
+                      <NavLink
+                        key={module.id}
+                        to={module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`}
+                        className={cn(
+                          'block rounded-xl border px-3 py-2.5 transition-colors',
+                          active
+                            ? 'border-[var(--ring)] bg-[var(--accent)]'
+                            : 'border-transparent hover:border-[var(--border)] hover:bg-[var(--accent)]'
+                        )}
+                        onMouseEnter={() => onPrefetchModule?.(module.id)}
+                        onFocus={() => onPrefetchModule?.(module.id)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="ops-sidebar-item-icon mt-0.5">{renderIcon(getModuleIcon(module.id), 'size-4')}</span>
+                          <span className="ops-sidebar-link-text flex-1 whitespace-normal break-words text-sm font-medium leading-5 text-[var(--foreground)]">
+                            {module.label}
+                          </span>
+                        </div>
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          {footerLinks.length ? (
+            <>
+              <Separator className="my-4" />
+              <div className="space-y-2">
+                {footerLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    className="flex items-center justify-between rounded-lg px-2 py-2 text-sm text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]"
+                  >
+                    <span className="whitespace-normal break-words">{link.label}</span>
+                    {link.external ? <ExternalLink className="size-4" /> : <ArrowRight className="size-4" />}
+                  </Link>
+                ))}
+              </div>
+            </>
+          ) : null}
+          {onSignOut ? (
+            <>
+              <Separator className="my-4" />
               <button
-                className="ops-sidebar-rail-chip mt-auto"
+                className="group flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm text-[var(--muted-foreground)] transition-all hover:border-red-500/20 hover:bg-red-500/8 hover:text-red-400"
                 type="button"
-                title="Log Out"
-                aria-label="Log Out"
                 onClick={onSignOut}
               >
-                <LogOut className="size-4" />
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] transition-colors group-hover:bg-red-500/15">
+                  <LogOut className="size-3.5 transition-colors group-hover:text-red-400" />
+                </span>
+                <span className="font-medium">Sign Out</span>
               </button>
-            ) : null}
-          </div>
-        )}
+            </>
+          ) : null}
+        </div>
       </div>
     </aside>
   );
@@ -523,6 +472,14 @@ function getGroupIcon(group: string) {
       return Headphones;
     case 'security':
       return Shield;
+    case 'content':
+      return Newspaper;
+    case 'settings':
+      return Lock;
+    case 'vouchers':
+      return Tag;
+    case 'messages':
+      return Mail;
     default:
       return HelpCircle;
   }
@@ -562,11 +519,14 @@ function getModuleIcon(moduleId: string) {
     'encashment-reports': Banknote,
     'finance-accounting': ReceiptText,
     'cd-accounts': BadgeCheck,
-    'voucher-management': KeyRound,
+    'voucher-management': Tag,
     rankings: Medal,
     'global-bonus': Globe2,
     'get-five-package-claims': Sparkles,
-    'audit-status': FileBadge
+    'audit-status': FileBadge,
+    'contact-messages': MessageSquare,
+    'news-posts': Newspaper,
+    'change-password': Lock
   };
 
   return iconMap[moduleId] ?? HelpCircle;

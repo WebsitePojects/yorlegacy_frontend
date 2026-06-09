@@ -1,5 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import {
+  AlertCircle,
+  ArrowRight,
+  Banknote,
+  Bell,
+  Eye,
+  FileText,
+  GitBranch,
+  KeyRound,
+  LayoutDashboard,
+  Lock,
+  Mail,
+  MessageSquare,
+  Newspaper,
+  Plus,
+  Tag,
+  TrendingUp,
+  Users
+} from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useFeedback } from '@/components/feedback/FeedbackProvider';
 import {
@@ -28,10 +47,12 @@ import type {
   AdminMemberProfile,
   AdminMvpDashboardData,
   AdminOfficeData,
+  AuthUser,
   DashboardSummary,
   GenealogyCenter,
   MemberAccountStatus,
-  OperationalModule
+  OperationalModule,
+  ReportRow
 } from '../types/auth';
 
 const formatCurrency = (value: number): string =>
@@ -61,7 +82,17 @@ const customAdminModuleIds = new Set([
   'member-management',
   'activation-codes',
   'encashment-reports',
-  'account-genealogy'
+  'account-genealogy',
+  'finance-accounting',
+  'get-five-reports',
+  'get-five-package-claims',
+  'rankings',
+  'global-bonus',
+  'cd-accounts',
+  'voucher-management',
+  'contact-messages',
+  'news-posts',
+  'change-password'
 ]);
 
 function getVisibleAdminMetrics(moduleId: string, metrics: AdminOfficeData['metrics']) {
@@ -946,9 +977,7 @@ export function AdminDashboardPage() {
   const canGenerateCodes = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
   const canReviewCodeStates = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
   const canApproveEncashment = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
-  const canResetSandbox = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
   const canChangeMemberStatus = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
-  const showSecurityRail = moduleId === 'dashboard';
   const showDashboardActions = moduleId === 'dashboard' && (mvpDashboard?.moneyMode ?? 'playground') !== 'sandbox' && branchNotes.length > 0;
   const visibleMetrics = office ? getVisibleAdminMetrics(moduleId, office.metrics) : [];
   const filteredActivationInventory = activationCodes?.inventory.filter((item) => {
@@ -973,14 +1002,7 @@ export function AdminDashboardPage() {
   const cdAccountsModulePath = office?.modules.find((module) => module.id === 'cd-accounts')?.path;
   const selectedEncashment =
     encashments?.encashments.find((item) => item.id === selectedEncashmentId) ?? encashments?.encashments[0] ?? null;
-  const summaryCard =
-    moduleId === 'dashboard'
-      ? {
-          label: 'Role Scope',
-          value: office?.profile.accessScope ?? user?.role ?? 'ops',
-          detail: `${office?.modules.length ?? 0} modules available`
-        }
-      : undefined;
+  const summaryCard = undefined;
 
   function toggleAdminCodeSelection(code: string) {
     setSelectedAdminCodes((current) =>
@@ -1027,32 +1049,20 @@ export function AdminDashboardPage() {
         { label: 'Open registration page', href: '/register' }
       ]}
     >
-      <div className="ops-admin-page space-y-4">
-          {visibleMetrics.length ? <MetricGrid metrics={visibleMetrics} /> : null}
-          {moduleId === 'dashboard' && quickLinks.length ? <QuickLinkGrid links={quickLinks} /> : null}
-
-          {moduleId === 'dashboard' && office?.queues.length ? (
-            <section className="ops-admin-queue-grid grid gap-3 md:grid-cols-3">
-              {office.queues.map((queue) => (
-                <Card key={queue.label} className="ops-admin-queue-card border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader className="pb-3">
-                    <CardDescription className="text-xs uppercase tracking-[0.18em]">Queue</CardDescription>
-                    <CardTitle className="text-base">{queue.label}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-[var(--muted-foreground)]">Items</span>
-                      <Badge variant={queue.status === 'attention' ? 'warning' : 'outline'}>
-                        {queue.count}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </section>
-          ) : null}
-
-          {showModuleTable && activeModule ? <ModuleTableCard module={activeModule} /> : null}
+      <div className="ops-admin-page space-y-6">
+          {moduleId === 'dashboard' ? (
+            <AdminDashboardView
+              office={office}
+              mvpDashboard={mvpDashboard}
+              user={user}
+              quickLinks={quickLinks}
+            />
+          ) : (
+            <>
+              {visibleMetrics.length ? <MetricGrid metrics={visibleMetrics} /> : null}
+              {showModuleTable && activeModule ? <ModuleTableCard module={activeModule} /> : null}
+            </>
+          )}
 
           {moduleId === 'activation-codes' && activationCodes ? (
             <section className="ops-admin-activation-grid grid gap-4">
@@ -1865,60 +1875,241 @@ export function AdminDashboardPage() {
             </section>
           ) : null}
 
-          {showSecurityRail || showDashboardActions || (moduleId === 'dashboard' && canResetSandbox) ? (
-            <section className="ops-admin-footer-grid grid gap-4 xl:grid-cols-2">
-              {showDashboardActions ? <GatedActionsCard actions={branchNotes} /> : null}
+          {moduleId === 'finance-accounting' ? (
+            <FinanceAccountingView activeModule={activeModule} />
+          ) : null}
 
-              {showSecurityRail ? (
-                <Card className="ops-admin-security-card border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader>
-                    <CardTitle>Security Status</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {summary
-                      ? Object.entries(summary.status).map(([key, value]) => (
-                          <div key={key} className="flex items-start justify-between gap-3 text-sm">
-                            <span className="text-[var(--muted-foreground)]">{key}</span>
-                            <strong className="text-right text-[var(--foreground)]">
-                              {key === 'moneyActions' && value.includes('sandbox')
-                                ? value.replace('branch sandbox writes enabled', 'controlled runtime writes enabled')
-                                : value}
-                            </strong>
-                          </div>
-                        ))
-                      : null}
-                    {office?.auditEvents.length ? (
-                      <div className="ops-admin-audit-box rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-                        <p className="mb-2 text-sm font-medium text-[var(--foreground)]">Recent audit events</p>
-                        <div className="space-y-2 text-sm text-[var(--muted-foreground)]">
-                          {office.auditEvents.slice(0, 4).map((event) => (
-                            <p key={`${event.occurredAt}-${event.action}`}>
-                              {formatAuditActionLabel(event.action)} / {event.actor}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                  </CardContent>
-                </Card>
-              ) : null}
+          {moduleId === 'get-five-reports' ? (
+            <GetFiveRedeemView activeModule={activeModule} />
+          ) : null}
 
-              {moduleId === 'dashboard' && canResetSandbox ? (
-                <Card className="border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader>
-                    <CardTitle>Runtime Reset Control</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Button type="button" variant="outline" onClick={handleResetSandbox}>
-                      Reset Runtime Data
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : null}
+          {moduleId === 'get-five-package-claims' ? (
+            <GetFivePackageClaimsView activeModule={activeModule} />
+          ) : null}
+
+          {moduleId === 'rankings' ? (
+            <RankingsView activeModule={activeModule} />
+          ) : null}
+
+          {moduleId === 'global-bonus' ? (
+            <GlobalBonusView activeModule={activeModule} />
+          ) : null}
+
+          {moduleId === 'cd-accounts' ? (
+            <CdAccountsView activeModule={activeModule} />
+          ) : null}
+
+          {moduleId === 'voucher-management' ? (
+            <VoucherManagementView activeModule={activeModule} />
+          ) : null}
+
+          {moduleId === 'contact-messages' ? (
+            <ContactMessagesView activeModule={activeModule} />
+          ) : null}
+
+          {moduleId === 'news-posts' ? (
+            <NewsPostsView activeModule={activeModule} />
+          ) : null}
+
+          {moduleId === 'change-password' ? (
+            <ChangePasswordView />
+          ) : null}
+
+          {showDashboardActions ? (
+            <section className="ops-admin-footer-grid">
+              <GatedActionsCard actions={branchNotes} />
             </section>
           ) : null}
       </div>
     </ProtectedOfficeFrame>
+  );
+}
+
+type AdminDashboardViewProps = {
+  office: AdminOfficeData | null;
+  mvpDashboard: AdminMvpDashboardData | null;
+  user: AuthUser | null;
+  quickLinks: Array<{ title: string; body: string; href: string }>;
+};
+
+const FALLBACK_QUICK_LINKS: Array<{
+  title: string;
+  body: string;
+  href: string;
+  icon: typeof Users;
+  iconColor: string;
+  iconBg: string;
+}> = [
+  {
+    title: 'Member Management',
+    body: 'Open the clean masterlist-style account view for sponsor, package, and status checks.',
+    href: '/admin/member-management',
+    icon: Users,
+    iconColor: '#3b82f6',
+    iconBg: 'rgba(59,130,246,0.12)'
+  },
+  {
+    title: 'Account Genealogy',
+    body: 'Inspect placement and open slots using the left and right slot rules members depend on.',
+    href: '/admin/account-genealogy',
+    icon: GitBranch,
+    iconColor: '#ec4899',
+    iconBg: 'rgba(236,72,153,0.12)'
+  },
+  {
+    title: 'Activation Codes',
+    body: 'Generate, release, and transfer sponsor-owned codes before the next registration pass.',
+    href: '/admin/activation-codes',
+    icon: KeyRound,
+    iconColor: '#f59e0b',
+    iconBg: 'rgba(245,158,11,0.12)'
+  },
+  {
+    title: 'Encashment Queue',
+    body: 'Review the Tuesday encashment and Friday payout queue with gross, deductions, and remarks.',
+    href: '/admin/encashment-reports',
+    icon: Banknote,
+    iconColor: '#10b981',
+    iconBg: 'rgba(16,185,129,0.12)'
+  },
+];
+
+function resolvedQuickLinks(backendLinks: Array<{ title: string; body: string; href: string }>) {
+  const iconMap: Record<string, { icon: typeof Users; iconColor: string; iconBg: string }> = {
+    'member-management': { icon: Users, iconColor: '#3b82f6', iconBg: 'rgba(59,130,246,0.12)' },
+    'account-genealogy': { icon: GitBranch, iconColor: '#ec4899', iconBg: 'rgba(236,72,153,0.12)' },
+    'activation-codes': { icon: KeyRound, iconColor: '#f59e0b', iconBg: 'rgba(245,158,11,0.12)' },
+    'encashment-reports': { icon: Banknote, iconColor: '#10b981', iconBg: 'rgba(16,185,129,0.12)' },
+    'get-five-reports': { icon: TrendingUp, iconColor: '#8b5cf6', iconBg: 'rgba(139,92,246,0.12)' },
+  };
+
+  if (backendLinks.length > 0) {
+    return backendLinks.map((link) => {
+      const slug = link.href.split('/').pop() ?? '';
+      const cfg = iconMap[slug] ?? { icon: LayoutDashboard, iconColor: '#6b7280', iconBg: 'rgba(107,114,128,0.12)' };
+      return { ...link, ...cfg };
+    });
+  }
+
+  return FALLBACK_QUICK_LINKS;
+}
+
+const STAT_CARD_CONFIG: Array<{
+  metricKeywords: string[];
+  icon: typeof Users;
+  color: string;
+  bg: string;
+}> = [
+  { metricKeywords: ['total', 'account', 'member'], icon: Users, color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  { metricKeywords: ['encash', 'payout', 'process'], icon: Banknote, color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  { metricKeywords: ['activat', 'code', 'registration'], icon: KeyRound, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  { metricKeywords: ['income', 'earn', 'bonus', 'commission'], icon: TrendingUp, color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  { metricKeywords: ['genealog', 'tree', 'network', 'referral'], icon: GitBranch, color: '#ec4899', bg: 'rgba(236,72,153,0.12)' },
+  { metricKeywords: ['pending', 'queue', 'review'], icon: AlertCircle, color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+];
+
+function resolveStatCardConfig(label: string) {
+  const lower = label.toLowerCase();
+  for (const config of STAT_CARD_CONFIG) {
+    if (config.metricKeywords.some((kw) => lower.includes(kw))) {
+      return config;
+    }
+  }
+  return { icon: LayoutDashboard, color: '#6b7280', bg: 'rgba(107,114,128,0.12)' };
+}
+
+function AdminDashboardView({ office, mvpDashboard, user, quickLinks }: AdminDashboardViewProps) {
+  const metrics = office?.metrics ?? [];
+  const notices = office?.notices ?? [];
+  const displayName = user?.name ?? office?.profile.officeTitle ?? 'Admin';
+
+  return (
+    <div className="space-y-6">
+      {/* Welcome Banner */}
+      <div className="admin-dash-welcome rounded-2xl border border-[var(--border)] bg-gradient-to-r from-[var(--card)] to-[var(--background)] px-6 py-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+              {office?.profile.officeTitle ?? 'Admin Office'}
+            </p>
+            <h2 className="mt-1 text-xl font-semibold text-[var(--foreground)]">
+              Welcome back, {displayName}
+            </h2>
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+              Here's your system overview.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Stat Cards Grid */}
+      {metrics.length > 0 && (
+        <section>
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Overview</p>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {metrics.map((metric) => {
+              const cfg = resolveStatCardConfig(metric.label);
+              const Icon = cfg.icon;
+              return (
+                <div
+                  key={metric.label}
+                  className="admin-stat-card group flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 transition-shadow hover:shadow-md"
+                >
+                  <span
+                    className="admin-stat-icon flex size-11 shrink-0 items-center justify-center rounded-xl"
+                    style={{ background: cfg.bg }}
+                  >
+                    <Icon className="size-5" style={{ color: cfg.color }} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                      {metric.label}
+                    </p>
+                    <p className="mt-0.5 truncate text-xl font-semibold text-[var(--foreground)]">
+                      {metric.value}
+                    </p>
+                    {metric.detail ? (
+                      <p className="mt-0.5 truncate text-xs text-[var(--muted-foreground)]">{metric.detail}</p>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Quick Access Links */}
+      <section>
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Quick Access</p>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {resolvedQuickLinks(quickLinks).map((link) => {
+            const Icon = link.icon;
+            return (
+              <Link
+                key={link.href}
+                to={link.href}
+                className="admin-quick-link group flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 transition-colors hover:border-[var(--ring)] hover:bg-[var(--accent)]"
+              >
+                <div>
+                  <span
+                    className="mb-3 flex size-10 items-center justify-center rounded-xl"
+                    style={{ background: link.iconBg }}
+                  >
+                    <Icon className="size-5" style={{ color: link.iconColor }} />
+                  </span>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">{link.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">{link.body}</p>
+                </div>
+                <div className="mt-4 flex items-center gap-1 text-xs font-medium text-[var(--muted-foreground)] group-hover:text-[var(--foreground)]">
+                  Open <ArrowRight className="size-3" />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -1928,5 +2119,1198 @@ function DataPoint({ label, value }: { label: string; value: string | number }) 
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">{label}</p>
       <p className="mt-2 text-sm font-medium text-[var(--foreground)]">{value}</p>
     </div>
+  );
+}
+
+// ─── Shared helpers for new module views ──────────────────────────────────────
+
+type ModuleViewProps = { activeModule: OperationalModule | null };
+
+function getMetric(metrics: OperationalModule['metrics'], keywordParts: string[]): string {
+  const lower = keywordParts.map((k) => k.toLowerCase());
+  const match = metrics.find((m) => lower.every((k) => m.label.toLowerCase().includes(k)));
+  return match?.value ?? '—';
+}
+
+const SELECT_CLASS =
+  'flex h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]';
+
+function ModuleEmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] px-6 py-10 text-center text-sm text-[var(--muted-foreground)]">
+      {message}
+    </div>
+  );
+}
+
+// ─── 1. Finance Accounting View ───────────────────────────────────────────────
+
+function FinanceAccountingView({ activeModule }: ModuleViewProps) {
+  const [yearInput, setYearInput] = useState(String(new Date().getFullYear()));
+  const metrics = activeModule?.metrics ?? [];
+  const rows = activeModule?.table?.rows ?? [];
+
+  const summaryStats = [
+    { label: 'Gross Sales', keys: ['gross', 'sales'] },
+    { label: 'Expense Reserve', keys: ['expense', 'reserve'] },
+    { label: 'Service + Maintenance', keys: ['service', 'maintenance'] },
+    { label: 'Encashment Requested', keys: ['encashment', 'requested'] },
+    { label: 'CD Recovery Wallet', keys: ['cd', 'recovery'] },
+    { label: 'Projected Margin', keys: ['projected', 'margin'] },
+  ];
+
+  const packageSalesPlaceholder = [
+    { label: 'Basic', amount: 'PHP 120,000', pct: 18 },
+    { label: 'Classic', amount: 'PHP 240,000', pct: 36 },
+    { label: 'Standard', amount: 'PHP 180,000', pct: 27 },
+    { label: 'Business', amount: 'PHP 90,000', pct: 13 },
+    { label: 'VIP', amount: 'PHP 40,000', pct: 6 },
+  ];
+
+  const walletAllocPlaceholder = [
+    { label: 'Direct Bonus', amount: 'PHP 58,000', pct: 30 },
+    { label: 'Binary Bonus', amount: 'PHP 96,000', pct: 50 },
+    { label: 'CD Wallet', amount: 'PHP 28,000', pct: 15 },
+    { label: 'Global Pool', amount: 'PHP 8,000', pct: 5 },
+  ];
+
+  return (
+    <section className="space-y-5">
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader>
+          <CardTitle>Annual Accounting Workspace</CardTitle>
+          <CardDescription>
+            {activeModule?.description ?? 'Review yearly financial summaries, package sales breakdown, and wallet allocations for the selected fiscal year.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">Fiscal Year</span>
+              <Input
+                type="number"
+                className="w-36"
+                value={yearInput}
+                onChange={(e) => setYearInput(e.target.value)}
+                min={2020}
+                max={2099}
+              />
+            </label>
+            <Button type="button" variant="outline">Load Year</Button>
+            <Button type="button" variant="outline" disabled>Export CSV</Button>
+          </div>
+
+          <div>
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Year Summary — {yearInput}</p>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {summaryStats.map((stat) => (
+                <div key={stat.label} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">{stat.label}</p>
+                  <p className="mt-1.5 text-lg font-semibold text-[var(--foreground)]">
+                    {getMetric(metrics, stat.keys)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card className="border-[var(--border)] bg-[var(--card)]">
+          <CardHeader>
+            <CardTitle className="text-sm">Package Sales Graph</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {rows.length > 0
+              ? rows.map((row, i) => {
+                  const label = String(row['label'] ?? row['package'] ?? `Package ${i + 1}`);
+                  const amount = String(row['amount'] ?? row['sales'] ?? row['gross'] ?? '—');
+                  const pct = typeof row['pct'] === 'number' ? row['pct'] : 50;
+                  return (
+                    <div key={label} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-[var(--foreground)]">{label}</span>
+                        <span className="text-[var(--muted-foreground)]">{amount}</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--background)]">
+                        <div className="h-full rounded-full bg-amber-500/70" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })
+              : packageSalesPlaceholder.map((row) => (
+                  <div key={row.label} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-[var(--foreground)]">{row.label}</span>
+                      <span className="text-[var(--muted-foreground)]">{row.amount}</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--background)]">
+                      <div className="h-full rounded-full bg-amber-500/70" style={{ width: `${row.pct}%` }} />
+                    </div>
+                  </div>
+                ))}
+          </CardContent>
+        </Card>
+
+        <Card className="border-[var(--border)] bg-[var(--card)]">
+          <CardHeader>
+            <CardTitle className="text-sm">Wallet Allocation Graph</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {walletAllocPlaceholder.map((row) => (
+              <div key={row.label} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-[var(--foreground)]">{row.label}</span>
+                  <span className="text-[var(--muted-foreground)]">{row.amount}</span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--background)]">
+                  <div
+                    className="h-full rounded-full bg-emerald-500/60"
+                    style={{ width: `${row.pct}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </section>
+  );
+}
+
+// ─── 2. Get Five Redeem View ──────────────────────────────────────────────────
+
+function GetFiveRedeemView({ activeModule }: ModuleViewProps) {
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const rows = activeModule?.table?.rows ?? [];
+
+  return (
+    <section className="space-y-5">
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader>
+          <CardTitle>Get Yor Five Redeem Management</CardTitle>
+          <CardDescription>
+            {activeModule?.description ?? 'Track and process redeem requests for Get Yor Five qualification bonuses.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">Start Date</span>
+              <Input type="date" className="w-44" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">End Date</span>
+              <Input type="date" className="w-44" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </label>
+            <Button type="button" variant="outline">Filter</Button>
+            <Button type="button" variant="outline" onClick={() => { setStartDate(''); setEndDate(''); }}>Clear</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader>
+          <CardTitle>Redeem Records</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {rows.length === 0 ? (
+            <ModuleEmptyState message="No redeem records found." />
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+              <table className="w-full min-w-[860px] text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Username</th>
+                    <th className="px-4 py-3">Product</th>
+                    <th className="px-4 py-3">Bonus</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => {
+                    const status = String(row['status'] ?? row['Status'] ?? '');
+                    const isPending = /pending/i.test(status);
+                    const isRedeemed = /redeem/i.test(status);
+                    return (
+                      <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
+                        <td className="px-4 py-3 text-[var(--foreground)]">{String(row['name'] ?? row['Name'] ?? '—')}</td>
+                        <td className="px-4 py-3 font-mono text-[var(--muted-foreground)]">{String(row['username'] ?? row['Username'] ?? '—')}</td>
+                        <td className="px-4 py-3">{String(row['product'] ?? row['Product'] ?? '—')}</td>
+                        <td className="px-4 py-3 text-amber-500">{String(row['bonus'] ?? row['Bonus'] ?? '—')}</td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant="outline"
+                            className={isPending ? 'border-amber-500/40 bg-amber-500/10 text-amber-400' : isRedeemed ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : undefined}
+                          >
+                            {status || '—'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['date'] ?? row['Date'] ?? '—')}</td>
+                        <td className="px-4 py-3">
+                          <Button type="button" size="sm" variant="outline" className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10">
+                            Mark Redeemed
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+// ─── 3. Get Five Package Claims View ─────────────────────────────────────────
+
+function GetFivePackageClaimsView({ activeModule }: ModuleViewProps) {
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [packageFilter, setPackageFilter] = useState('all');
+  const rows = activeModule?.table?.rows ?? [];
+
+  return (
+    <section className="space-y-5">
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader>
+          <CardTitle>Get Yor Five Package Claims</CardTitle>
+          <CardDescription>
+            {activeModule?.description ?? 'Review and process package claim requests submitted by qualified Get Yor Five members.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">Status</span>
+              <select className={SELECT_CLASS + ' w-44'} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="all">All</option>
+                <option value="pending">Pending Review</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">Start Date</span>
+              <Input type="date" className="w-44" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">End Date</span>
+              <Input type="date" className="w-44" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">Package</span>
+              <select className={SELECT_CLASS + ' w-44'} value={packageFilter} onChange={(e) => setPackageFilter(e.target.value)}>
+                <option value="all">All Packages</option>
+                <option value="basic">Basic</option>
+                <option value="classic">Classic</option>
+                <option value="standard">Standard</option>
+                <option value="business">Business</option>
+                <option value="vip">VIP</option>
+              </select>
+            </label>
+            <Button type="button" variant="outline">Filter</Button>
+            <Button type="button" variant="outline" onClick={() => { setStatusFilter('all'); setStartDate(''); setEndDate(''); setPackageFilter('all'); }}>Clear</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader>
+          <CardTitle>Package Claim Queue</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {rows.length === 0 ? (
+            <ModuleEmptyState message="No package claims found." />
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+              <table className="w-full min-w-[1200px] text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                    <th className="px-4 py-3">Member</th>
+                    <th className="px-4 py-3">Username</th>
+                    <th className="px-4 py-3">Package</th>
+                    <th className="px-4 py-3">Qty</th>
+                    <th className="px-4 py-3">Per Claim</th>
+                    <th className="px-4 py-3">Total</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Submitted</th>
+                    <th className="px-4 py-3">Notes</th>
+                    <th className="px-4 py-3">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => {
+                    const status = String(row['status'] ?? row['Status'] ?? '');
+                    const isPending = /pending/i.test(status);
+                    const isApproved = /approved/i.test(status);
+                    return (
+                      <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">{String(row['member'] ?? row['Member'] ?? '—')}</td>
+                        <td className="px-4 py-3 font-mono text-[var(--muted-foreground)]">{String(row['username'] ?? row['Username'] ?? '—')}</td>
+                        <td className="px-4 py-3">{String(row['package'] ?? row['Package'] ?? '—')}</td>
+                        <td className="px-4 py-3">{String(row['qty'] ?? row['Qty'] ?? '—')}</td>
+                        <td className="px-4 py-3">{String(row['perClaim'] ?? row['per_claim'] ?? '—')}</td>
+                        <td className="px-4 py-3 text-amber-500">{String(row['total'] ?? row['Total'] ?? '—')}</td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant="outline"
+                            className={isPending ? 'border-amber-500/40 bg-amber-500/10 text-amber-400' : isApproved ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : undefined}
+                          >
+                            {status || '—'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['submitted'] ?? row['Submitted'] ?? '—')}</td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['notes'] ?? row['Notes'] ?? '—')}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <Button type="button" size="sm" variant="outline" className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10">Approve</Button>
+                            <Button type="button" size="sm" variant="outline">Reject</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+// ─── 4. Rankings View ────────────────────────────────────────────────────────
+
+const PACKAGE_TIER_BADGE: Record<string, string> = {
+  bronze: 'border-amber-700/40 bg-amber-700/10 text-amber-600',
+  gold: 'border-yellow-500/40 bg-yellow-500/10 text-yellow-400',
+  diamond: 'border-blue-500/40 bg-blue-500/10 text-blue-400',
+  silver: 'border-gray-400/40 bg-gray-400/10 text-gray-400',
+};
+
+function resolvePackageBadgeClass(packageTier: string): string {
+  const lower = packageTier.toLowerCase();
+  for (const [key, cls] of Object.entries(PACKAGE_TIER_BADGE)) {
+    if (lower.includes(key)) return cls;
+  }
+  return 'border-[var(--border)] text-[var(--muted-foreground)]';
+}
+
+const PLACEHOLDER_RANKING_ROWS: ReportRow[] = Array.from({ length: 5 }, (_, i) => ({
+  rank: `Top ${i + 1}`,
+  member: '—',
+  username: '—',
+  package: '—',
+  gate: '—',
+  currentRank: '—',
+  gross: '—',
+  consumed: '—',
+  remaining: '—',
+  qualifiedDate: '—',
+  claimStatus: '—',
+}));
+
+function RankingsView({ activeModule }: ModuleViewProps) {
+  const rawRows = activeModule?.table?.rows ?? [];
+  const rows = rawRows.length > 0 ? rawRows : PLACEHOLDER_RANKING_ROWS;
+
+  return (
+    <section className="space-y-5">
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader>
+          <CardTitle>Ranking Incentives</CardTitle>
+          <CardDescription>
+            {activeModule?.description ?? 'Live ranking race standings with gate, gross, and claim status for incentive distribution.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+            <table className="w-full min-w-[1340px] text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                  <th className="px-4 py-3">Top</th>
+                  <th className="px-4 py-3">Member</th>
+                  <th className="px-4 py-3">Username</th>
+                  <th className="px-4 py-3">Package</th>
+                  <th className="px-4 py-3">Gate</th>
+                  <th className="px-4 py-3">Current Rank</th>
+                  <th className="px-4 py-3">Gross</th>
+                  <th className="px-4 py-3">Consumed</th>
+                  <th className="px-4 py-3">Remaining</th>
+                  <th className="px-4 py-3">Qualified Date</th>
+                  <th className="px-4 py-3">Claim Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => {
+                  const pkg = String(row['package'] ?? row['Package'] ?? '—');
+                  const claimStatus = String(row['claimStatus'] ?? row['claim_status'] ?? row['ClaimStatus'] ?? row['Claim Status'] ?? '—');
+                  const isRanked = /ranked/i.test(claimStatus) && !/not/i.test(claimStatus);
+                  return (
+                    <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
+                      <td className="px-4 py-3">
+                        <span className="inline-block rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
+                          {String(row['rank'] ?? `Top ${i + 1}`)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-medium text-[var(--foreground)]">{String(row['member'] ?? row['Member'] ?? '—')}</td>
+                      <td className="px-4 py-3 font-mono text-[var(--muted-foreground)]">{String(row['username'] ?? row['Username'] ?? '—')}</td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className={resolvePackageBadgeClass(pkg)}>{pkg}</Badge>
+                      </td>
+                      <td className="px-4 py-3">{String(row['gate'] ?? row['Gate'] ?? '—')}</td>
+                      <td className="px-4 py-3">{String(row['currentRank'] ?? row['current_rank'] ?? row['CurrentRank'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-amber-500">{String(row['gross'] ?? row['Gross'] ?? '—')}</td>
+                      <td className="px-4 py-3">{String(row['consumed'] ?? row['Consumed'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-emerald-500">{String(row['remaining'] ?? row['Remaining'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['qualifiedDate'] ?? row['qualified_date'] ?? '—')}</td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          variant="outline"
+                          className={isRanked ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-amber-500/20 bg-amber-500/5 text-amber-600'}
+                        >
+                          {claimStatus}
+                        </Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-xs text-[var(--muted-foreground)]">
+            Showing {rows.length} {rows.length === 1 ? 'entry' : 'entries'}
+          </p>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+// ─── 5. Global Bonus View ────────────────────────────────────────────────────
+
+function GlobalBonusView({ activeModule }: ModuleViewProps) {
+  const [completedYear, setCompletedYear] = useState(String(new Date().getFullYear() - 1));
+  const metrics = activeModule?.metrics ?? [];
+  const rows = activeModule?.table?.rows ?? [];
+
+  const statsConfig = [
+    { label: 'Annual Net Sales', keys: ['annual', 'net', 'sales'] },
+    { label: 'Bonus Pool (2%)', keys: ['bonus', 'pool'] },
+    { label: 'Total Portions', keys: ['total', 'portion'] },
+    { label: 'Per Portion Value', keys: ['per', 'portion'] },
+  ];
+
+  return (
+    <section className="space-y-5">
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader>
+          <CardTitle>Global Bonus</CardTitle>
+          <CardDescription>
+            {activeModule?.description ?? 'Annual PPT pool distribution — load the completed year to review and distribute the global bonus pool.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">Completed Year</span>
+              <Input
+                type="number"
+                className="w-32"
+                value={completedYear}
+                onChange={(e) => setCompletedYear(e.target.value)}
+                min={2020}
+                max={2099}
+              />
+            </label>
+            <Button type="button" variant="outline">Load Annual Report</Button>
+            <Button type="button" variant="outline" disabled>Latest Distributed</Button>
+            <Button type="button" className="bg-emerald-600 text-white hover:bg-emerald-700">Distribute Annual Pool</Button>
+          </div>
+          <p className="text-xs text-[var(--muted-foreground)]">
+            The PPT rule is annual. The current year cannot be distributed until the year is complete.
+          </p>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {statsConfig.map((stat) => (
+              <div key={stat.label} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">{stat.label}</p>
+                <p className="mt-1.5 text-lg font-semibold text-[var(--foreground)]">
+                  {getMetric(metrics, stat.keys)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader>
+          <CardTitle>Distributed Recipients</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {rows.length === 0 ? (
+            <ModuleEmptyState message="No distribution records found for this year." />
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+              <table className="w-full min-w-[860px] text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                    <th className="px-4 py-3">Member</th>
+                    <th className="px-4 py-3">Username</th>
+                    <th className="px-4 py-3">Member Type</th>
+                    <th className="px-4 py-3">Portions</th>
+                    <th className="px-4 py-3">Share Amount</th>
+                    <th className="px-4 py-3">Distributed Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => (
+                    <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
+                      <td className="px-4 py-3 font-medium text-[var(--foreground)]">{String(row['member'] ?? row['Member'] ?? '—')}</td>
+                      <td className="px-4 py-3 font-mono text-[var(--muted-foreground)]">{String(row['username'] ?? row['Username'] ?? '—')}</td>
+                      <td className="px-4 py-3">{String(row['memberType'] ?? row['member_type'] ?? row['MemberType'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-amber-500">{String(row['portions'] ?? row['Portions'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-emerald-500">{String(row['shareAmount'] ?? row['share_amount'] ?? row['ShareAmount'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['distributedDate'] ?? row['distributed_date'] ?? row['DistributedDate'] ?? '—')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+// ─── 6. CD Accounts View ──────────────────────────────────────────────────────
+
+function CdAccountsView({ activeModule }: ModuleViewProps) {
+  const [searchText, setSearchText] = useState('');
+  const [cdStatus, setCdStatus] = useState('all');
+  const [packageFilter, setPackageFilter] = useState('all');
+  const metrics = activeModule?.metrics ?? [];
+  const rows = activeModule?.table?.rows ?? [];
+
+  const miniStats = [
+    { label: 'Total CD Accounts', keys: ['total', 'cd', 'account'] },
+    { label: 'Fully Paid', keys: ['fully', 'paid'] },
+    { label: 'Still Paying', keys: ['still', 'paying'] },
+    { label: 'Total CD Amount', keys: ['total', 'cd', 'amount'] },
+    { label: 'Total Paid So Far', keys: ['total', 'paid', 'far'] },
+    { label: 'CD Deductions', keys: ['cd', 'deduction'] },
+    { label: 'Net Encashment', keys: ['net', 'encashment'] },
+  ];
+
+  return (
+    <section className="space-y-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        {miniStats.map((stat) => (
+          <div key={stat.label} className="flex flex-col justify-between rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)] leading-snug">{stat.label}</p>
+            <p className="mt-1.5 text-base font-semibold text-[var(--foreground)]">{getMetric(metrics, stat.keys)}</p>
+          </div>
+        ))}
+      </div>
+
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader>
+          <CardTitle>CD Account Management</CardTitle>
+          <CardDescription>
+            {activeModule?.description ?? 'View and filter member CD accounts by status, package, and payment progress.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">Search</span>
+              <Input
+                className="w-56"
+                placeholder="Name or username"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">CD Status</span>
+              <select className={SELECT_CLASS + ' w-44'} value={cdStatus} onChange={(e) => setCdStatus(e.target.value)}>
+                <option value="all">All CD Status</option>
+                <option value="fully-paid">Fully Paid</option>
+                <option value="paying">Still Paying</option>
+              </select>
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">Package</span>
+              <select className={SELECT_CLASS + ' w-44'} value={packageFilter} onChange={(e) => setPackageFilter(e.target.value)}>
+                <option value="all">All Packages</option>
+                <option value="basic">Basic</option>
+                <option value="classic">Classic</option>
+                <option value="standard">Standard</option>
+                <option value="business">Business</option>
+                <option value="vip">VIP</option>
+              </select>
+            </label>
+            <Button type="button" variant="outline">Search</Button>
+            <Button type="button" variant="outline" onClick={() => { setSearchText(''); setCdStatus('all'); setPackageFilter('all'); }}>Clear</Button>
+            <Button type="button" variant="outline" disabled>Export CSV</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader>
+          <CardTitle>CD Package Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {rows.length === 0 ? (
+            <ModuleEmptyState message="No CD account records found." />
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+              <table className="w-full min-w-[1000px] text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                    <th className="px-4 py-3">Package</th>
+                    <th className="px-4 py-3">Accounts</th>
+                    <th className="px-4 py-3">Fully Paid</th>
+                    <th className="px-4 py-3">Paying</th>
+                    <th className="px-4 py-3">CD Amount</th>
+                    <th className="px-4 py-3">Paid</th>
+                    <th className="px-4 py-3">Remaining</th>
+                    <th className="px-4 py-3">Net Encashment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => (
+                    <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
+                      <td className="px-4 py-3 font-medium text-[var(--foreground)]">{String(row['package'] ?? row['Package'] ?? '—')}</td>
+                      <td className="px-4 py-3">{String(row['accounts'] ?? row['Accounts'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-emerald-500">{String(row['fullyPaid'] ?? row['fully_paid'] ?? row['FullyPaid'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-amber-500">{String(row['paying'] ?? row['Paying'] ?? '—')}</td>
+                      <td className="px-4 py-3">{String(row['cdAmount'] ?? row['cd_amount'] ?? row['CdAmount'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-emerald-500">{String(row['paid'] ?? row['Paid'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-amber-500">{String(row['remaining'] ?? row['Remaining'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-[var(--foreground)]">{String(row['netEncashment'] ?? row['net_encashment'] ?? row['NetEncashment'] ?? '—')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+// ─── 7. Voucher Management View ───────────────────────────────────────────────
+
+const VOUCHER_STAT_TILES = [
+  { label: 'Total Vouchers', icon: Tag,        color: '#3b82f6', bg: 'rgba(59,130,246,0.12)',  statusKey: null },
+  { label: 'Active',         icon: Eye,        color: '#10b981', bg: 'rgba(16,185,129,0.12)',  statusKey: 'active' },
+  { label: 'Expired',        icon: AlertCircle, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', statusKey: 'expired' },
+  { label: 'Suspended',      icon: Lock,       color: '#ef4444', bg: 'rgba(239,68,68,0.12)',   statusKey: 'suspended' },
+  { label: 'Fully Used',     icon: KeyRound,   color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)',  statusKey: 'used' },
+] as const;
+
+type VoucherStatusFilter = 'all' | 'active' | 'expired' | 'suspended' | 'used';
+
+function resolveVoucherStatusClass(status: string): string {
+  if (/active/i.test(status)) return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
+  if (/expired/i.test(status)) return 'border-red-500/40 bg-red-500/10 text-red-400';
+  if (/suspend/i.test(status)) return 'border-amber-500/40 bg-amber-500/10 text-amber-400';
+  if (/used/i.test(status)) return 'border-purple-500/40 bg-purple-500/10 text-purple-400';
+  return 'border-[var(--border)] text-[var(--muted-foreground)]';
+}
+
+function VoucherManagementView({ activeModule }: ModuleViewProps) {
+  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState<VoucherStatusFilter>('all');
+  const rows = activeModule?.table?.rows ?? [];
+
+  const countByStatus = (statusKey: string | null) => {
+    if (!statusKey) return rows.length;
+    return rows.filter((row) => {
+      const s = String(row['status'] ?? row['Status'] ?? '').toLowerCase();
+      return s.includes(statusKey);
+    }).length;
+  };
+
+  const filteredRows = rows.filter((row) => {
+    const s = String(row['status'] ?? row['Status'] ?? '').toLowerCase();
+    const q = searchText.trim().toLowerCase();
+    const statusMatch = statusFilter === 'all' || s.includes(statusFilter);
+    const searchMatch =
+      !q ||
+      String(row['id'] ?? row['Id'] ?? '').toLowerCase().includes(q) ||
+      String(row['username'] ?? row['Username'] ?? '').toLowerCase().includes(q) ||
+      String(row['fullName'] ?? row['full_name'] ?? row['FullName'] ?? '').toLowerCase().includes(q) ||
+      String(row['code'] ?? row['Code'] ?? '').toLowerCase().includes(q);
+    return statusMatch && searchMatch;
+  });
+
+  return (
+    <section className="space-y-5">
+      {/* Page Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Admin</p>
+          <h2 className="mt-0.5 text-xl font-semibold text-[var(--foreground)]">Voucher Management</h2>
+        </div>
+        <Button type="button" className="ops-admin-primary-action gap-2">
+          <Plus className="size-4" />
+          Grant Voucher
+        </Button>
+      </div>
+
+      {/* Stat Tiles */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {VOUCHER_STAT_TILES.map((tile) => {
+          const TileIcon = tile.icon;
+          const count = countByStatus(tile.statusKey);
+          return (
+            <button
+              key={tile.label}
+              type="button"
+              onClick={() => setStatusFilter((tile.statusKey ?? 'all') as VoucherStatusFilter)}
+              className={cn(
+                'flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-shadow hover:shadow-md',
+                statusFilter === (tile.statusKey ?? 'all')
+                  ? 'border-[var(--yor-copper)] bg-[var(--yor-copper)]/5'
+                  : 'border-[var(--border)] bg-[var(--card)]'
+              )}
+            >
+              <span
+                className="flex size-10 shrink-0 items-center justify-center rounded-xl"
+                style={{ background: tile.bg }}
+              >
+                <TileIcon className="size-5" style={{ color: tile.color }} />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--muted-foreground)]">{tile.label}</p>
+                <p className="mt-0.5 text-lg font-semibold text-[var(--foreground)]">{count}</p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search + Filter Chips */}
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardContent className="pt-5">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-1 gap-2">
+              <Input
+                className="max-w-sm"
+                placeholder="Search by username or voucher ID..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+              />
+              <Button type="button" className="ops-admin-primary-action shrink-0">Search</Button>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {(['all', 'active', 'expired', 'used', 'suspended'] as const).map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => setStatusFilter(chip)}
+                className={cn(
+                  'rounded-full border px-3.5 py-1 text-xs font-semibold capitalize transition',
+                  statusFilter === chip
+                    ? 'border-[var(--yor-copper)] bg-[var(--yor-copper)] text-white'
+                    : 'border-[var(--border)] bg-transparent text-[var(--muted-foreground)] hover:border-[var(--yor-copper)] hover:text-[var(--foreground)]'
+                )}
+              >
+                {chip === 'all' ? 'All' : chip === 'used' ? 'Fully Used' : chip.charAt(0).toUpperCase() + chip.slice(1)}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Table */}
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardContent className="pt-5">
+          {filteredRows.length === 0 ? (
+            <ModuleEmptyState message="No vouchers found." />
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+              <table className="w-full min-w-[1060px] text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                    <th className="px-4 py-3">ID</th>
+                    <th className="px-4 py-3">Username</th>
+                    <th className="px-4 py-3">Full Name</th>
+                    <th className="px-4 py-3">Package</th>
+                    <th className="px-4 py-3">Amount</th>
+                    <th className="px-4 py-3">Remaining</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Issued</th>
+                    <th className="px-4 py-3">Expiry</th>
+                    <th className="px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((row, i) => {
+                    const status = String(row['status'] ?? row['Status'] ?? '');
+                    return (
+                      <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
+                        <td className="px-4 py-3 font-mono text-[var(--muted-foreground)]">{String(row['id'] ?? row['Id'] ?? i + 1)}</td>
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">{String(row['username'] ?? row['Username'] ?? '—')}</td>
+                        <td className="px-4 py-3">{String(row['fullName'] ?? row['full_name'] ?? row['FullName'] ?? row['name'] ?? row['Name'] ?? '—')}</td>
+                        <td className="px-4 py-3">{String(row['package'] ?? row['Package'] ?? row['type'] ?? row['Type'] ?? '—')}</td>
+                        <td className="px-4 py-3 font-mono font-semibold text-[var(--foreground)]">{String(row['amount'] ?? row['Amount'] ?? row['value'] ?? row['Value'] ?? '—')}</td>
+                        <td className="px-4 py-3 font-mono">{String(row['remaining'] ?? row['Remaining'] ?? row['amount'] ?? '—')}</td>
+                        <td className="px-4 py-3">
+                          <Badge variant="outline" className={resolveVoucherStatusClass(status)}>
+                            {status || '—'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['issued'] ?? row['Issued'] ?? row['issuedAt'] ?? row['createdAt'] ?? '—')}</td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['expiry'] ?? row['Expiry'] ?? row['expiresAt'] ?? '—')}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="gap-1.5 border-amber-500/40 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                              variant="outline"
+                            >
+                              <Eye className="size-3" />
+                              View
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="gap-1.5 border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                              variant="outline"
+                            >
+                              <Lock className="size-3" />
+                              Suspend
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-[var(--muted-foreground)]">Showing {filteredRows.length} voucher(s)</p>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+// ─── 8. Contact Messages View ─────────────────────────────────────────────────
+
+type ContactTab = 'all' | 'unread' | 'read' | 'done' | 'blocked';
+
+const CONTACT_TABS: Array<{ key: ContactTab; label: string }> = [
+  { key: 'all',     label: 'All' },
+  { key: 'unread',  label: 'Unread' },
+  { key: 'read',    label: 'Read' },
+  { key: 'done',    label: 'Done' },
+  { key: 'blocked', label: 'Blocked' },
+];
+
+function resolveContactStatusClass(status: string): string {
+  if (/unread/i.test(status)) return 'border-blue-500/40 bg-blue-500/10 text-blue-400';
+  if (/done/i.test(status))   return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
+  if (/block/i.test(status))  return 'border-red-500/40 bg-red-500/10 text-red-400';
+  return 'border-[var(--border)] text-[var(--muted-foreground)]';
+}
+
+function ContactMessagesView({ activeModule }: ModuleViewProps) {
+  const [activeTab, setActiveTab] = useState<ContactTab>('all');
+  const rows = activeModule?.table?.rows ?? [];
+
+  const countForTab = (key: ContactTab) => {
+    if (key === 'all') return rows.length;
+    return rows.filter((row) =>
+      String(row['status'] ?? row['Status'] ?? '').toLowerCase().includes(key)
+    ).length;
+  };
+
+  const filteredRows = rows.filter((row) => {
+    if (activeTab === 'all') return true;
+    return String(row['status'] ?? row['Status'] ?? '').toLowerCase().includes(activeTab);
+  });
+
+  return (
+    <section className="space-y-5">
+      {/* Page Header */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Admin</p>
+        <h2 className="mt-0.5 text-xl font-semibold text-[var(--foreground)]">Contact Messages</h2>
+        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+          {activeModule?.description ?? 'Review and manage inbound contact form submissions from site visitors.'}
+        </p>
+      </div>
+
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        {/* Tab row */}
+        <div className="flex flex-wrap gap-1 border-b border-[var(--border)] px-5 pt-4">
+          {CONTACT_TABS.map((tab) => {
+            const count = countForTab(tab.key);
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  'rounded-t-lg border-b-2 px-4 py-2 text-sm font-medium transition',
+                  isActive
+                    ? 'border-[var(--yor-copper)] text-[var(--yor-copper)]'
+                    : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                )}
+              >
+                {tab.label} ({count})
+              </button>
+            );
+          })}
+        </div>
+
+        <CardContent className="pt-5">
+          {filteredRows.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] py-12 text-center">
+              <span className="flex size-12 items-center justify-center rounded-full bg-[var(--muted)]">
+                <MessageSquare className="size-5 text-[var(--muted-foreground)]" />
+              </span>
+              <p className="text-sm text-[var(--muted-foreground)]">No messages found.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+              <table className="w-full min-w-[860px] text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3">Subject</th>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((row, i) => {
+                    const status = String(row['status'] ?? row['Status'] ?? '');
+                    return (
+                      <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
+                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">{String(row['name'] ?? row['Name'] ?? '—')}</td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['email'] ?? row['Email'] ?? '—')}</td>
+                        <td className="max-w-[220px] px-4 py-3 truncate text-[var(--foreground)]">{String(row['subject'] ?? row['Subject'] ?? '—')}</td>
+                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['date'] ?? row['Date'] ?? row['createdAt'] ?? '—')}</td>
+                        <td className="px-4 py-3">
+                          <Badge variant="outline" className={resolveContactStatusClass(status)}>
+                            {status || '—'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <Button type="button" size="sm" variant="outline">View</Button>
+                            <Button type="button" size="sm" variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10">Block</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+// ─── 9. News & Posts View ─────────────────────────────────────────────────────
+
+function NewsPostsView({ activeModule }: ModuleViewProps) {
+  const rows = activeModule?.table?.rows ?? [];
+
+  function resolvePostStatusClass(status: string): string {
+    if (/publish/i.test(status)) return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
+    if (/draft/i.test(status))   return 'border-amber-500/40 bg-amber-500/10 text-amber-400';
+    return 'border-[var(--border)] text-[var(--muted-foreground)]';
+  }
+
+  return (
+    <section className="space-y-5">
+      {/* Page Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Admin</p>
+          <h2 className="mt-0.5 text-xl font-semibold text-[var(--foreground)]">News &amp; Announcements</h2>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+            {activeModule?.description ?? 'Manage news, announcements, memos, and promotions visible on the public site.'}
+          </p>
+        </div>
+        <Button type="button" className="ops-admin-primary-action gap-2">
+          <Plus className="size-4" />
+          New Post
+        </Button>
+      </div>
+
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardContent className="pt-5">
+          {rows.length === 0 ? (
+            <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] py-16 text-center">
+              <span className="flex size-14 items-center justify-center rounded-2xl bg-[var(--muted)]">
+                <Newspaper className="size-7 text-[var(--muted-foreground)]" />
+              </span>
+              <div>
+                <p className="font-medium text-[var(--foreground)]">No posts yet.</p>
+                <p className="mt-1 text-sm text-[var(--muted-foreground)]">Create your first one!</p>
+              </div>
+              <Button type="button" className="ops-admin-primary-action gap-2 mt-1">
+                <Plus className="size-4" />
+                New Post
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rows.map((row, i) => {
+                const status = String(row['status'] ?? row['Status'] ?? '');
+                return (
+                  <div key={i} className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
+                    <div className="flex items-center gap-4">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
+                        <FileText className="size-5 text-amber-500" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-[var(--foreground)]">{String(row['title'] ?? row['Title'] ?? '—')}</p>
+                        <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+                          {String(row['type'] ?? row['Type'] ?? row['category'] ?? 'Post')} · {String(row['date'] ?? row['Date'] ?? row['publishedAt'] ?? '—')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <Badge variant="outline" className={resolvePostStatusClass(status)}>{status || 'Draft'}</Badge>
+                      <Button type="button" size="sm" variant="outline">Edit</Button>
+                      <Button type="button" size="sm" variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10">Delete</Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+// ─── 10. Change Password View ────────────────────────────────────────────────
+
+function ChangePasswordView() {
+  const [selectedAccount, setSelectedAccount] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const { notify } = useFeedback();
+
+  function handleSubmit() {
+    if (!selectedAccount || !currentPassword || !newPassword) {
+      void notify({ title: 'Fill in all fields', description: 'Select an account and enter both password fields.', tone: 'warning' });
+      return;
+    }
+    void notify({ title: 'Password update submitted', description: 'Use the admin API to commit this change.', tone: 'warning' });
+  }
+
+  return (
+    <section className="space-y-5">
+      {/* Page Header */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Settings</p>
+        <h2 className="mt-0.5 text-xl font-semibold text-[var(--foreground)]">Change Password</h2>
+      </div>
+
+      <div className="max-w-lg">
+        <Card className="border-[var(--border)] bg-[var(--card)]">
+          <CardContent className="space-y-5 pt-6">
+            {/* Account selector */}
+            <label className="grid gap-2 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">Administrator Account</span>
+              <select
+                className={SELECT_CLASS}
+                value={selectedAccount}
+                onChange={(e) => setSelectedAccount(e.target.value)}
+              >
+                <option value="">Select account...</option>
+                <option value="admin">Admin</option>
+                <option value="superadmin">Super Admin</option>
+                <option value="cashier">Cashier</option>
+                <option value="bod">Board</option>
+              </select>
+            </label>
+
+            {/* Current Password */}
+            <label className="grid gap-2 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">Current Password</span>
+              <div className="relative">
+                <Input
+                  type={showCurrent ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]"
+                  onClick={() => setShowCurrent((v) => !v)}
+                  aria-label={showCurrent ? 'Hide password' : 'Show password'}
+                >
+                  <Eye className="size-4" />
+                </button>
+              </div>
+            </label>
+
+            {/* New Password */}
+            <label className="grid gap-2 text-sm">
+              <span className="font-medium text-[var(--muted-foreground)]">New Password</span>
+              <div className="relative">
+                <Input
+                  type={showNew ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]"
+                  onClick={() => setShowNew((v) => !v)}
+                  aria-label={showNew ? 'Hide password' : 'Show password'}
+                >
+                  <Eye className="size-4" />
+                </button>
+              </div>
+            </label>
+
+            <Button type="button" className="w-full bg-emerald-600 text-white hover:bg-emerald-700" onClick={handleSubmit}>
+              Change Password
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </section>
   );
 }

@@ -1,6 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowRight, GitBranch, ShieldCheck } from 'lucide-react';
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BarChart3,
+  Check,
+  ChevronRight,
+  Clock,
+  Copy,
+  CreditCard,
+  Gift,
+  GitBranch,
+  Globe,
+  KeyRound,
+  LayoutDashboard,
+  Medal,
+  ShieldCheck,
+  Star,
+  TrendingUp,
+  Trophy,
+  Users,
+  Wallet
+} from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useFeedback } from '@/components/feedback/FeedbackProvider';
 import { ProtectedOfficeFrame } from '@/components/layout/ProtectedOfficeFrame';
@@ -885,905 +906,714 @@ export function MemberDashboardPage() {
         { label: 'Products and packages', href: '/packages' }
       ]}
     >
-      <div className="member-office-flow space-y-4">
-          {visibleMetrics.length ? <MetricGrid metrics={visibleMetrics} /> : null}
+      <div className="member-office-flow space-y-6">
 
-          {moduleId === 'dashboard' ? <QuickLinkGrid links={quickLinks} /> : null}
+        {/* ── DASHBOARD ── */}
+        {moduleId === 'dashboard' ? (
+          <>
+            {/* Wallet stat strip */}
+            {office ? (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <NogaStatCard icon={<Wallet className="size-4" />} color="amber" label="Available Wallet" value={office.wallet.availableBalance} sub={office.wallet.payoutSchedule} />
+                <NogaStatCard icon={<Users className="size-4" />} color="blue" label="Direct Referrals" value={String(office.metrics.find(m => m.label.toLowerCase().includes('direct referral'))?.value ?? '—')} sub="your network" />
+                <NogaStatCard icon={<TrendingUp className="size-4" />} color="emerald" label="Package Tier" value={office.profile.packageTier} sub={office.profile.accountStatus} />
+                <NogaStatCard icon={<BarChart3 className="size-4" />} color="violet" label="Payout Method" value={office.profile.payoutMethod} sub="payout channel" />
+              </div>
+            ) : null}
 
-          {moduleId === 'dashboard' && mvpDashboard?.incomeStreams.length ? (
-            <section className="member-income-grid grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {mvpDashboard.incomeStreams.map((stream) => {
-                const routeConfig = memberIncomeRouteMap[stream.streamId];
-                const workspaceHref = routeConfig
-                  ? (modulePathById.get(routeConfig.memberModuleId) ?? routeConfig.publicHref)
-                  : '/earn';
-
-                return (
-                <Card key={stream.streamId} className="border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader className="pb-3">
-                    <CardDescription className="text-xs uppercase tracking-[0.18em]">
-                      8 Ways Of Wealth
-                    </CardDescription>
-                    <CardTitle className="text-base">{stream.label}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex items-center justify-between text-sm text-[var(--muted-foreground)]">
-                      <span>Status</span>
-                      <Badge variant="warning">{stream.writeStatus}</Badge>
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">
-                      {stream.statusLabel}
-                    </p>
-                    <div className="member-inline-actions mt-4 flex items-center justify-between gap-3">
-                      <Button asChild size="sm" className="member-inline-primary-action">
-                        <Link to={workspaceHref}>Open Workflow</Link>
-                      </Button>
-                      {routeConfig ? (
-                        <Link
-                          to={routeConfig.publicHref}
-                          className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]"
-                        >
-                          Public Page
-                        </Link>
-                      ) : null}
-                    </div>
-                  </CardContent>
-                </Card>
-                );
-              })}
-            </section>
-          ) : null}
-
-          {showModuleTable && activeModule ? <ModuleTableCard module={activeModule} /> : null}
-
-          {moduleId === 'wallet' && walletDetail ? (
-            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-              <div className="space-y-4">
-                <DataListCard
-                  title="Wallet Summary"
-                  rows={[
-                    { label: 'Available', value: formatCurrency(walletDetail.summary.availableBalance) },
-                    { label: 'Pending', value: formatCurrency(walletDetail.summary.pendingBalance) },
-                    { label: 'CD Balance', value: formatCurrency(walletDetail.summary.cdBalance) },
-                    { label: 'Payout Method', value: walletDetail.summary.payoutMethod }
-                  ]}
-                />
-                <Card className="border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader>
-                    <CardTitle>Income Breakdown</CardTitle>
-                    <CardDescription>Every approved income stream that can feed Yor's wallet buckets in this branch runtime.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-0">
-                    {walletDetail.incomeBreakdown.map((stream) => (
-                      <div
-                        key={stream.streamId}
-                        className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)]/70 px-4 py-3"
-                      >
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium text-[var(--foreground)]">{stream.label}</p>
-                          <Badge variant="outline" className="uppercase tracking-[0.18em]">
-                            {stream.walletType} wallet
-                          </Badge>
+            {/* 8 Income Streams */}
+            {mvpDashboard?.incomeStreams.length ? (
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">8 Ways Of Wealth</p>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  {mvpDashboard.incomeStreams.map((stream) => {
+                    const routeConfig = memberIncomeRouteMap[stream.streamId];
+                    const workspaceHref = routeConfig
+                      ? (modulePathById.get(routeConfig.memberModuleId) ?? routeConfig.publicHref)
+                      : '/earn';
+                    return (
+                      <div key={stream.streamId} className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 transition hover:shadow-sm">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-semibold leading-5 text-[var(--foreground)]">{stream.label}</p>
+                          <Badge variant="outline" className="shrink-0 text-[10px]">{stream.writeStatus}</Badge>
                         </div>
-                        <p className="text-sm font-semibold text-amber-200">{formatCurrency(stream.amount)}</p>
+                        <p className="flex-1 text-xs leading-5 text-[var(--muted-foreground)]">{stream.statusLabel}</p>
+                        <div className="flex items-center gap-2">
+                          <Button asChild size="sm" className="h-8 flex-1 rounded-lg text-xs">
+                            <Link to={workspaceHref}>Open<ChevronRight className="ml-1 size-3" /></Link>
+                          </Button>
+                          {routeConfig ? (
+                            <Link to={routeConfig.publicHref} className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]">
+                              <ArrowUpRight className="size-3.5" />
+                            </Link>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Quick links */}
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {quickLinks.map((link) => (
+                <Link key={link.href} to={link.href} className="group flex items-start gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 transition hover:border-[var(--yor-copper)]/40 hover:shadow-sm">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)]">
+                    <LayoutDashboard className="size-4 text-[var(--muted-foreground)] group-hover:text-[var(--yor-copper)]" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--foreground)] group-hover:text-[var(--yor-copper)]">{link.title}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-[var(--muted-foreground)]">{link.body}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {/* Account snapshot */}
+            {office ? (
+              <div className="grid gap-4 xl:grid-cols-2">
+                <Card className="border-[var(--border)] bg-[var(--card)]">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Account Snapshot</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {Object.entries(office.profile).map(([key, value]) => (
+                      <div key={key} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm odd:bg-[var(--accent)]/40">
+                        <span className="text-[var(--muted-foreground)]">{key}</span>
+                        <strong className="text-right font-medium text-[var(--foreground)]">{value}</strong>
                       </div>
                     ))}
                   </CardContent>
                 </Card>
+                {summary ? (
+                  <Card className="border-[var(--border)] bg-[var(--card)]">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">Current Status</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {Object.entries(summary.status).map(([key, value]) => (
+                        <div key={key} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm odd:bg-[var(--accent)]/40">
+                          <span className="text-[var(--muted-foreground)]">{key}</span>
+                          <strong className="text-right font-medium text-[var(--foreground)]">{value}</strong>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ) : null}
               </div>
+            ) : null}
+            {showDashboardActions ? <GatedActionsCard actions={branchNotes} /> : null}
+          </>
+        ) : null}
+
+        {/* ── WALLET ── */}
+        {moduleId === 'wallet' && walletDetail ? (
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <div className="space-y-4">
+              {/* Wallet stat strip */}
+              <div className="grid grid-cols-2 gap-3">
+                <NogaStatCard icon={<Wallet className="size-4" />} color="amber" label="Available" value={formatCurrency(walletDetail.summary.availableBalance)} />
+                <NogaStatCard icon={<Clock className="size-4" />} color="blue" label="Pending" value={formatCurrency(walletDetail.summary.pendingBalance)} />
+                <NogaStatCard icon={<CreditCard className="size-4" />} color="emerald" label="CD Balance" value={formatCurrency(walletDetail.summary.cdBalance)} />
+                <NogaStatCard icon={<Star className="size-4" />} color="violet" label="Payout" value={walletDetail.summary.payoutMethod} />
+              </div>
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Income Breakdown</CardTitle>
+                  <CardDescription className="text-xs">Every approved income stream feeding your wallet buckets.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 pt-0">
+                  {walletDetail.incomeBreakdown.map((stream) => (
+                    <div key={stream.streamId} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-[var(--foreground)]">{stream.label}</p>
+                        <Badge variant="outline" className="mt-1 text-[10px] uppercase tracking-widest">{stream.walletType} wallet</Badge>
+                      </div>
+                      <p className="text-sm font-semibold" style={{color:'var(--yor-gold, #c9a227)'}}>{formatCurrency(stream.amount)}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+            <div className="space-y-4">
               <Card className="border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Encashment Preview</CardTitle>
-                  <CardDescription>{walletDetail.preview.note}</CardDescription>
+                  <CardDescription className="text-xs">10% tax · PHP 50 processing fee · 5% system retainer · {walletDetail.summary.payoutSchedule.toLowerCase()}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-5">
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)]/75 px-4 py-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
-                      Encashment Rules
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">
-                      10% tax, PHP 50 processing fee, 5% system retainer, {walletDetail.summary.payoutSchedule.toLowerCase()}.
-                    </p>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    <EncashmentStatCard label="Available" value={formatCurrency(walletDetail.summary.availableBalance)} />
+                    <EncashmentStatCard label="Requested" value={formatCurrency(renderedEncashmentPreview.requestedAmount || encashAmount)} />
+                    <EncashmentStatCard label="Net Receivable" value={formatCurrency(renderedEncashmentPreview.netReceivable)} highlight />
                   </div>
-
-                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-                    <div className="space-y-4">
-                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)]/75 p-4">
-                        <label htmlFor="encash-amount" className="grid gap-2 text-sm">
-                          <span className="font-medium text-[var(--muted-foreground)]">Requested amount</span>
-                          <Input
-                            id="encash-amount"
-                            type="text"
-                            inputMode="decimal"
-                            placeholder="10,000"
-                            value={encashAmountInput}
-                            onChange={(event) => {
-                              setEncashPreviewError(null);
-                              setEncashAmountInput(normalizeEncashmentInput(event.target.value));
-                            }}
-                            onBlur={() => {
-                              const parsedAmount = parseEncashmentAmount(encashAmountInput);
-                              if (parsedAmount && parsedAmount > 0) {
-                                setEncashAmountInput(formatEncashmentInput(parsedAmount));
-                              }
-                            }}
-                          />
-                        </label>
-                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-                          <span className="text-[var(--muted-foreground)]">Live preview updates while you type naturally.</span>
-                          <span className={isEncashPreviewLoading ? 'text-amber-300' : 'text-[var(--muted-foreground)]'}>
-                            {isEncashPreviewLoading ? 'Updating preview...' : 'Preview synced'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)]/75 p-4">
-                        <div className="space-y-3">
-                          <EncashmentBreakdownRow label="10% Tax" value={renderedEncashmentPreview.tax} />
-                          <EncashmentBreakdownRow label="Processing Fee" value={renderedEncashmentPreview.processingFee} />
-                          <EncashmentBreakdownRow label="System Retainer" value={renderedEncashmentPreview.systemRetainer} />
-                          <EncashmentBreakdownRow label="CD Deduction" value={renderedEncashmentPreview.cdDeduction} />
-                          <div className="border-t border-[var(--border)] pt-3">
-                            <EncashmentBreakdownRow
-                              label="Total Deductions"
-                              value={renderedEncashmentPreview.totalDeductions}
-                              emphasize
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 content-start">
-                      <EncashmentStatCard label="Available Balance" value={formatCurrency(walletDetail.summary.availableBalance)} />
-                      <EncashmentStatCard
-                        label="Requested Amount"
-                        value={formatCurrency(renderedEncashmentPreview.requestedAmount || encashAmount)}
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                    <label htmlFor="encash-amount" className="grid gap-2 text-sm">
+                      <span className="font-medium text-[var(--muted-foreground)]">Requested amount</span>
+                      <Input id="encash-amount" type="text" inputMode="decimal" placeholder="10,000" value={encashAmountInput}
+                        onChange={(e) => { setEncashPreviewError(null); setEncashAmountInput(normalizeEncashmentInput(e.target.value)); }}
+                        onBlur={() => { const p = parseEncashmentAmount(encashAmountInput); if (p && p > 0) setEncashAmountInput(formatEncashmentInput(p)); }}
                       />
-                      <EncashmentStatCard
-                        label="Net Receivable"
-                        value={formatCurrency(renderedEncashmentPreview.netReceivable)}
-                        highlight
-                      />
+                    </label>
+                    <div className="mt-2 flex justify-between text-xs text-[var(--muted-foreground)]">
+                      <span>Live preview updates as you type</span>
+                      <span className={isEncashPreviewLoading ? 'text-amber-300' : ''}>{isEncashPreviewLoading ? 'Updating...' : 'Synced'}</span>
                     </div>
                   </div>
-
-                  <div
-                    className={[
-                      'rounded-2xl border px-4 py-3 text-sm',
-                      encashPreviewError
-                        ? 'border-red-500/40 bg-red-500/10 text-red-200'
-                        : renderedEncashmentPreview.sufficientBalance
-                          ? 'border-[var(--border)] bg-[var(--background)]/70 text-[var(--muted-foreground)]'
-                          : 'border-amber-500/40 bg-amber-500/10 text-amber-100'
-                    ].join(' ')}
-                  >
+                  <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                    <EncashmentBreakdownRow label="10% Tax" value={renderedEncashmentPreview.tax} />
+                    <EncashmentBreakdownRow label="Processing Fee" value={renderedEncashmentPreview.processingFee} />
+                    <EncashmentBreakdownRow label="System Retainer" value={renderedEncashmentPreview.systemRetainer} />
+                    <EncashmentBreakdownRow label="CD Deduction" value={renderedEncashmentPreview.cdDeduction} />
+                    <div className="border-t border-[var(--border)] pt-2">
+                      <EncashmentBreakdownRow label="Total Deductions" value={renderedEncashmentPreview.totalDeductions} emphasize />
+                    </div>
+                  </div>
+                  <div className={['rounded-xl border px-4 py-3 text-sm', encashPreviewError ? 'border-red-500/40 bg-red-500/10 text-red-300' : renderedEncashmentPreview.sufficientBalance ? 'border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)]' : 'border-amber-500/40 bg-amber-500/10 text-amber-200'].join(' ')}>
                     {encashPreviewError ?? renderedEncashmentPreview.note}
                   </div>
+                  <Button type="button" className="w-full" onClick={handleSubmitEncashment} disabled={encashAmount <= 0 || isEncashPreviewLoading || Boolean(encashPreviewError) || !renderedEncashmentPreview.sufficientBalance}>
+                    Submit Encashment Request
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+            <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Wallet Ledger</CardTitle>
+                <CardDescription className="text-xs">Append-only wallet movement and balance-after values.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ReportTableView table={{ title: 'Wallet Ledger', columns: [{ key: 'walletType', label: 'Wallet' }, { key: 'entryType', label: 'Entry' }, { key: 'sourceReference', label: 'Source' }, { key: 'creditAmount', label: 'Credit' }, { key: 'debitAmount', label: 'Debit' }, { key: 'balanceAfter', label: 'Balance' }, { key: 'status', label: 'Status' }], rows: walletDetail.ledger.map((e) => ({ walletType: e.walletType, entryType: e.entryType, sourceReference: e.sourceReference, creditAmount: formatCurrency(e.creditAmount), debitAmount: formatCurrency(e.debitAmount), balanceAfter: formatCurrency(e.balanceAfter), status: e.status })) }} />
+              </CardContent>
+            </Card>
+          </section>
+        ) : null}
 
-                  <Button
-                    type="button"
-                    className="member-action-button w-full"
-                    onClick={handleSubmitEncashment}
-                    disabled={encashAmount <= 0 || isEncashPreviewLoading || Boolean(encashPreviewError) || !renderedEncashmentPreview.sufficientBalance}
+        {/* ── TRANSACTIONS ── */}
+        {moduleId === 'transactions' ? (
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <div>
+                  <CardTitle className="text-base">Transaction History</CardTitle>
+                  <CardDescription className="text-xs">Wallet movements and encashment rows.</CardDescription>
+                </div>
+                <Badge variant="outline">{transactions.length} records</Badge>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {transactions.map((transaction) => (
+                  <button key={transaction.id} type="button"
+                    className="group flex w-full items-center justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-left transition hover:border-[var(--yor-copper)]/30 hover:bg-[var(--accent)]/60"
+                    onClick={() => handleSelectTransaction(transaction.id)}
                   >
-                    Submit Request
-                  </Button>
-                </CardContent>
-              </Card>
-              <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
-                <CardHeader>
-                  <CardTitle>Wallet Ledger</CardTitle>
-                  <CardDescription>Append-only preview of wallet movement and balance-after values.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ReportTableView
-                    table={{
-                      title: 'Wallet Ledger',
-                      columns: [
-                        { key: 'walletType', label: 'Wallet' },
-                        { key: 'entryType', label: 'Entry' },
-                        { key: 'sourceReference', label: 'Source' },
-                        { key: 'creditAmount', label: 'Credit' },
-                        { key: 'debitAmount', label: 'Debit' },
-                        { key: 'balanceAfter', label: 'Balance' },
-                        { key: 'status', label: 'Status' }
-                      ],
-                      rows: walletDetail.ledger.map((entry) => ({
-                        walletType: entry.walletType,
-                        entryType: entry.entryType,
-                        sourceReference: entry.sourceReference,
-                        creditAmount: formatCurrency(entry.creditAmount),
-                        debitAmount: formatCurrency(entry.debitAmount),
-                        balanceAfter: formatCurrency(entry.balanceAfter),
-                        status: entry.status
-                      }))
-                    }}
-                  />
-                </CardContent>
-              </Card>
-            </section>
-          ) : null}
-
-          {moduleId === 'activation-codes' && activationCodes ? (
-            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-              <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
-                <CardHeader>
-                  <CardTitle>Code Inventory Table</CardTitle>
-                  <CardDescription>All code families are searchable in one table; registration copy remains limited to eligible YOR CODES.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_180px]">
-                    <label className="grid gap-2 text-sm">
-                      <span className="font-medium text-[var(--muted-foreground)]">Search code inventory</span>
-                      <Input
-                        value={codeInventorySearch}
-                        onChange={(event) => setCodeInventorySearch(event.target.value)}
-                        placeholder="Code, family, package, status, owner"
-                      />
-                    </label>
-                    <FieldSelect
-                      label="Family"
-                      value={codeFamilyFilter}
-                      onChange={setCodeFamilyFilter}
-                      options={[
-                        { label: 'All families', value: 'all' },
-                        { label: 'YOR CODES', value: 'YOR CODES' },
-                        { label: 'YOR MAINTENANCE', value: 'YOR MAINTENANCE' },
-                        { label: 'YOR PERFUME', value: 'YOR PERFUME' },
-                        { label: 'YOR VISION', value: 'YOR VISION' }
-                      ]}
-                    />
-                    <FieldSelect
-                      label="Status"
-                      value={codeStatusFilter}
-                      onChange={setCodeStatusFilter}
-                      options={[
-                        { label: 'All statuses', value: 'all' },
-                        { label: 'Available', value: 'available' },
-                        { label: 'Used', value: 'used' },
-                        { label: 'Transferred', value: 'transferred' },
-                        { label: 'Expired', value: 'expired' },
-                        { label: 'Generated', value: 'generated' }
-                      ]}
-                    />
-                  </div>
-                  <ReportTableView
-                    table={{
-                      title: `Inventory (${memberCodeRows.length})`,
-                      columns: [
-                        { key: 'code', label: 'Code' },
-                        { key: 'family', label: 'Family' },
-                        { key: 'type', label: 'Type' },
-                        { key: 'status', label: 'Status' },
-                        { key: 'assignedTo', label: 'Assigned' },
-                        { key: 'copyReady', label: 'Copy Ready' }
-                      ],
-                      rows: visibleMemberCodeRows.map((item) => ({
-                        code: item.code,
-                        family: item.codeFamily,
-                        type: item.accountType,
-                        status: item.status,
-                        assignedTo: item.assignedTo,
-                        copyReady: item.copyEnabled ? 'Yes' : 'No'
-                      }))
-                    }}
-                  />
-                  <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--muted-foreground)]">
-                    <span>
-                      Page {Math.min(codeInventoryPage, codeInventoryTotalPages)} of {codeInventoryTotalPages} / {memberCodeRows.length} code(s)
-                    </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={codeInventoryPage <= 1}
-                        onClick={() => setCodeInventoryPage((current) => Math.max(1, current - 1))}
-                      >
-                        Prev
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={codeInventoryPage >= codeInventoryTotalPages}
-                        onClick={() => setCodeInventoryPage((current) => Math.min(codeInventoryTotalPages, current + 1))}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Code Actions</CardTitle>
-                  <CardDescription>
-                    {activationCodes.moneyMode === 'sandbox'
-                      ? 'Transfers, upgrades, and maintenance writes now commit into the branch sandbox inventory.'
-                      : 'Controls are live for workflow testing but stay financially in protected playground mode.'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <FieldSelect
-                    label="Code"
-                    value={selectedCode}
-                    onChange={setSelectedCode}
-                    options={activationCodes.inventory.filter((item) => item.codeFamily === 'YOR CODES').map((item) => ({
-                      label: `${item.code} / ${item.packageTier}`,
-                      value: item.code
-                    }))}
-                  />
-                  <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-                    <label className="grid gap-2 text-sm">
-                      <span className="font-medium text-[var(--muted-foreground)]">Search by username</span>
-                      <div className="flex gap-2">
-                        <Input
-                          value={transferSearchQuery}
-                          onChange={(event) => setTransferSearchQuery(event.target.value.toUpperCase())}
-                          placeholder="Search target username"
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                              event.preventDefault();
-                              void handleSearchTransferTargets();
-                            }
-                          }}
-                        />
-                        <Button type="button" variant="outline" onClick={() => void handleSearchTransferTargets()} disabled={transferSearchLoading}>
-                          {transferSearchLoading ? 'Searching...' : 'Search'}
-                        </Button>
-                      </div>
-                    </label>
-                    {transferSearchError ? (
-                      <p className="text-sm text-amber-200">{transferSearchError}</p>
-                    ) : null}
-                    {transferSearchResults.length ? (
-                      <div className="grid gap-2">
-                        {transferSearchResults.map((result) => {
-                          const isSelected = selectedTransferTarget?.username === result.username;
-
-                          return (
-                            <button
-                              key={result.username}
-                              type="button"
-                              className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition ${
-                                isSelected
-                                  ? 'border-[var(--yor-copper)] bg-[var(--muted)]/40'
-                                  : 'border-[var(--border)] bg-[var(--background)] hover:bg-[var(--muted)]/20'
-                              }`}
-                              onClick={() => {
-                                setSelectedTransferTarget(result);
-                                setTransferTarget(result.username);
-                              }}
-                            >
-                              <span className="font-medium text-[var(--foreground)]">{result.username}</span>
-                              <span className="text-xs text-[var(--muted-foreground)]">
-                                {result.displayName} / {result.packageTier}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : transferSearchQuery.trim().length >= 3 && !transferSearchLoading && !transferSearchError ? (
-                      <p className="text-sm text-[var(--muted-foreground)]">Search results will appear here.</p>
-                    ) : null}
-                    {selectedTransferTarget ? (
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 text-sm">
-                        <p className="font-medium text-[var(--foreground)]">{selectedTransferTarget.username}</p>
-                        <p className="text-[var(--muted-foreground)]">
-                          {selectedTransferTarget.displayName} / {selectedTransferTarget.packageTier}
-                        </p>
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="member-action-grid grid gap-3 sm:grid-cols-2">
-                    <Button type="button" variant="outline" className="member-action-button" onClick={handleCopyCode}>
-                      {copiedCode === selectedCode ? 'Copy Again' : 'Copy Code'}
-                    </Button>
-                    <Button type="button" className="member-action-button" disabled={!transferTarget.trim()} onClick={handleTransferCodes}>
-                      Transfer Code
-                    </Button>
-                    <Button type="button" variant="outline" className="member-action-button" onClick={handleUpgradeCode}>
-                      Upgrade Account
-                    </Button>
-                  </div>
-                  {selectedCode ? (
-                    <p className="text-sm text-[var(--muted-foreground)]">
-                      {copiedCode === selectedCode
-                        ? `${selectedCode} marked as copied ${copiedCodeCount[selectedCode] ?? 1} time(s).`
-                        : 'Copy the selected activation code before sharing it to a registrant.'}
-                    </p>
-                  ) : null}
-                </CardContent>
-              </Card>
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Maintenance Use</CardTitle>
-                  <CardDescription>Use the code as maintenance inventory when the package and eligibility rules allow it.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <label className="grid gap-2 text-sm">
-                    <span className="font-medium text-[var(--muted-foreground)]">Maintenance code</span>
-                    <Input value={maintenanceCode} onChange={(event) => setMaintenanceCode(event.target.value)} />
-                  </label>
-                  <Button type="button" className="member-action-button w-full" onClick={handleMaintenanceCode}>
-                    Use Maintenance Code
-                  </Button>
-                  <ul className="space-y-2 text-sm leading-6 text-[var(--muted-foreground)]">
-                    {activationCodes.hints.map((hint) => (
-                      <li key={hint}>{hint}</li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </section>
-          ) : null}
-
-          {moduleId === 'transactions' ? (
-            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Transaction History</CardTitle>
-                  <CardDescription>Wallet movements and encashment rows in member-readable form.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {transactions.map((transaction) => (
-                    <button
-                      key={transaction.id}
-                      type="button"
-                      className="member-transaction-item flex w-full items-center justify-between rounded-xl border border-[var(--border)] p-3 text-left hover:bg-[var(--accent)]"
-                      onClick={() => handleSelectTransaction(transaction.id)}
-                    >
+                    <div className="flex items-center gap-3">
+                      <span className={['flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold', transaction.category?.toLowerCase().includes('encash') ? 'bg-amber-500/15 text-amber-400' : 'bg-emerald-500/15 text-emerald-400'].join(' ')}>
+                        {transaction.category?.toLowerCase().includes('encash') ? 'E' : 'I'}
+                      </span>
                       <div>
-                        <p className="font-medium text-[var(--foreground)]">{transaction.source}</p>
-                        <p className="text-sm text-[var(--muted-foreground)]">
-                          {transaction.date} / {transaction.category}
-                        </p>
+                        <p className="text-sm font-medium text-[var(--foreground)]">{transaction.source}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">{transaction.date}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium text-[var(--foreground)]">{transaction.net}</p>
-                        <p className="text-sm text-[var(--muted-foreground)]">{transaction.status}</p>
-                      </div>
-                    </button>
-                  ))}
-                </CardContent>
-              </Card>
-              {transactionDetail ? (
-                <Card className="border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader>
-                    <CardTitle>Transaction Detail</CardTitle>
-                    <CardDescription>
-                      {transactionDetail.moneyMode === 'sandbox'
-                        ? 'Supporting traces stay visible alongside real branch-only sandbox ledger changes.'
-                        : 'Supporting traces stay visible even while the ledger remains simulation-only.'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <DataPoint label="Source" value={transactionDetail.transaction.source} />
-                    <DataPoint label="Category" value={transactionDetail.transaction.category} />
-                    <DataPoint label="Gross" value={transactionDetail.transaction.gross} />
-                    <DataPoint label="Net" value={transactionDetail.transaction.net} />
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-                      <p className="text-sm font-medium text-[var(--foreground)]">Trace notes</p>
-                      <ul className="mt-2 space-y-2 text-sm leading-6 text-[var(--muted-foreground)]">
-                        {transactionDetail.transaction.support.notes.map((note) => (
-                          <li key={note}>{note}</li>
-                        ))}
-                      </ul>
                     </div>
-                  </CardContent>
-                </Card>
-              ) : null}
-            </section>
-          ) : null}
-
-          {moduleId === 'account-details' && office ? (
-            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-              <DataListCard
-                title="Profile"
-                rows={[
-                  { label: 'Username', value: office.profile.username },
-                  { label: 'Full Name', value: office.profile.fullName },
-                  { label: 'Email', value: summary?.user.email ?? 'member@yor.local' },
-                  { label: 'Package', value: office.profile.packageTier },
-                  { label: 'Account Status', value: office.profile.accountStatus }
-                ]}
-              />
-              <DataListCard
-                title="Sponsor And Payout"
-                rows={[
-                  { label: 'Referral Code', value: office.profile.referralCode },
-                  { label: 'Sponsor Code', value: office.profile.sponsorCode },
-                  { label: 'Payout Method', value: office.profile.payoutMethod },
-                  { label: 'Payout Schedule', value: office.wallet.payoutSchedule },
-                  { label: 'Available Wallet', value: office.wallet.availableBalance }
-                ]}
-              />
-              <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
-                <CardHeader>
-                  <CardTitle>Next Member Actions</CardTitle>
-                  <CardDescription>Use this page as your clean account checkpoint before money, code, or network actions.</CardDescription>
-                </CardHeader>
-                <CardContent className="member-action-row flex flex-wrap gap-3">
-                  <Button asChild className="member-action-button">
-                    <Link to="/member/wallet">Open Wallet</Link>
-                  </Button>
-                  <Button asChild variant="outline" className="member-action-button">
-                    <Link to="/member/activation-codes">Manage Codes</Link>
-                  </Button>
-                  <Button asChild variant="outline" className="member-action-button">
-                    <Link to="/member/genealogy">Review Placement</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </section>
-          ) : null}
-
-          {moduleId === 'upgrade-registration' && registrationReadiness ? (
-            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Registration Readiness</CardTitle>
-                  <CardDescription>Reserve the final slot first, then share the placement-aware registration link with one released code.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <DataPoint label="Sponsor" value={registrationReadiness.sponsor.username} />
-                  <DataPoint label="Referral Code" value={registrationReadiness.sponsor.referralCode} />
-                  <DataPoint label="Placement Username" value={registrationReadiness.placementPolicy.recommendation.placementUsername} />
-                  <DataPoint label="Placement Side" value={registrationReadiness.placementPolicy.recommendation.placementSide} />
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-sm leading-6 text-[var(--muted-foreground)]">
-                    {registrationReadiness.placementPolicy.recommendation.note}
-                  </div>
-                  {registrationReadiness.activeReservation ? (
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 text-sm leading-6 text-[var(--foreground)]">
-                      <p className="font-medium">Active Share Link</p>
-                      <p className="mt-2 break-all">{registrationReadiness.activeReservation.shareLink}</p>
-                      <p className="mt-2 text-[var(--muted-foreground)]">Expires: {registrationReadiness.activeReservation.expiresAt}</p>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-[var(--foreground)]">{transaction.net}</p>
+                      <Badge variant="outline" className="mt-1 text-[10px]">{transaction.status}</Badge>
                     </div>
-                  ) : null}
-                  <div className="member-action-row flex flex-wrap gap-3">
-                    <Button type="button" className="member-action-button" onClick={handleCreateShareLink} disabled={isShareLinkLoading}>
-                      {isShareLinkLoading ? 'Creating Link...' : registrationReadiness.activeReservation ? 'Refresh And Copy Share Link' : 'Create And Copy Share Link'}
-                    </Button>
-                    {registrationReadiness.activeReservation ? (
-                      <Button asChild variant="outline" className="member-action-button">
-                        <Link to={registrationReadiness.activeReservation.shareLink.replace('https://yor.local', '')}>
-                          Open Registration
-                          <ArrowRight className="size-4" />
-                        </Link>
-                      </Button>
-                    ) : null}
-                    <Button asChild variant="outline" className="member-action-button">
-                      <Link to="/member/genealogy">
-                        Review Tree
-                        <GitBranch className="size-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </button>
+                ))}
+              </CardContent>
+            </Card>
+            {transactionDetail ? (
               <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Checklist</CardTitle>
-                  <CardDescription>Keep the sponsor side and the binary side aligned before a code is used.</CardDescription>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Transaction Detail</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {registrationReadiness.checklist.map((item) => (
-                    <div key={item} className="flex items-start gap-3 rounded-xl border border-[var(--border)] p-3">
-                      <ShieldCheck className="mt-0.5 size-4 text-emerald-500" />
-                      <span className="text-sm leading-6 text-[var(--foreground)]">{item}</span>
-                    </div>
-                  ))}
+                  <InfoRow label="Source" value={transactionDetail.transaction.source} />
+                  <InfoRow label="Category" value={transactionDetail.transaction.category} />
+                  <InfoRow label="Gross" value={transactionDetail.transaction.gross} highlight />
+                  <InfoRow label="Net" value={transactionDetail.transaction.net} highlight />
                   <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-                    <p className="text-sm font-medium text-[var(--foreground)]">Available codes</p>
-                    <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                      {registrationReadiness.availableCodes.map((item) => item.code).join(', ') || 'No available codes'}
-                    </p>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Trace notes</p>
+                    <ul className="space-y-2">
+                      {transactionDetail.transaction.support.notes.map((note) => (
+                        <li key={note} className="flex items-start gap-2 text-sm text-[var(--muted-foreground)]">
+                          <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-400" />{note}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </CardContent>
               </Card>
-            </section>
-          ) : null}
+            ) : null}
+          </section>
+        ) : null}
 
-          {moduleId === 'genealogy' && binaryTree ? (
-            <section className="member-detail-grid grid gap-4">
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader className="gap-4 md:flex-row md:items-end md:justify-between">
-                  <div>
-                    <CardTitle>Placement Network View</CardTitle>
-                    <CardDescription>Review left and right slots before you hand a sponsor or registrant a placement recommendation.</CardDescription>
+        {/* ── ACCOUNT DETAILS ── */}
+        {moduleId === 'account-details' && office ? (
+          <section className="grid gap-4 xl:grid-cols-2">
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Profile</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {[['Username', office.profile.username], ['Full Name', office.profile.fullName], ['Email', summary?.user.email ?? '—'], ['Package', office.profile.packageTier], ['Account Status', office.profile.accountStatus]].map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm odd:bg-[var(--accent)]/40">
+                    <span className="text-[var(--muted-foreground)]">{label}</span>
+                    <strong className="font-medium text-[var(--foreground)]">{value}</strong>
                   </div>
-                  {treeRootUsername ? (
-                    <Button type="button" variant="outline" onClick={() => setTreeRootUsername('')}>
-                      Return To My Tree
+                ))}
+              </CardContent>
+            </Card>
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Sponsor & Payout</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {[['Referral Code', office.profile.referralCode], ['Sponsor Code', office.profile.sponsorCode], ['Payout Method', office.profile.payoutMethod], ['Payout Schedule', office.wallet.payoutSchedule], ['Available Wallet', office.wallet.availableBalance]].map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm odd:bg-[var(--accent)]/40">
+                    <span className="text-[var(--muted-foreground)]">{label}</span>
+                    <strong className="font-medium text-[var(--foreground)]">{value}</strong>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Quick Actions</CardTitle></CardHeader>
+              <CardContent className="flex flex-wrap gap-3">
+                <Button asChild><Link to="/member/wallet"><Wallet className="mr-2 size-4" />Open Wallet</Link></Button>
+                <Button asChild variant="outline"><Link to="/member/activation-codes"><KeyRound className="mr-2 size-4" />Manage Codes</Link></Button>
+                <Button asChild variant="outline"><Link to="/member/genealogy"><GitBranch className="mr-2 size-4" />Review Placement</Link></Button>
+              </CardContent>
+            </Card>
+          </section>
+        ) : null}
+
+        {/* ── ACTIVATION CODES / REFERRAL ID ── */}
+        {moduleId === 'activation-codes' && activationCodes ? (
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+            {/* Referral link card (Nogatu-style) */}
+            <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-amber-500/15">
+                    <KeyRound className="size-5 text-amber-400" />
+                  </span>
+                  <div>
+                    <CardTitle className="text-base">Your Referral Link</CardTitle>
+                    <CardDescription className="text-xs">Share this link so prospects can self-register under your sponsorship.</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Input readOnly value={`yor.app/join/${office?.profile.referralCode ?? activationCodes.inventory[0]?.code ?? '—'}`} className="font-mono text-sm" />
+                  <Button type="button" variant="outline" className="shrink-0" onClick={handleCopyCode}>
+                    <Copy className="size-4" />
+                  </Button>
+                </div>
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-[var(--muted-foreground)]">
+                  Prospects still need a valid activation code — the server validates live placement policy before saving the account.
+                </div>
+                {activationCodes.inventory.filter(i => i.status === 'available').length ? (
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">
+                      Available Activation Codes — {activationCodes.inventory.filter(i => i.status === 'available').length} available
+                    </p>
+                    <div className="space-y-2">
+                      {activationCodes.inventory.filter(i => i.status === 'available').slice(0, 5).map((item) => (
+                        <div key={item.code} className={['flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition', selectedCode === item.code ? 'border-amber-500/40 bg-amber-500/8' : 'border-[var(--border)] bg-[var(--background)] hover:bg-[var(--accent)]/40'].join(' ')}>
+                          <div>
+                            <p className="font-mono text-sm font-semibold text-[var(--foreground)]">{item.code}</p>
+                            <p className="text-xs text-[var(--muted-foreground)]">{item.codeFamily} · {item.packageTier}</p>
+                          </div>
+                          <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setSelectedCode(item.code); void handleCopyCode(); }}>
+                            Copy Code
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            {/* Full inventory table */}
+            <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Code Inventory</CardTitle>
+                <CardDescription className="text-xs">All code families searchable; registration copy limited to eligible YOR CODES.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_180px]">
+                  <label className="grid gap-2 text-sm">
+                    <span className="font-medium text-[var(--muted-foreground)]">Search</span>
+                    <Input value={codeInventorySearch} onChange={(e) => setCodeInventorySearch(e.target.value)} placeholder="Code, family, package, status…" />
+                  </label>
+                  <FieldSelect label="Family" value={codeFamilyFilter} onChange={setCodeFamilyFilter} options={[{ label: 'All families', value: 'all' }, { label: 'YOR CODES', value: 'YOR CODES' }, { label: 'YOR MAINTENANCE', value: 'YOR MAINTENANCE' }, { label: 'YOR PERFUME', value: 'YOR PERFUME' }, { label: 'YOR VISION', value: 'YOR VISION' }]} />
+                  <FieldSelect label="Status" value={codeStatusFilter} onChange={setCodeStatusFilter} options={[{ label: 'All statuses', value: 'all' }, { label: 'Available', value: 'available' }, { label: 'Used', value: 'used' }, { label: 'Transferred', value: 'transferred' }, { label: 'Expired', value: 'expired' }, { label: 'Generated', value: 'generated' }]} />
+                </div>
+                <ReportTableView table={{ title: `Inventory (${memberCodeRows.length})`, columns: [{ key: 'code', label: 'Code' }, { key: 'family', label: 'Family' }, { key: 'type', label: 'Type' }, { key: 'status', label: 'Status' }, { key: 'assignedTo', label: 'Assigned' }, { key: 'copyReady', label: 'Copy Ready' }], rows: visibleMemberCodeRows.map((item) => ({ code: item.code, family: item.codeFamily, type: item.accountType, status: item.status, assignedTo: item.assignedTo, copyReady: item.copyEnabled ? 'Yes' : 'No' })) }} />
+                <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--muted-foreground)]">
+                  <span>Page {Math.min(codeInventoryPage, codeInventoryTotalPages)} of {codeInventoryTotalPages} · {memberCodeRows.length} code(s)</span>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" disabled={codeInventoryPage <= 1} onClick={() => setCodeInventoryPage((c) => Math.max(1, c - 1))}>Prev</Button>
+                    <Button type="button" variant="outline" size="sm" disabled={codeInventoryPage >= codeInventoryTotalPages} onClick={() => setCodeInventoryPage((c) => Math.min(codeInventoryTotalPages, c + 1))}>Next</Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Code actions */}
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Code Actions</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <FieldSelect label="Select Code" value={selectedCode} onChange={setSelectedCode} options={activationCodes.inventory.filter((i) => i.codeFamily === 'YOR CODES').map((i) => ({ label: `${i.code} / ${i.packageTier}`, value: i.code }))} />
+                <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                  <label className="grid gap-2 text-sm">
+                    <span className="font-medium text-[var(--muted-foreground)]">Transfer to username</span>
+                    <div className="flex gap-2">
+                      <Input value={transferSearchQuery} onChange={(e) => setTransferSearchQuery(e.target.value.toUpperCase())} placeholder="Search username" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void handleSearchTransferTargets(); } }} />
+                      <Button type="button" variant="outline" onClick={() => void handleSearchTransferTargets()} disabled={transferSearchLoading}>{transferSearchLoading ? '...' : 'Search'}</Button>
+                    </div>
+                  </label>
+                  {transferSearchError ? <p className="text-xs text-amber-300">{transferSearchError}</p> : null}
+                  {transferSearchResults.length ? (
+                    <div className="grid gap-2">
+                      {transferSearchResults.map((result) => (
+                        <button key={result.username} type="button" className={['flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition', selectedTransferTarget?.username === result.username ? 'border-amber-500/40 bg-amber-500/8' : 'border-[var(--border)] hover:bg-[var(--accent)]/40'].join(' ')} onClick={() => { setSelectedTransferTarget(result); setTransferTarget(result.username); }}>
+                          <span className="font-medium text-[var(--foreground)]">{result.username}</span>
+                          <span className="text-xs text-[var(--muted-foreground)]">{result.packageTier}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button type="button" variant="outline" onClick={handleCopyCode}>{copiedCode === selectedCode ? 'Copy Again' : 'Copy Code'}</Button>
+                  <Button type="button" disabled={!transferTarget.trim()} onClick={handleTransferCodes}>Transfer Code</Button>
+                  <Button type="button" variant="outline" className="sm:col-span-2" onClick={handleUpgradeCode}>Upgrade Account</Button>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Maintenance Use</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <label className="grid gap-2 text-sm">
+                  <span className="font-medium text-[var(--muted-foreground)]">Maintenance code</span>
+                  <Input value={maintenanceCode} onChange={(e) => setMaintenanceCode(e.target.value)} />
+                </label>
+                <Button type="button" className="w-full" onClick={handleMaintenanceCode}>Use Maintenance Code</Button>
+                <ul className="space-y-2 text-xs leading-5 text-[var(--muted-foreground)]">
+                  {activationCodes.hints.map((hint) => <li key={hint} className="flex gap-2"><span className="text-amber-400">·</span>{hint}</li>)}
+                </ul>
+              </CardContent>
+            </Card>
+          </section>
+        ) : null}
+
+        {/* ── UPGRADE / REGISTRATION ── */}
+        {moduleId === 'upgrade-registration' && registrationReadiness ? (
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-violet-500/15">
+                    <Users className="size-5 text-violet-400" />
+                  </span>
+                  <div>
+                    <CardTitle className="text-base">Registration Readiness</CardTitle>
+                    <CardDescription className="text-xs">Reserve slot → share link → prospect registers.</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <InfoRow label="Sponsor" value={registrationReadiness.sponsor.username} />
+                <InfoRow label="Referral Code" value={registrationReadiness.sponsor.referralCode} />
+                <InfoRow label="Placement Username" value={registrationReadiness.placementPolicy.recommendation.placementUsername} />
+                <InfoRow label="Placement Side" value={registrationReadiness.placementPolicy.recommendation.placementSide} />
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted-foreground)]">
+                  {registrationReadiness.placementPolicy.recommendation.note}
+                </div>
+                {registrationReadiness.activeReservation ? (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/8 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400">Active Share Link</p>
+                    <p className="mt-2 break-all text-sm text-[var(--foreground)]">{registrationReadiness.activeReservation.shareLink}</p>
+                    <p className="mt-1 text-xs text-[var(--muted-foreground)]">Expires: {registrationReadiness.activeReservation.expiresAt}</p>
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" className="flex-1" onClick={handleCreateShareLink} disabled={isShareLinkLoading}>
+                    {isShareLinkLoading ? 'Creating…' : registrationReadiness.activeReservation ? 'Refresh & Copy Link' : 'Create & Copy Link'}
+                  </Button>
+                  {registrationReadiness.activeReservation ? (
+                    <Button asChild variant="outline" className="shrink-0">
+                      <Link to={registrationReadiness.activeReservation.shareLink.replace('https://yor.local', '')}>Open<ArrowRight className="ml-1 size-4" /></Link>
                     </Button>
                   ) : null}
-                </CardHeader>
-                <CardContent>
-                  <GenealogyTree
-                    root={binaryTree.root}
-                    selectedNodeId={selectedTreeNodeId}
-                    onSelect={setSelectedTreeNodeId}
-                    onNavigateToNode={setTreeRootUsername}
-                    onOpenSlot={setPendingRegistrationSlot}
-                  />
+                  <Button asChild variant="outline" className="shrink-0">
+                    <Link to="/member/genealogy"><GitBranch className="size-4" /></Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Pre-Registration Checklist</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {registrationReadiness.checklist.map((item) => (
+                  <div key={item} className="flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                    <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-400" />
+                    <span className="text-sm leading-5 text-[var(--foreground)]">{item}</span>
+                  </div>
+                ))}
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Available Codes</p>
+                  <p className="mt-1 text-sm text-[var(--foreground)]">
+                    {registrationReadiness.availableCodes.map((i) => i.code).join(', ') || 'No available codes'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        ) : null}
+
+        {/* ── GENEALOGY ── */}
+        {moduleId === 'genealogy' && binaryTree ? (
+          <section className="grid gap-4">
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <CardTitle className="text-base">Placement Network</CardTitle>
+                  <CardDescription className="text-xs">Review left and right slots before placement decisions.</CardDescription>
+                </div>
+                {treeRootUsername ? <Button type="button" variant="outline" size="sm" onClick={() => setTreeRootUsername('')}>Return To My Tree</Button> : null}
+              </CardHeader>
+              <CardContent>
+                <GenealogyTree root={binaryTree.root} selectedNodeId={selectedTreeNodeId} onSelect={setSelectedTreeNodeId} onNavigateToNode={setTreeRootUsername} onOpenSlot={setPendingRegistrationSlot} />
+              </CardContent>
+            </Card>
+            {/* Pairing stats — Nogatu-style */}
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <NogaStatCard icon={<Users className="size-4" />} color="blue" label="Left Accounts" value={String(leftAccountCount)} sub="left leg placements" />
+              <NogaStatCard icon={<Users className="size-4" />} color="violet" label="Right Accounts" value={String(rightAccountCount)} sub="right leg placements" />
+              <NogaStatCard icon={<TrendingUp className="size-4" />} color="emerald" label="Matched Points" value={String(matchedPoints)} sub="binary matched BP" />
+              <NogaStatCard icon={<BarChart3 className="size-4" />} color="amber" label="SMB Total" value={String(matchedSalesmatch)} sub="sales match bonus" />
+            </div>
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader className="pb-3"><CardTitle className="text-base">Tree Performance</CardTitle></CardHeader>
+                <CardContent className="grid gap-3 md:grid-cols-2">
+                  <InfoRow label="Strong Leg Carry" value={String(strongLegCarry)} />
+                  <InfoRow label="Weak Leg Carry" value={String(weakLegCarry)} />
+                  <InfoRow label="Left BP" value={String(binaryTree.root.leftPoints)} />
+                  <InfoRow label="Right BP" value={String(binaryTree.root.rightPoints)} />
                 </CardContent>
               </Card>
-              <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-                <Card className="border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader>
-                    <CardTitle>Tree Performance</CardTitle>
-                    <CardDescription>Keep the binary summary close to the active canvas so placement review, matched-point context, and current carry-forward stay together.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    <DataPoint label="Accounts On Left" value={leftAccountCount} />
-                    <DataPoint label="Accounts On Right" value={rightAccountCount} />
-                    <DataPoint label="Matched Points" value={matchedPoints} />
-                    <DataPoint label="SMB Total" value={String(matchedSalesmatch)} />
-                    <DataPoint label="Strong Leg Carry" value={strongLegCarry} />
-                    <DataPoint label="Weak Leg Carry" value={weakLegCarry} />
-                  </CardContent>
-                </Card>
               {selectedTreeNode ? (
                 <Card className="border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader>
-                    <CardTitle>Node Focus</CardTitle>
-                    <CardDescription>Use this panel to verify slot availability before registration.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-5">
-                    <DataPoint label="Username" value={selectedTreeNode.username} />
-                    <DataPoint label="Package" value={selectedTreeNode.packageTier} />
-                    <DataPoint label="Placement" value={selectedTreeNode.placement} />
-                    <DataPoint label="Account State" value={selectedTreeNode.accountStateLabel} />
-                    <DataPoint label="Direct Referrals" value={selectedTreeNode.directReferrals} />
-                    <DataPoint label="Left Points" value={selectedTreeNode.leftPoints} />
-                    <DataPoint label="Right Points" value={selectedTreeNode.rightPoints} />
+                  <CardHeader className="pb-3"><CardTitle className="text-base">Node Focus</CardTitle></CardHeader>
+                  <CardContent className="space-y-2">
+                    <InfoRow label="Username" value={selectedTreeNode.username} />
+                    <InfoRow label="Package" value={selectedTreeNode.packageTier} />
+                    <InfoRow label="Placement" value={selectedTreeNode.placement} />
+                    <InfoRow label="State" value={selectedTreeNode.accountStateLabel} />
+                    <InfoRow label="Direct Referrals" value={String(selectedTreeNode.directReferrals)} />
+                    <InfoRow label="Left BP" value={String(selectedTreeNode.leftPoints)} />
+                    <InfoRow label="Right BP" value={String(selectedTreeNode.rightPoints)} />
                   </CardContent>
                 </Card>
               ) : null}
-              </section>
-            </section>
-          ) : null}
+            </div>
+          </section>
+        ) : null}
 
-          {moduleId === 'get-five-bonus' && activeModule ? (
-            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Same-Package Direct Progress</CardTitle>
-                  <CardDescription>Track how many direct signups on your current package are already counted toward the next Get Yor Five package claim.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <DataPoint label="Current Package" value={String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '-')} />
-                  <DataPoint label="Published Package Claim" value={getYorFiveRewardValue} />
-                  <DataPoint label="Qualified Directs" value={String(activeModule.table.rows[0]?.directSamePackage ?? 0)} />
-                  <DataPoint label="Claimable Groups" value={String(activeModule.table.rows[0]?.completedGroups ?? 0)} />
-                  <DataPoint label="Target" value={String(activeModule.table.rows[0]?.target ?? 5)} />
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-                    <div className="mb-2 flex items-center justify-between text-sm">
-                      <span className="text-[var(--muted-foreground)]">Milestone progress</span>
-                      <strong className="text-[var(--foreground)]">
-                        {Number(activeModule.table.rows[0]?.remainingToNextGroup ?? 0) === 0
-                          ? 'ready to release'
-                          : `${activeModule.table.rows[0]?.remainingToNextGroup ?? 0} remaining`}
-                      </strong>
+        {/* ── GET FIVE / HI-FIVE BONUS ── */}
+        {moduleId === 'get-five-bonus' && activeModule ? (
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            {/* Stat strip */}
+            <div className="grid grid-cols-2 gap-3 xl:col-span-2">
+              <NogaStatCard icon={<Users className="size-4" />} color="amber" label="Direct Referrals" value={String(activeModule.table.rows[0]?.directSamePackage ?? 0)} sub="same-package directs" />
+              <NogaStatCard icon={<Clock className="size-4" />} color="blue" label="Maintenance Points" value="0" sub="previous-month repurchase" />
+              <NogaStatCard icon={<Gift className="size-4" />} color="emerald" label="Package Cash Claimable" value={getYorFiveRewardValue} sub={`${activeModule.table.rows[0]?.completedGroups ?? 0} package claim(s) ready`} />
+              <NogaStatCard icon={<Gift className="size-4" />} color="violet" label="Product Hi-Five Status" value="200 pts needed" sub="reach 200 points to unlock product redemptions" />
+            </div>
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Hi-Five Bonus — Package</p>
+                    <CardTitle className="mt-1 text-base">Cash bonus for every 5 same-package direct referrals</CardTitle>
+                  </div>
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15">
+                    <Gift className="size-5 text-amber-400" />
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-[var(--muted-foreground)]">If you directly refer 5 members with the same package, you can submit one cash claim equal to that package amount.</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <DataPoint label="Current Package" value={String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '-')} />
+                <DataPoint label="Claimable Groups" value={String(activeModule.table.rows[0]?.completedGroups ?? 0)} />
+                <DataPoint label="Target" value={String(activeModule.table.rows[0]?.target ?? 5)} />
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                  <div className="mb-2 flex items-center justify-between text-sm">
+                    <span className="text-[var(--muted-foreground)]">Milestone progress</span>
+                    <strong className="text-[var(--foreground)]">
+                      {Number(activeModule.table.rows[0]?.remainingToNextGroup ?? 0) === 0 ? 'ready to release' : `${activeModule.table.rows[0]?.remainingToNextGroup ?? 0} remaining`}
+                    </strong>
+                  </div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-[var(--muted)]">
+                    <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300" style={{ width: `${Math.min(100, ((Number(activeModule.table.rows[0]?.directSamePackage ?? 0) % Number(activeModule.table.rows[0]?.target ?? 5)) / Number(activeModule.table.rows[0]?.target ?? 5)) * 100)}%` }} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Package Claim Values</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {Object.entries(getYorFivePackageClaimMap).map(([tier, value]) => (
+                  <div key={tier} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">{tier} Package</p>
+                      <p className="mt-0.5 text-base font-semibold text-[var(--foreground)]">{value}</p>
                     </div>
-                    <div className="h-3 overflow-hidden rounded-full bg-[var(--muted)]">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-[var(--yor-copper)] to-[var(--yor-gold)]"
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            (
-                              Number(activeModule.table.rows[0]?.remainingToNextGroup ?? 0) === 0 &&
-                              Number(activeModule.table.rows[0]?.directSamePackage ?? 0) > 0
-                                ? 1
-                                : (Number(activeModule.table.rows[0]?.directSamePackage ?? 0) %
-                                    Number(activeModule.table.rows[0]?.target ?? 5)) /
-                                  Number(activeModule.table.rows[0]?.target ?? 5)
-                            ) * 100
-                          )}%`
-                        }}
-                      />
-                    </div>
+                    <p className="text-xs text-[var(--muted-foreground)]">5 same-pkg directs</p>
                   </div>
-                </CardContent>
-              </Card>
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Published Package Values</CardTitle>
-                  <CardDescription>Get Yor Five stays tied to five direct signups on the same package tier, and the public package-claim amounts follow the compensation-plan presentation instead of the older placeholder bonus table.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {Object.entries(getYorFivePackageClaimMap).map(([tier, value]) => (
-                      <div key={tier} className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">{tier}</p>
-                        <p className="mt-3 text-xl font-semibold text-[var(--foreground)]">{value}</p>
-                        <p className="mt-2 text-sm text-[var(--muted-foreground)]">Claim unlocks after every five direct signups on the same package.</p>
-                      </div>
-                    ))}
-                  </div>
-                  <ReportTableView table={activeModule.table} />
-                </CardContent>
-              </Card>
-            </section>
-          ) : null}
+                ))}
+                <ReportTableView table={activeModule.table} />
+              </CardContent>
+            </Card>
+          </section>
+        ) : null}
 
-          {moduleId === 'account-shadow-management' && activeModule && shadowAccounts ? (
-            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Shadow Account Logic</CardTitle>
-                  <CardDescription>Reserved slots stay visible here so members and admins can tell whether the left and right shadow positions are inactive placeholders or activated shadow accounts.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <DataPoint label="Owner" value={shadowAccounts.owner} />
-                  <DataPoint label="Shadow Slots" value={shadowAccounts.accounts.length} />
-                  <DataPoint label="Active Shadow Path" value={shadowAccounts.accounts.some((account) => account.walletEnabled) ? 'Visible' : 'Reserved only'} />
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {shadowAccounts.accounts.map((account) => (
-                      <div key={account.id} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <Badge variant={account.walletEnabled ? 'success' : 'outline'}>{account.placement}</Badge>
-                          <Badge variant={account.state.includes('reserved') ? 'warning' : 'outline'}>{account.state}</Badge>
-                        </div>
-                        <p className="mt-4 text-lg font-semibold text-[var(--foreground)]">{account.id}</p>
-                        <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{account.note}</p>
-                        <div className="mt-4 grid gap-2 text-sm text-[var(--muted-foreground)]">
-                          <div className="flex items-center justify-between gap-2">
-                            <span>Wallet</span>
-                            <strong className="text-[var(--foreground)]">{account.walletEnabled ? 'Enabled' : 'Disabled'}</strong>
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <span>Unilevel</span>
-                            <strong className="text-[var(--foreground)]">{account.unilevelEnabled ? 'Enabled' : 'Disabled'}</strong>
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <span>Binary Cycle</span>
-                            <strong className="text-[var(--foreground)]">{account.binaryCycleEnabled ? 'Enabled' : 'Disabled'}</strong>
-                          </div>
-                        </div>
+        {/* ── SHADOW ACCOUNTS ── */}
+        {moduleId === 'account-shadow-management' && activeModule && shadowAccounts ? (
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Shadow Account Logic</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <InfoRow label="Owner" value={shadowAccounts.owner} />
+                <InfoRow label="Shadow Slots" value={String(shadowAccounts.accounts.length)} />
+                <InfoRow label="Active Shadow Path" value={shadowAccounts.accounts.some((a) => a.walletEnabled) ? 'Visible' : 'Reserved only'} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {shadowAccounts.accounts.map((account) => (
+                    <div key={account.id} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <Badge variant={account.walletEnabled ? 'success' : 'outline'}>{account.placement}</Badge>
+                        <Badge variant={account.state.includes('reserved') ? 'warning' : 'outline'}>{account.state}</Badge>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Shadow State Table</CardTitle>
-                  <CardDescription>This page keeps the transcript-style shadow-account explanation separate from the live binary tree so inactive open slots are easier to understand.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ReportTableView table={activeModule.table} />
-                </CardContent>
-              </Card>
-            </section>
-          ) : null}
-
-          {moduleId === 'lifestyle-rewards' && activeModule ? (
-            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-              <DataListCard
-                title="Lifestyle Reward Monitor"
-                rows={[
-                  { label: 'Package', value: String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '-') },
-                  { label: 'Repeat Purchase Target', value: String(activeModule.table.rows[0]?.repeatPurchaseTarget ?? '-') },
-                  { label: 'Current Repeat Purchase', value: String(activeModule.table.rows[0]?.currentRepeatPurchase ?? '-') },
-                  { label: 'Progress', value: String(activeModule.table.rows[0]?.progressPercent ?? '-') },
-                  { label: 'Projected Reward', value: String(activeModule.table.rows[0]?.projectedReward ?? '-') }
-                ]}
-              />
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Reward Status</CardTitle>
-                  <CardDescription>Operational lifestyle tracking follows the Yor 3% repeat-purchase framing and shows whether the lifestyle wallet threshold is already building or ready.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <DataPoint label="Threshold Status" value={String(activeModule.table.rows[0]?.thresholdStatus ?? '-')} />
-                  <ReportTableView table={activeModule.table} />
-                </CardContent>
-              </Card>
-            </section>
-          ) : null}
-
-          {moduleId === 'unilevel-rank-progress' && activeModule ? (
-            <section className="member-detail-grid grid gap-4">
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Potential Income Ladder</CardTitle>
-                  <CardDescription>The public Yor deck presents a potential-income story that scales up to PHP 11 billion across the ten-level ladder.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-3">
-                  {activeModule.table.rows.map((row, index) => (
-                    <div key={`${row.level}-${index}`} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted-foreground)]">Level {String(row.level)}</p>
-                          <h3 className="text-lg font-semibold text-[var(--foreground)]">{String(row.potential)}</h3>
-                        </div>
-                        <Badge variant="outline">{String(row.percent)}</Badge>
+                      <p className="mt-3 font-semibold text-[var(--foreground)]">{account.id}</p>
+                      <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">{account.note}</p>
+                      <div className="mt-3 space-y-1.5 text-sm">
+                        {[['Wallet', account.walletEnabled], ['Unilevel', account.unilevelEnabled], ['Binary Cycle', account.binaryCycleEnabled]].map(([label, enabled]) => (
+                          <div key={String(label)} className="flex items-center justify-between gap-2">
+                            <span className="text-[var(--muted-foreground)]">{String(label)}</span>
+                            <strong className={enabled ? 'text-emerald-400' : 'text-[var(--muted-foreground)]'}>{enabled ? 'Enabled' : 'Disabled'}</strong>
+                          </div>
+                        ))}
                       </div>
-                      <p className="mt-2 text-sm text-[var(--muted-foreground)]">{String(row.requiredPV)}</p>
-                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--muted)]">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-[var(--yor-copper)] to-[var(--yor-gold)]"
-                          style={{ width: `${Math.min(100, 18 + index * 12)}%` }}
-                        />
-                      </div>
-                      <p className="mt-2 text-xs uppercase tracking-[0.18em] text-[var(--muted-foreground)]">{String(row.status)}</p>
                     </div>
                   ))}
-                </CardContent>
-              </Card>
-            </section>
-          ) : null}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Shadow State Table</CardTitle></CardHeader>
+              <CardContent><ReportTableView table={activeModule.table} /></CardContent>
+            </Card>
+          </section>
+        ) : null}
 
-          {moduleId === 'global-bonus-eligibility' && activeModule ? (
-            <section className="member-detail-grid grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-              <DataListCard
-                title="Global Bonus Gate"
-                rows={[
-                  { label: 'Package', value: String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '-') },
-                  { label: 'Qualification', value: String(activeModule.table.rows[0]?.qualification ?? '-') },
-                  { label: 'Pool', value: String(activeModule.table.rows[0]?.pool ?? '-') },
-                  { label: 'Status', value: String(activeModule.table.rows[0]?.status ?? '-') }
-                ]}
-              />
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Maintenance Window</CardTitle>
-                  <CardDescription>Only VIP members should see this page, and the review should stay anchored to maintenance continuity plus the yearly global pool language.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ReportTableView table={activeModule.table} />
-                </CardContent>
-              </Card>
-            </section>
-          ) : null}
+        {/* ── LIFESTYLE REWARDS ── */}
+        {moduleId === 'lifestyle-rewards' && activeModule ? (
+          <section className="grid gap-4 xl:grid-cols-2">
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Lifestyle Reward Monitor</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {[['Package', String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '-')], ['Repeat Purchase Target', String(activeModule.table.rows[0]?.repeatPurchaseTarget ?? '-')], ['Current Repeat Purchase', String(activeModule.table.rows[0]?.currentRepeatPurchase ?? '-')], ['Progress', String(activeModule.table.rows[0]?.progressPercent ?? '-')], ['Projected Reward', String(activeModule.table.rows[0]?.projectedReward ?? '-')], ['Threshold Status', String(activeModule.table.rows[0]?.thresholdStatus ?? '-')]].map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm odd:bg-[var(--accent)]/40">
+                    <span className="text-[var(--muted-foreground)]">{label}</span>
+                    <strong className="font-medium text-[var(--foreground)]">{value}</strong>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Reward Status</CardTitle></CardHeader>
+              <CardContent><ReportTableView table={activeModule.table} /></CardContent>
+            </Card>
+          </section>
+        ) : null}
 
-          {showStatusRail || showDashboardActions ? (
-            <section className="member-status-grid grid gap-4 xl:grid-cols-3">
-              {showStatusRail ? (
-                <Card className="border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader>
-                    <CardTitle>Account Snapshot</CardTitle>
-                    <CardDescription>Core account fields that members actually look up when they need a fast answer.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {office
-                      ? Object.entries(office.profile).map(([key, value]) => (
-                          <div key={key} className="flex items-start justify-between gap-3 text-sm">
-                            <span className="text-[var(--muted-foreground)]">{key}</span>
-                            <strong className="text-right text-[var(--foreground)]">{value}</strong>
-                          </div>
-                        ))
-                      : null}
-                  </CardContent>
-                </Card>
-              ) : null}
+        {/* ── UNILEVEL / RANKING PROGRESS ── */}
+        {moduleId === 'unilevel-rank-progress' && activeModule ? (
+          <section className="grid gap-4">
+            {/* Stat strip */}
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <NogaStatCard icon={<BarChart3 className="size-4" />} color="amber" label="Gross Rankable Points" value={String(activeModule.table.rows[0]?.requiredPV ?? '—')} sub="self + full downline repurchases" />
+              <NogaStatCard icon={<Medal className="size-4" />} color="blue" label="Current Rank" value="Unranked" sub="upgrade required to begin ranking" />
+              <NogaStatCard icon={<TrendingUp className="size-4" />} color="emerald" label="Remaining Race Points" value="—" sub="fresh points for next rank" />
+              <NogaStatCard icon={<Clock className="size-4" />} color="violet" label="Pending Claims" value="0" sub="cash release stays manual" />
+            </div>
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Potential Income Ladder</CardTitle>
+                <CardDescription className="text-xs">The Yor compensation plan presents potential income scaling across the ten-level ladder.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {activeModule.table.rows.map((row, index) => (
+                  <div key={`${String(row.level)}-${index}`} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Level {String(row.level)}</p>
+                      <Badge variant="outline" className="text-[10px]">{String(row.percent)}</Badge>
+                    </div>
+                    <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">{String(row.potential)}</p>
+                    <p className="mt-1 text-xs text-[var(--muted-foreground)]">{String(row.requiredPV)}</p>
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--muted)]">
+                      <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300" style={{ width: `${Math.min(100, 18 + index * 12)}%` }} />
+                    </div>
+                    <p className="mt-2 text-[10px] uppercase tracking-widest text-[var(--muted-foreground)]">{String(row.status)}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </section>
+        ) : null}
 
-              {showDashboardActions ? <GatedActionsCard actions={branchNotes} /> : null}
+        {/* ── GLOBAL BONUS ── */}
+        {moduleId === 'global-bonus-eligibility' && activeModule ? (
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-violet-500/15">
+                    <Globe className="size-5 text-violet-400" />
+                  </span>
+                  <div>
+                    <CardTitle className="text-base">Global Bonus Gate</CardTitle>
+                    <CardDescription className="text-xs">VIP-exclusive yearly global pool program.</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {[['Package', String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '-')], ['Qualification', String(activeModule.table.rows[0]?.qualification ?? '-')], ['Pool', String(activeModule.table.rows[0]?.pool ?? '-')], ['Status', String(activeModule.table.rows[0]?.status ?? '-')]].map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm odd:bg-[var(--accent)]/40">
+                    <span className="text-[var(--muted-foreground)]">{label}</span>
+                    <strong className="font-medium text-[var(--foreground)]">{value}</strong>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3"><CardTitle className="text-base">Maintenance Window</CardTitle></CardHeader>
+              <CardContent><ReportTableView table={activeModule.table} /></CardContent>
+            </Card>
+          </section>
+        ) : null}
 
-              {showStatusRail ? (
-                <Card className="border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader>
-                    <CardTitle>Current Status</CardTitle>
-                    <CardDescription>Session, payout, and account-state checks from the protected member APIs.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {summary
-                      ? Object.entries(summary.status).map(([key, value]) => (
-                          <div key={key} className="flex items-start justify-between gap-3 text-sm">
-                            <span className="text-[var(--muted-foreground)]">{key}</span>
-                            <strong className="text-right text-[var(--foreground)]">{value}</strong>
-                          </div>
-                        ))
-                      : null}
-                  </CardContent>
-                </Card>
-              ) : null}
-            </section>
-          ) : null}
+        {/* ── GENERIC MODULE TABLE ── */}
+        {showModuleTable && activeModule ? <ModuleTableCard module={activeModule} /> : null}
+
+        {/* ── METRIC GRID (non-dashboard modules) ── */}
+        {moduleId !== 'dashboard' && visibleMetrics.length ? <MetricGrid metrics={visibleMetrics} /> : null}
+
       </div>
 
       {moduleId === 'genealogy' && binaryTree && pendingRegistrationSlot ? (
