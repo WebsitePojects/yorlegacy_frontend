@@ -89,7 +89,8 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
       return payload as T;
     }
 
-    throw new Error(payload?.message ?? payload?.reason ?? payload?.detail ?? payload?.error ?? `Request failed for ${path}`);
+    const rawMsg = payload?.message ?? payload?.reason ?? payload?.detail ?? payload?.error ?? `Request failed for ${path}`;
+    throw new Error(typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg));
   }
 
   return (await response.json()) as T;
