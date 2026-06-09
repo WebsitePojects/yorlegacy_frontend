@@ -227,6 +227,7 @@ export function MemberDashboardPage() {
     getMemberWalletDetail,
     previewEncashment,
     submitEncashment,
+    updatePayoutSettings,
     transferActivationCodes,
     upgradeActivationCode,
     useMaintenanceCode
@@ -1073,7 +1074,11 @@ export function MemberDashboardPage() {
                       if (!confirmed) return;
                       setIsPayoutSaving(true);
                       try {
-                        notify({ title: 'Payout settings submitted', description: 'Your update has been queued for verification. Changes take effect on the next payout cycle.', tone: 'success' });
+                        await updatePayoutSettings(payoutMethodDraft, payoutDetailsDraft);
+                        notify({ title: 'Payout settings updated', description: `Payout method set to ${payoutMethodDraft}. Changes take effect on the next payout cycle.`, tone: 'success' });
+                        setReloadNonce((current) => current + 1);
+                      } catch (err) {
+                        notify({ title: 'Update failed', description: err instanceof Error ? err.message : 'Unable to update payout settings.', tone: 'destructive' });
                       } finally {
                         setIsPayoutSaving(false);
                       }
@@ -1937,12 +1942,12 @@ function DashboardIncomeGrid({
       href: modulePathById.get('unilevel-rank-progress') ?? '/earn/unilevel',
     },
     {
-      label: 'Leadership Bonus',
-      value: streamValueMap['leadership'] ?? 'PHP 0.00',
-      sub: 'See leadership bonus entries',
-      icon: <Star className="size-5" />,
-      color: 'amber',
-      href: modulePathById.get('leadership') ?? '/earn',
+      label: 'Binary Cycle Bonus',
+      value: streamValueMap['binary-cycle'] ?? 'PHP 0.00',
+      sub: 'Cycle % on top of salesmatch',
+      icon: <TrendingUp className="size-5" />,
+      color: 'blue',
+      href: modulePathById.get('binary-cycle-bonus') ?? '/member/binary-cycle-bonus',
     },
     {
       label: 'Get Yor Five Bonus',
@@ -1950,31 +1955,23 @@ function DashboardIncomeGrid({
       sub: 'Open Get Yor Five bonus page',
       icon: <Gift className="size-5" />,
       color: 'amber',
-      href: modulePathById.get('get-five-bonus') ?? '/earn/get-five',
+      href: modulePathById.get('get-five-bonus') ?? '/member/get-five-bonus',
     },
     {
-      label: 'Ranking Bonus',
-      value: streamValueMap['ranking'] ?? 'PHP 0.00',
-      sub: 'See ranking bonus entries',
-      icon: <Trophy className="size-5" />,
-      color: 'amber',
-      href: modulePathById.get('unilevel-rank-progress') ?? '/earn/unilevel',
+      label: 'Lifestyle Rewards',
+      value: streamValueMap['lifestyle-rewards'] ?? 'PHP 0.00',
+      sub: 'Repeat-purchase wallet earnings',
+      icon: <Star className="size-5" />,
+      color: 'emerald',
+      href: modulePathById.get('lifestyle-rewards') ?? '/member/lifestyle-rewards',
     },
     {
-      label: 'Left Accounts',
-      value: '—',
-      sub: 'Open pairing reports',
-      icon: <GitBranch className="size-5" />,
-      color: 'blue',
-      href: modulePathById.get('genealogy') ?? '/member/genealogy',
-    },
-    {
-      label: 'Right Accounts',
-      value: '—',
-      sub: 'Open pairing reports',
-      icon: <GitBranch className="size-5" />,
+      label: 'Global Bonus',
+      value: streamValueMap['global'] ?? 'PHP 0.00',
+      sub: '2% yearly global pool',
+      icon: <Globe className="size-5" />,
       color: 'violet',
-      href: modulePathById.get('genealogy') ?? '/member/genealogy',
+      href: modulePathById.get('global-bonus-eligibility') ?? '/member/global-bonus-eligibility',
     },
   ];
 
@@ -2183,7 +2180,7 @@ function WalletView({
                   </span>
                   <div>
                     <CardTitle className="text-base">Lifestyle Bonus Wallet</CardTitle>
-                    <CardDescription className="text-xs">Separate from main wallet · 3% public display · 1% backend payable</CardDescription>
+                    <CardDescription className="text-xs">Separate from main wallet · 3% of product repurchase price</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -2210,7 +2207,7 @@ function WalletView({
                   </p>
                 </div>
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-xs text-[var(--muted-foreground)]">
-                  <strong className="text-emerald-400">Business Rule LFR-01:</strong> Lifestyle rewards stay in a separate wallet. The public presentation shows 3% of repeat-purchase product value. Backend credits 1% into this wallet. Threshold for Classic is PHP 1,000 daily / PHP 30,000 monthly.
+                  <strong className="text-emerald-400">Business Rule LFR-01:</strong> Lifestyle rewards stay in a separate wallet. Reward = 3% of each product repurchase price (Perfume PHP 500 → PHP 15; Refill PHP 150 → PHP 4.50). Threshold for Classic is PHP 1,000 daily / PHP 30,000 monthly.
                 </div>
               </CardContent>
             </Card>
@@ -2245,8 +2242,9 @@ function WalletView({
               <CardContent className="space-y-3">
                 {[
                   ['Source', 'Repeat-purchase product repurchases'],
-                  ['Public Rate', '3% of product value (marketing display)'],
-                  ['Backend Payable', '1% credited to this wallet'],
+                  ['Rate', '3% of product repurchase price'],
+                  ['Perfume', 'PHP 500 → PHP 15 reward per purchase'],
+                  ['Refill', 'PHP 150 → PHP 4.50 reward per purchase'],
                   ['Threshold (Classic)', 'PHP 1,000 daily / PHP 30,000 monthly'],
                   ['Release', 'Manual — pending admin review'],
                   ['Wallet Type', 'Separate from main encashable wallet'],

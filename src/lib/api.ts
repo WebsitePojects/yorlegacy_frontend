@@ -242,6 +242,16 @@ export function submitMemberEncashment(amount: number): Promise<GatedActionRespo
   });
 }
 
+export function updateMemberPayoutSettings(
+  payoutOption: string,
+  payoutDetails: string
+): Promise<GatedActionResponse> {
+  return fetchJson('/api/member/profile/payout', {
+    method: 'POST',
+    body: JSON.stringify({ payoutOption, payoutDetails })
+  });
+}
+
 export function fetchMemberTransactions(): Promise<{
   moneyMode: 'playground' | 'sandbox';
   transactions: MemberTransactionSummary[];

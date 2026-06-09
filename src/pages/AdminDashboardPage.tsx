@@ -2136,21 +2136,6 @@ function FinanceAccountingView({ activeModule }: ModuleViewProps) {
     { label: 'Projected Margin', keys: ['projected', 'margin'] },
   ];
 
-  const packageSalesPlaceholder = [
-    { label: 'Basic', amount: 'PHP 120,000', pct: 18 },
-    { label: 'Classic', amount: 'PHP 240,000', pct: 36 },
-    { label: 'Standard', amount: 'PHP 180,000', pct: 27 },
-    { label: 'Business', amount: 'PHP 90,000', pct: 13 },
-    { label: 'VIP', amount: 'PHP 40,000', pct: 6 },
-  ];
-
-  const walletAllocPlaceholder = [
-    { label: 'Direct Bonus', amount: 'PHP 58,000', pct: 30 },
-    { label: 'Binary Bonus', amount: 'PHP 96,000', pct: 50 },
-    { label: 'CD Wallet', amount: 'PHP 28,000', pct: 15 },
-    { label: 'Global Pool', amount: 'PHP 8,000', pct: 5 },
-  ];
-
   return (
     <section className="space-y-5">
       <Card className="border-[var(--border)] bg-[var(--card)]">
@@ -2193,65 +2178,49 @@ function FinanceAccountingView({ activeModule }: ModuleViewProps) {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card className="border-[var(--border)] bg-[var(--card)]">
-          <CardHeader>
-            <CardTitle className="text-sm">Package Sales Graph</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {rows.length > 0
-              ? rows.map((row, i) => {
-                  const label = String(row['label'] ?? row['package'] ?? `Package ${i + 1}`);
-                  const amount = String(row['amount'] ?? row['sales'] ?? row['gross'] ?? '—');
-                  const pct = typeof row['pct'] === 'number' ? row['pct'] : 50;
-                  return (
-                    <div key={label} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-[var(--foreground)]">{label}</span>
-                        <span className="text-[var(--muted-foreground)]">{amount}</span>
-                      </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--background)]">
-                        <div className="h-full rounded-full bg-amber-500/70" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })
-              : packageSalesPlaceholder.map((row) => (
-                  <div key={row.label} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-[var(--foreground)]">{row.label}</span>
-                      <span className="text-[var(--muted-foreground)]">{row.amount}</span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--background)]">
-                      <div className="h-full rounded-full bg-amber-500/70" style={{ width: `${row.pct}%` }} />
-                    </div>
-                  </div>
-                ))}
-          </CardContent>
-        </Card>
-
-        <Card className="border-[var(--border)] bg-[var(--card)]">
-          <CardHeader>
-            <CardTitle className="text-sm">Wallet Allocation Graph</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {walletAllocPlaceholder.map((row) => (
-              <div key={row.label} className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-[var(--foreground)]">{row.label}</span>
-                  <span className="text-[var(--muted-foreground)]">{row.amount}</span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--background)]">
-                  <div
-                    className="h-full rounded-full bg-emerald-500/60"
-                    style={{ width: `${row.pct}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader>
+          <CardTitle className="text-sm">Wallet Ledger</CardTitle>
+          <CardDescription className="text-xs">Append-only wallet movement log for all members.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+            <table className="w-full min-w-[800px] text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Source</th>
+                  <th className="px-4 py-3">Credit</th>
+                  <th className="px-4 py-3">Debit</th>
+                  <th className="px-4 py-3">Balance</th>
+                  <th className="px-4 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length > 0 ? rows.map((row, i) => (
+                  <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
+                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['date'] ?? '—')}</td>
+                    <td className="px-4 py-3">{String(row['type'] ?? '—')}</td>
+                    <td className="px-4 py-3 text-[var(--foreground)]">{String(row['source'] ?? '—')}</td>
+                    <td className="px-4 py-3 text-emerald-400">{String(row['credit'] ?? '—')}</td>
+                    <td className="px-4 py-3 text-red-400">{String(row['debit'] ?? '—')}</td>
+                    <td className="px-4 py-3 font-semibold text-amber-400">{String(row['balance'] ?? '—')}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant="outline" className="text-[10px]">{String(row['status'] ?? '—')}</Badge>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">No wallet entries for selected year.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-xs text-[var(--muted-foreground)]">Showing {rows.length} {rows.length === 1 ? 'entry' : 'entries'}</p>
+        </CardContent>
+      </Card>
     </section>
   );
 }
@@ -2361,80 +2330,48 @@ function resolvePackageBadgeClass(packageTier: string): string {
   return 'border-[var(--border)] text-[var(--muted-foreground)]';
 }
 
-const PLACEHOLDER_RANKING_ROWS: ReportRow[] = Array.from({ length: 5 }, (_, i) => ({
-  rank: `Top ${i + 1}`,
-  member: '—',
-  username: '—',
-  package: '—',
-  gate: '—',
-  currentRank: '—',
-  gross: '—',
-  consumed: '—',
-  remaining: '—',
-  qualifiedDate: '—',
-  claimStatus: '—',
-}));
-
 function RankingsView({ activeModule }: ModuleViewProps) {
-  const rawRows = activeModule?.table?.rows ?? [];
-  const rows = rawRows.length > 0 ? rawRows : PLACEHOLDER_RANKING_ROWS;
+  const rows = activeModule?.table?.rows ?? [];
 
   return (
     <section className="space-y-5">
       <Card className="border-[var(--border)] bg-[var(--card)]">
         <CardHeader>
-          <CardTitle>Ranking Incentives</CardTitle>
+          <CardTitle>Rankings &amp; Network Volume</CardTitle>
           <CardDescription>
-            {activeModule?.description ?? 'Live ranking race standings with gate, gross, and claim status for incentive distribution.'}
+            {activeModule?.description ?? 'Rank and volume progress report based on direct referral, binary point, and package-level signals.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-            <table className="w-full min-w-[1340px] text-sm">
+            <table className="w-full min-w-[800px] text-sm">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
-                  <th className="px-4 py-3">Top</th>
-                  <th className="px-4 py-3">Member</th>
+                  <th className="px-4 py-3">#</th>
                   <th className="px-4 py-3">Username</th>
                   <th className="px-4 py-3">Package</th>
-                  <th className="px-4 py-3">Gate</th>
+                  <th className="px-4 py-3">Direct Referrals</th>
+                  <th className="px-4 py-3">Left BP</th>
+                  <th className="px-4 py-3">Right BP</th>
                   <th className="px-4 py-3">Current Rank</th>
-                  <th className="px-4 py-3">Gross</th>
-                  <th className="px-4 py-3">Consumed</th>
-                  <th className="px-4 py-3">Remaining</th>
-                  <th className="px-4 py-3">Qualified Date</th>
-                  <th className="px-4 py-3">Claim Status</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, i) => {
-                  const pkg = String(row['package'] ?? row['Package'] ?? '—');
-                  const claimStatus = String(row['claimStatus'] ?? row['claim_status'] ?? row['ClaimStatus'] ?? row['Claim Status'] ?? '—');
-                  const isRanked = /ranked/i.test(claimStatus) && !/not/i.test(claimStatus);
+                  const pkg = String(row['package'] ?? '—');
                   return (
                     <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
-                      <td className="px-4 py-3">
-                        <span className="inline-block rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
-                          {String(row['rank'] ?? `Top ${i + 1}`)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-[var(--foreground)]">{String(row['member'] ?? row['Member'] ?? '—')}</td>
-                      <td className="px-4 py-3 font-mono text-[var(--muted-foreground)]">{String(row['username'] ?? row['Username'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-[var(--muted-foreground)]">{i + 1}</td>
+                      <td className="px-4 py-3 font-mono font-medium text-[var(--foreground)]">{String(row['username'] ?? '—')}</td>
                       <td className="px-4 py-3">
                         <Badge variant="outline" className={resolvePackageBadgeClass(pkg)}>{pkg}</Badge>
                       </td>
-                      <td className="px-4 py-3">{String(row['gate'] ?? row['Gate'] ?? '—')}</td>
-                      <td className="px-4 py-3">{String(row['currentRank'] ?? row['current_rank'] ?? row['CurrentRank'] ?? '—')}</td>
-                      <td className="px-4 py-3 text-amber-500">{String(row['gross'] ?? row['Gross'] ?? '—')}</td>
-                      <td className="px-4 py-3">{String(row['consumed'] ?? row['Consumed'] ?? '—')}</td>
-                      <td className="px-4 py-3 text-emerald-500">{String(row['remaining'] ?? row['Remaining'] ?? '—')}</td>
-                      <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['qualifiedDate'] ?? row['qualified_date'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-blue-400">{String(row['directReferrals'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-amber-400">{String(row['leftPoints'] ?? '—')}</td>
+                      <td className="px-4 py-3 text-violet-400">{String(row['rightPoints'] ?? '—')}</td>
                       <td className="px-4 py-3">
-                        <Badge
-                          variant="outline"
-                          className={isRanked ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-amber-500/20 bg-amber-500/5 text-amber-600'}
-                        >
-                          {claimStatus}
+                        <Badge variant="outline" className={String(row['currentRank'] ?? '').toLowerCase().includes('vip') ? 'border-amber-500/40 bg-amber-500/10 text-amber-400' : 'border-[var(--border)] text-[var(--muted-foreground)]'}>
+                          {String(row['currentRank'] ?? '—')}
                         </Badge>
                       </td>
                     </tr>
@@ -2444,7 +2381,7 @@ function RankingsView({ activeModule }: ModuleViewProps) {
             </table>
           </div>
           <p className="mt-3 text-xs text-[var(--muted-foreground)]">
-            Showing {rows.length} {rows.length === 1 ? 'entry' : 'entries'}
+            Showing {rows.length} {rows.length === 1 ? 'member' : 'members'}
           </p>
         </CardContent>
       </Card>
