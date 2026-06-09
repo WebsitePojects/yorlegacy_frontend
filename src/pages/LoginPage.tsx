@@ -122,7 +122,7 @@ export function LoginPage() {
               {/* Branding Panel */}
               <div className="login-brand-col">
                 <div className="login-logo-wrap">
-                  <YorBrandMark className="login-logo-svg" variant="showcase" />
+                  <YorBrandMark className="login-logo-svg" variant="round" />
                 </div>
                 <div className="login-brand-copy-text">
                   <span className="eyebrow">Yor International</span>
