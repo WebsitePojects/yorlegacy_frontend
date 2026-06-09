@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff, KeyRound, Lock, Mail, Phone, User, X } from 'lucide-react';
+import { CreditCard, Eye, EyeOff, KeyRound, Lock, Mail, Phone, User, X } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFeedback } from '../feedback/FeedbackProvider';
 import { fetchMemberActivationCodes, fetchRegistrationPreview, submitRegistration } from '../../lib/api';
@@ -84,7 +84,9 @@ export function RegistrationPageView({
     phone: '',
     activationCode: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    payoutOption: '',
+    payoutDetails: ''
   });
   const passwordsMatch = form.password.length > 0 && form.password === form.confirmPassword;
 
@@ -118,7 +120,7 @@ export function RegistrationPageView({
           bundle.inventory.filter(
             (item) =>
               item.status === 'available' &&
-              item.assignedTo === bundle.member.username &&
+              (!bundle.member || item.assignedTo === bundle.member.username) &&
               REGISTRATION_PACKAGES.has(item.packageTier.toUpperCase())
           )
         );
@@ -286,7 +288,9 @@ export function RegistrationPageView({
               side: placementSide
             }
           : undefined,
-        placementToken: placementToken || undefined
+        placementToken: placementToken || undefined,
+        payoutOption: form.payoutOption || undefined,
+        payoutDetails: form.payoutDetails || undefined
       });
 
       await presentNotice({
@@ -388,7 +392,7 @@ export function RegistrationPageView({
               </div>
               <div className="reg-field-stack">
                 <label className="reg-field">
-                  <span>Full Name</span>
+                  <span>Full Name <span aria-hidden="true" style={{ color: 'var(--yor-copper-soft, #c06030)' }}>*</span></span>
                   <div className="reg-input-wrap">
                     <User className="reg-input-icon" size={15} />
                     <input
@@ -402,7 +406,7 @@ export function RegistrationPageView({
                 </label>
                 <div className="reg-field-row">
                 <label className="reg-field">
-                  <span>Username</span>
+                  <span>Username <span aria-hidden="true" style={{ color: 'var(--yor-copper-soft, #c06030)' }}>*</span></span>
                     <div className="reg-input-wrap">
                       <User className="reg-input-icon" size={15} />
                       <input
@@ -415,7 +419,7 @@ export function RegistrationPageView({
                     </div>
                   </label>
                   <label className="reg-field">
-                    <span>Phone Number</span>
+                    <span>Phone Number <span aria-hidden="true" style={{ color: 'var(--yor-copper-soft, #c06030)' }}>*</span></span>
                     <div className="reg-input-wrap">
                       <Phone className="reg-input-icon" size={15} />
                       <input
@@ -453,7 +457,7 @@ export function RegistrationPageView({
               </div>
               <div className="reg-field-stack">
                 <label className="reg-field">
-                  <span>Activation Code</span>
+                  <span>Activation Code <span aria-hidden="true" style={{ color: 'var(--yor-copper-soft, #c06030)' }}>*</span></span>
                   <div className="reg-input-wrap reg-input-wrap--select">
                     <KeyRound className="reg-input-icon" size={15} />
                     {isModal ? (
@@ -554,7 +558,7 @@ export function RegistrationPageView({
               <div className="reg-field-stack">
                 <div className="reg-field-row">
                   <label className="reg-field">
-                    <span>Password</span>
+                    <span>Password <span aria-hidden="true" style={{ color: 'var(--yor-copper-soft, #c06030)' }}>*</span></span>
                     <div className="reg-input-wrap">
                       <Lock className="reg-input-icon" size={15} />
                       <input
@@ -575,7 +579,7 @@ export function RegistrationPageView({
                     </div>
                   </label>
                   <label className="reg-field">
-                    <span>Confirm Password</span>
+                    <span>Confirm Password <span aria-hidden="true" style={{ color: 'var(--yor-copper-soft, #c06030)' }}>*</span></span>
                     <div className="reg-input-wrap">
                       <Lock className="reg-input-icon" size={15} />
                       <input
@@ -584,7 +588,6 @@ export function RegistrationPageView({
                         type={showConfirm ? 'text' : 'password'}
                         value={form.confirmPassword}
                         onChange={(event) => setForm((current) => ({ ...current, confirmPassword: event.target.value }))}
-                        required
                       />
                       <button
                         type="button"
@@ -597,6 +600,49 @@ export function RegistrationPageView({
                     </div>
                   </label>
                 </div>
+              </div>
+            </div>
+
+            <div className="registration-form-group">
+              <div className="reg-step-head">
+                <span className="reg-step-badge">04</span>
+                <div>
+                  <div className="registration-form-group-title">Payout Information</div>
+                  <div className="reg-step-sub">Set your preferred payout method and account details for withdrawals.</div>
+                </div>
+              </div>
+              <div className="reg-field-stack">
+                <label className="reg-field">
+                  <span>Payout Method (Optional)</span>
+                  <div className="reg-input-wrap reg-input-wrap--select">
+                    <CreditCard className="reg-input-icon" size={15} />
+                    <select
+                      value={form.payoutOption}
+                      onChange={(event) => setForm((current) => ({ ...current, payoutOption: event.target.value }))}
+                    >
+                      <option value="">Select payout method…</option>
+                      <option value="GCash">GCash</option>
+                      <option value="Maya">Maya</option>
+                      <option value="Bank Transfer">Bank Transfer</option>
+                      <option value="BDO">BDO</option>
+                      <option value="BPI">BPI</option>
+                      <option value="UnionBank">UnionBank</option>
+                      <option value="Metrobank">Metrobank</option>
+                    </select>
+                  </div>
+                </label>
+                <label className="reg-field">
+                  <span>Account Number / E-Wallet ID (Optional)</span>
+                  <div className="reg-input-wrap">
+                    <Mail className="reg-input-icon" size={15} />
+                    <input
+                      placeholder={`Enter your ${form.payoutOption || 'payout'} account number`}
+                      type="text"
+                      value={form.payoutDetails}
+                      onChange={(event) => setForm((current) => ({ ...current, payoutDetails: event.target.value }))}
+                    />
+                  </div>
+                </label>
               </div>
             </div>
 

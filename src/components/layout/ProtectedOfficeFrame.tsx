@@ -231,6 +231,16 @@ export function ProtectedOfficeFrame({
           ) : null}
 
           <div className="ops-shell-header-tools flex items-center gap-3">
+            <MobileOfficeNav
+              basePath={basePath}
+              currentModuleId={currentModuleId}
+              heading={sidebarHeading}
+              subheading={sidebarSubheading}
+              modules={modules}
+              footerLinks={footerLinks}
+              onSignOut={() => void handleSignOut()}
+              onPrefetchModule={handlePrefetchModule}
+            />
             <div className="ops-shell-theme-toggle">
               <ModeToggle />
             </div>
@@ -324,15 +334,6 @@ export function ProtectedOfficeFrame({
               ) : null}
             </div>
           </section>
-
-          <div className="ops-mobile-nav-shell lg:hidden">
-            <MobileOfficeNav
-              basePath={basePath}
-              currentModuleId={currentModuleId}
-              modules={modules}
-              onPrefetchModule={handlePrefetchModule}
-            />
-          </div>
 
           <div className={cn('ops-content-shell', isContentLoading && 'is-loading')} aria-busy={isContentLoading}>
             <div className="ops-content-shell-stage">{children}</div>

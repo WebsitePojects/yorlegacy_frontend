@@ -165,7 +165,7 @@ export function LoginPage() {
                   <h2>{portalLabel}</h2>
                   <p>
                     {scope === 'office'
-                      ? 'Sign in to your admin, cashier, or board office account.'
+                      ? 'Sign in to your admin office account.'
                       : 'Sign in to your Yor member account.'}
                   </p>
                 </div>
@@ -178,7 +178,7 @@ export function LoginPage() {
                       <User size={16} className="login-input-icon" />
                       <input
                         type="text"
-                        placeholder={scope === 'office' ? 'yoradmin' : 'YOR0001'}
+                        placeholder={scope === 'office' ? 'yoradmin' : 'yor01'}
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         required

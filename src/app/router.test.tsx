@@ -597,7 +597,11 @@ describe('routes', () => {
     const select = await screen.findByLabelText(/depth/i);
     fireEvent.change(select, { target: { value: '4' } });
 
-    fireEvent.click(await screen.findByRole('button', { name: /open slot left under alpha001/i }));
+    const openSlotButtons = await screen.findAllByRole('button', { name: /open slot left under alpha001/i });
+    const targetSlot = openSlotButtons.find((node) => !node.className.includes('is-disabled'));
+
+    expect(targetSlot).toBeDefined();
+    fireEvent.click(targetSlot!);
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: /encode member in open slot/i })).toBeInTheDocument();

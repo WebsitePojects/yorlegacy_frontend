@@ -19,6 +19,7 @@ import {
   Mail,
   Medal,
   LogOut,
+  Menu,
   MessageSquare,
   Newspaper,
   ReceiptText,
@@ -164,106 +165,138 @@ export function OfficeSidebar({
 export function MobileOfficeNav({
   basePath,
   currentModuleId,
+  heading,
+  subheading,
   modules,
+  footerLinks = [],
+  onSignOut,
   onPrefetchModule
 }: {
   basePath: '/member' | '/admin' | '/cashier' | '/bod';
   currentModuleId: string;
+  heading: string;
+  subheading: string;
   modules: OperationalModule[];
+  footerLinks?: Array<{ label: string; href: string; external?: boolean }>;
+  onSignOut?: () => void;
   onPrefetchModule?: (moduleId: string) => void;
 }) {
-  const [activeGroup, setActiveGroup] = useState<string | null>(null);
-  const [closingGroup, setClosingGroup] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   const location = useLocation();
   const grouped = useMemo(() => groupModules(modules), [modules]);
-  const preferredGroups = ['Overview', 'Finance', 'Compensation', 'Network', 'Account'];
-  const orderedGroups = [
-    ...preferredGroups
-      .map((groupName) => grouped.find(([group]) => group.toLowerCase() === groupName.toLowerCase()))
-      .filter((group): group is [string, OperationalModule[]] => Boolean(group)),
-    ...grouped.filter(
-      ([group]) => !preferredGroups.some((groupName) => groupName.toLowerCase() === group.toLowerCase())
-    )
-  ].slice(0, 5);
-  const compensationIndex = orderedGroups.findIndex(([group]) => group.toLowerCase() === 'compensation');
-  const centerIndex = compensationIndex >= 0 ? compensationIndex : Math.min(2, orderedGroups.length - 1);
-  const activeGroupEntry = orderedGroups.find(([group]) => group === activeGroup);
 
   useEffect(() => {
-    if (!activeGroup) {
-      return;
-    }
-
-    setClosingGroup(activeGroup);
-    const timeout = window.setTimeout(() => {
-      setActiveGroup(null);
-      setClosingGroup(null);
-    }, 210);
-
-    return () => window.clearTimeout(timeout);
+    setOpen(false);
   }, [location.pathname]);
 
-  function closeActiveGroup() {
-    if (!activeGroup) {
-      return;
+  useEffect(() => {
+    if (!open) {
+      return undefined;
     }
 
-    setClosingGroup(activeGroup);
-    window.setTimeout(() => {
-      setActiveGroup(null);
-      setClosingGroup(null);
-    }, 210);
-  }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
 
   return (
-    <nav className="ops-mobile-bottom-nav lg:hidden" aria-label={`${basePath.slice(1)} mobile office navigation`}>
-      {activeGroupEntry ? (
-        <div className={cn('ops-mobile-bottom-popover', closingGroup === activeGroupEntry[0] && 'is-closing')}>
-          <div className="ops-mobile-bottom-popover-head">
-            <span>{activeGroupEntry[0]}</span>
-            <button type="button" onClick={closeActiveGroup} aria-label="Close office section">
-              <X className="size-4" />
-            </button>
-          </div>
-          <div className="ops-mobile-bottom-links">
-            {activeGroupEntry[1].map((module) => (
-              <NavLink
-                key={module.id}
-                to={module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`}
-                className={cn(currentModuleId === module.id && 'is-active')}
-                onClick={closeActiveGroup}
-                onMouseEnter={() => onPrefetchModule?.(module.id)}
-                onFocus={() => onPrefetchModule?.(module.id)}
-                onTouchStart={() => onPrefetchModule?.(module.id)}
+    <>
+      <button
+        type="button"
+        className="ops-mobile-drawer-trigger lg:hidden"
+        aria-label="Open office navigation"
+        aria-expanded={open}
+        onClick={() => setOpen(true)}
+      >
+        <Menu className="size-5" />
+        <span>Menu</span>
+      </button>
+
+      {open ? (
+        <div className="ops-mobile-drawer-shell lg:hidden">
+          <button
+            type="button"
+            className="ops-mobile-drawer-overlay"
+            aria-label="Close office navigation"
+            onClick={() => setOpen(false)}
+          />
+          <aside
+            className="ops-mobile-drawer-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${basePath.slice(1)} office navigation`}
+          >
+            <div className="ops-mobile-drawer-head">
+              <div>
+                <p className="ops-mobile-drawer-eyebrow">Yor Office</p>
+                <h2>{heading}</h2>
+                <p>{subheading}</p>
+              </div>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close office navigation">
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <nav className="ops-mobile-drawer-nav">
+              {grouped.map(([group, groupModules]) => (
+                <div key={group} className="ops-mobile-drawer-group">
+                  <p className="ops-mobile-drawer-group-title">{group}</p>
+                  <div className="ops-mobile-drawer-links">
+                    {groupModules.map((module) => (
+                      <NavLink
+                        key={module.id}
+                        to={module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`}
+                        className={cn('ops-mobile-drawer-link', currentModuleId === module.id && 'is-active')}
+                        onClick={() => setOpen(false)}
+                        onMouseEnter={() => onPrefetchModule?.(module.id)}
+                        onFocus={() => onPrefetchModule?.(module.id)}
+                        onTouchStart={() => onPrefetchModule?.(module.id)}
+                      >
+                        <span className="ops-mobile-drawer-link-icon">{renderIcon(getModuleIcon(module.id), 'size-4')}</span>
+                        <span>{module.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </nav>
+
+            {footerLinks.length ? (
+              <div className="ops-mobile-drawer-footer-links">
+                {footerLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    className="ops-mobile-drawer-footer-link"
+                    onClick={() => setOpen(false)}
+                  >
+                    <span>{link.label}</span>
+                    {link.external ? <ExternalLink className="size-4" /> : <ArrowRight className="size-4" />}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+
+            {onSignOut ? (
+              <button
+                className="ops-mobile-drawer-signout"
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onSignOut();
+                }}
               >
-                <span className="ops-mobile-bottom-link-icon">{renderIcon(getModuleIcon(module.id), 'size-4')}</span>
-                <span>{module.label}</span>
-              </NavLink>
-            ))}
-          </div>
+                <LogOut className="size-4" />
+                <span>Sign Out</span>
+              </button>
+            ) : null}
+          </aside>
         </div>
       ) : null}
-      <div className="ops-mobile-bottom-shell">
-        {orderedGroups.map(([group, groupModules], index) => {
-          const active = groupModules.some((module) => module.id === currentModuleId) || activeGroup === group;
-          const Icon = getGroupIcon(group);
-          const center = index === centerIndex;
-
-          return (
-            <button
-              key={group}
-              type="button"
-              className={cn('ops-mobile-bottom-item', center && 'is-center', active && 'is-active')}
-              aria-expanded={activeGroup === group}
-              onClick={() => setActiveGroup((current) => (current === group ? null : group))}
-            >
-              <Icon className={center ? 'size-5' : 'size-4'} />
-              <span>{group}</span>
-            </button>
-          );
-        })}
-      </div>
-    </nav>
+    </>
   );
 }
 

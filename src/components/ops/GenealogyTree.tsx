@@ -20,12 +20,19 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEven
 import { useNavigate } from 'react-router-dom';
 import type { GenealogyTreeNode } from '../../types/auth';
 
+type ActivationCodeOption = {
+  code: string;
+  packageTier: string;
+  codeFamily: string;
+};
+
 type GenealogyTreeProps = {
   root: GenealogyTreeNode;
   onSelect?: (nodeId: string) => void;
   selectedNodeId?: string | null;
   onNavigateToNode?: (username: string) => void;
   onOpenSlot?: (slot: { parentUsername: string; parentReferralCode?: string; side: 'left' | 'right' }) => void;
+  availableActivationCodes?: ActivationCodeOption[];
   adminMode?: boolean;
 };
 
@@ -195,7 +202,7 @@ function openPrintableExport(title: string, rows: Array<Record<string, string>>,
   return true;
 }
 
-export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode, onOpenSlot, adminMode = false }: GenealogyTreeProps) {
+export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode, onOpenSlot, availableActivationCodes = [], adminMode = false }: GenealogyTreeProps) {
   const navigate = useNavigate();
   const { confirmAction, presentNotice } = useFeedback();
   const [scale, setScale] = useState(DEFAULT_SCALE);
@@ -203,7 +210,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
   const [isActive, setIsActive] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [visibleDepth, setVisibleDepth] = useState(4);
+  const [visibleDepth, setVisibleDepth] = useState(2);
   const [nodeSearch, setNodeSearch] = useState('');
   const [focusedNodeKey, setFocusedNodeKey] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -542,7 +549,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
   }, [root.nodeId, visibleDepth]);
 
   useEffect(() => {
-    setVisibleDepth((current) => Math.max(current, 4));
+    setVisibleDepth((current) => Math.max(current, 2));
   }, [root.nodeId]);
 
   useEffect(() => {
@@ -917,11 +924,12 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
                 navigate(`/register?${params.toString()}`);
               }}
               registerNodeRef={registerNodeRef}
+              availableActivationCodes={availableActivationCodes}
               onActivateShadow={async (label) => {
                 const confirmed = await confirmAction({
                   title: 'Activate/Upgrade Shadow Account',
-                  description: `Would you like to upgrade your shadow account ${label} using an activation code?`,
-                  confirmLabel: 'Upgrade',
+                  description: `Would you like to upgrade your shadow account ${label} using an activation code? Select a code from your inventory on the Activation Codes page.`,
+                  confirmLabel: 'Go to Activation Codes',
                   cancelLabel: 'Cancel'
                 });
 
@@ -1073,6 +1081,7 @@ function BinaryBranch({
   onOpenSlot,
   registerNodeRef,
   onActivateShadow,
+  availableActivationCodes = [],
   adminMode = false
 }: {
   node: CanvasNode;
@@ -1083,6 +1092,7 @@ function BinaryBranch({
   onOpenSlot?: (slot: { parentUsername: string; parentReferralCode?: string; side: 'left' | 'right' }) => void;
   registerNodeRef?: (key: string, element: HTMLDivElement | null) => void;
   onActivateShadow: (label: string) => Promise<void>;
+  availableActivationCodes?: ActivationCodeOption[];
   adminMode?: boolean;
 }) {
   const source = node.source;
@@ -1252,6 +1262,95 @@ function BinaryBranch({
                 <p>{node.isShadowNode ? 'Shadow Slot' : 'Available'}</p>
               </div>
             </div>
+
+            {node.isShadowNode && node.shadowSlot ? (
+              <div className="genealogy-canvas-node-popover is-shadow-popover" role="presentation">
+                <div className="genealogy-popover-header">
+                  <div className="genealogy-popover-avatar is-shadow">
+                    SH
+                  </div>
+                  <div className="genealogy-popover-name">
+                    <strong>{node.shadowSlot.label}</strong>
+                    <p>Shadow Account</p>
+                  </div>
+                </div>
+
+                <div className="genealogy-popover-section-label">Shadow Status</div>
+                <div className="genealogy-popover-row">
+                  <span className="genealogy-popover-row-label">Activation</span>
+                  <span className={cn('genealogy-popover-row-value', node.shadowSlot.activationStatus === 'activated' ? 'is-positive' : 'is-warning')}>
+                    {node.shadowSlot.activationStatus === 'activated' ? 'Activated' : 'Inactive'}
+                  </span>
+                </div>
+                <div className="genealogy-popover-row">
+                  <span className="genealogy-popover-row-label">Account State</span>
+                  <span className="genealogy-popover-row-value">
+                    {node.shadowSlot.state.replace('_', ' ')}
+                  </span>
+                </div>
+                <div className="genealogy-popover-row">
+                  <span className="genealogy-popover-row-label">Placement</span>
+                  <span className="genealogy-popover-row-value">
+                    {node.shadowSlot.placement.toUpperCase()} leg · Level {node.level}
+                  </span>
+                </div>
+
+                <div className="genealogy-popover-section-label">Feature Flags</div>
+                <div className="genealogy-popover-row">
+                  <span className="genealogy-popover-row-label">Registration</span>
+                  <span className={cn('genealogy-popover-row-value', node.shadowSlot.registrationEnabled ? 'is-positive' : '')}>
+                    {node.shadowSlot.registrationEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+                <div className="genealogy-popover-row">
+                  <span className="genealogy-popover-row-label">Wallet</span>
+                  <span className={cn('genealogy-popover-row-value', node.shadowSlot.walletEnabled ? 'is-positive' : '')}>
+                    {node.shadowSlot.walletEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+                <div className="genealogy-popover-row">
+                  <span className="genealogy-popover-row-label">Unilevel</span>
+                  <span className={cn('genealogy-popover-row-value', node.shadowSlot.unilevelEnabled ? 'is-positive' : '')}>
+                    {node.shadowSlot.unilevelEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+                <div className="genealogy-popover-row">
+                  <span className="genealogy-popover-row-label">Binary Cycle</span>
+                  <span className={cn('genealogy-popover-row-value', node.shadowSlot.binaryCycleEnabled ? 'is-positive' : '')}>
+                    {node.shadowSlot.binaryCycleEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+
+                {node.shadowSlot.note ? (
+                  <>
+                    <div className="genealogy-popover-section-label">Note</div>
+                    <div className="genealogy-popover-note">{node.shadowSlot.note}</div>
+                  </>
+                ) : null}
+
+                {node.shadowSlot.activationStatus === 'inactive' && availableActivationCodes.length > 0 ? (
+                  <>
+                    <div className="genealogy-popover-section-label">Activate with Code</div>
+                    <div className="genealogy-popover-code-list">
+                      {availableActivationCodes.slice(0, 4).map((item) => (
+                        <div key={item.code} className="genealogy-popover-code-row">
+                          <span className="genealogy-popover-code-value">{item.code}</span>
+                          <span className="genealogy-popover-code-meta">{item.packageTier}</span>
+                        </div>
+                      ))}
+                      {availableActivationCodes.length > 4 ? (
+                        <p className="genealogy-popover-code-overflow">+{availableActivationCodes.length - 4} more codes available</p>
+                      ) : null}
+                    </div>
+                    <p className="genealogy-popover-note">Click this shadow node to go to Activation Codes and apply an upgrade.</p>
+                  </>
+                ) : null}
+
+                {node.shadowSlot.activationStatus === 'inactive' && availableActivationCodes.length === 0 ? (
+                  <p className="genealogy-popover-note is-warning">No activation codes available. Purchase a code to activate this shadow slot.</p>
+                ) : null}
+              </div>
+            ) : null}
           </>
         )}
       </div>
@@ -1269,6 +1368,7 @@ function BinaryBranch({
               onOpenSlot={onOpenSlot}
               registerNodeRef={registerNodeRef}
               onActivateShadow={onActivateShadow}
+              availableActivationCodes={availableActivationCodes}
               adminMode={adminMode}
             />
           ))}

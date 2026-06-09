@@ -165,7 +165,12 @@ describe('GenealogyTree', () => {
     const select = screen.getByLabelText(/depth/i);
     fireEvent.change(select, { target: { value: '4' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /open slot left under alpha001/i }));
+    const targetSlot = screen
+      .getAllByRole('button', { name: /open slot left under alpha001/i })
+      .find((node) => !node.className.includes('is-disabled'));
+
+    expect(targetSlot).toBeDefined();
+    fireEvent.click(targetSlot!);
 
     expect(onOpenSlot).toHaveBeenCalledWith({
       parentUsername: 'ALPHA001',

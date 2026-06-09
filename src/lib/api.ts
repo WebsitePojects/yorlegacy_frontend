@@ -470,6 +470,8 @@ export function fetchRegistrationPreview(payload: {
   };
   placementToken?: string;
   placementReservationId?: string;
+  payoutOption?: string;
+  payoutDetails?: string;
 }): Promise<RegistrationPreview> {
   return fetchJson('/api/registration/preview', {
     method: 'POST',
@@ -497,6 +499,8 @@ export function submitRegistration(payload: {
   };
   placementToken?: string;
   placementReservationId?: string;
+  payoutOption?: string;
+  payoutDetails?: string;
 }): Promise<RegistrationSubmitResponse> {
   return fetchJson('/api/registration/submit', {
     method: 'POST',

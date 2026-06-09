@@ -7,6 +7,7 @@ import { ContentPage } from '../pages/ContentPage';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { MemberDashboardPage } from '../pages/MemberDashboardPage';
+import { GetYorFivePage } from '../pages/GetYorFivePage';
 import { UnauthorizedPage } from '../pages/UnauthorizedPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
@@ -45,6 +46,10 @@ export const routes = [
       },
       {
         path: 'register',
+        element: <RegisterPage />
+      },
+      {
+        path: 'join/:referralCode',
         element: <RegisterPage />
       },
       {
@@ -96,6 +101,14 @@ export const routes = [
         element: (
           <ProtectedRoute allowedRoles={['member', 'admin', 'cashier', 'bod', 'superadmin']}>
             <MemberDashboardPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'member/get-yor-five',
+        element: (
+          <ProtectedRoute allowedRoles={['member', 'admin', 'cashier', 'bod', 'superadmin']}>
+            <GetYorFivePage />
           </ProtectedRoute>
         )
       },

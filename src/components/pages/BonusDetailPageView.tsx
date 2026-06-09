@@ -72,7 +72,8 @@ export const bonusRouteContent: Record<
     metrics: [
       { label: 'Left Leg', value: '24,000 pts', note: 'Sample points from the public illustration.' },
       { label: 'Right Leg', value: '18,000 pts', note: 'Matching against the weaker side drives the payout story.' },
-      { label: 'Matching In Progress', value: 'PHP 15,000', accent: 'tertiary' }
+      { label: 'Matching In Progress', value: 'PHP 15,000', accent: 'tertiary' },
+      { label: 'Conversion Rate', value: '1 PV = PHP 250 SMB', note: 'PHP 15,000 SMB = 60 Binary Points credited (15,000 ÷ 250).' }
     ],
     insights: [
       {

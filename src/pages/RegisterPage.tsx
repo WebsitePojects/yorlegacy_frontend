@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { RegistrationPageView } from '../components/pages/RegistrationPageView';
 import { buildSeoConfig, useSeoDocument } from '../lib/seo';
 
 export function RegisterPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { referralCode: referralCodeParam } = useParams<{ referralCode?: string }>();
 
   useSeoDocument(
     buildSeoConfig({
@@ -16,7 +17,7 @@ export function RegisterPage() {
 
   const initialContext = useMemo(
     () => ({
-      referralCode: searchParams.get('ref') ?? '',
+      referralCode: referralCodeParam ?? searchParams.get('ref') ?? '',
       placementContext: searchParams.get('parent') || searchParams.get('placementParentUsername')
         ? {
             parentUsername: searchParams.get('parent') ?? searchParams.get('placementParentUsername') ?? '',
@@ -28,7 +29,7 @@ export function RegisterPage() {
         : undefined,
       placementToken: searchParams.get('token') ?? ''
     }),
-    [searchParams]
+    [referralCodeParam, searchParams]
   );
 
   return <RegistrationPageView initialContext={initialContext} />;

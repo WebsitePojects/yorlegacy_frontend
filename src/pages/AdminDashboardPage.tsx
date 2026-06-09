@@ -26,7 +26,7 @@ import {
   resolveOfficeBasePath
 } from '@/components/layout/ProtectedOfficeFrame';
 import { GenealogyTree } from '../components/ops/GenealogyTree';
-import { readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
+import { clearOfficeCache, readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
 import { cn } from '@/lib/utils';
 import {
   GatedActionsCard,
@@ -581,6 +581,7 @@ export function AdminDashboardPage() {
         description: result.detail ?? result.reason,
         tone: 'success'
       });
+      clearOfficeCache(currentAdminBundleCacheKey);
       setReloadNonce((value) => value + 1);
     } catch (cause) {
       notify({
@@ -639,6 +640,7 @@ export function AdminDashboardPage() {
         description: result.detail ?? result.reason,
         tone: 'success'
       });
+      clearOfficeCache(currentAdminBundleCacheKey);
       setReloadNonce((value) => value + 1);
     } catch (cause) {
       notify({
@@ -680,6 +682,7 @@ export function AdminDashboardPage() {
         description: result.detail ?? result.reason,
         tone: 'success'
       });
+      clearOfficeCache(currentAdminBundleCacheKey);
       setReloadNonce((value) => value + 1);
     } catch (cause) {
       notify({
@@ -955,13 +958,20 @@ export function AdminDashboardPage() {
   const branchNotes = activeModule?.gatedActions.length ? activeModule.gatedActions : office?.gatedActions ?? [];
   const showModuleTable = Boolean(activeModule && !customAdminModuleIds.has(moduleId));
   const currentOpsRole = office?.profile.accessScope ?? user?.role ?? 'admin';
-  const canGenerateCodes = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
-  const canApproveEncashment = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
-  const canChangeMemberStatus = currentOpsRole === 'admin' || currentOpsRole === 'superadmin';
+  const effectiveAdminRole = currentOpsRole === 'platform' ? 'admin' : currentOpsRole;
+  const canGenerateCodes = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin';
+  const canApproveEncashment = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin';
+  const canChangeMemberStatus = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin';
   const showDashboardActions = moduleId === 'dashboard' && (mvpDashboard?.moneyMode ?? 'playground') !== 'sandbox' && branchNotes.length > 0;
   const visibleMetrics = office ? getVisibleAdminMetrics(moduleId, office.metrics) : [];
   const selectedCodeBatchOption =
     CODE_GENERATION_OPTIONS.find((option) => option.value === codeBatchSelection) ?? CODE_GENERATION_OPTIONS[2];
+  const currentAdminBundleCacheKey = adminCacheKey(moduleId, {
+    rootUsername: treeRootUsername,
+    memberQuery: memberSearchQuery,
+    memberUsername: memberDetailUsername,
+    memberPage
+  });
   const filteredActivationInventory = activationCodes?.inventory.filter((item) => {
     const query = codeSearchQuery.trim().toUpperCase();
 
@@ -1305,6 +1315,43 @@ export function AdminDashboardPage() {
                       </table>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card className="ops-admin-table-card border-[var(--border)] bg-[var(--card)]">
+                <CardHeader>
+                  <CardTitle>Code History</CardTitle>
+                  <CardDescription>Latest activation-code events from the office ledger.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {activationCodes.auditTrail.length ? (
+                    <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[920px] text-sm">
+                          <thead>
+                            <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                              <th className="px-4 py-3">Actor</th>
+                              <th className="px-4 py-3">Action</th>
+                              <th className="px-4 py-3">Code</th>
+                              <th className="px-4 py-3">Time</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {activationCodes.auditTrail.map((event) => (
+                              <tr key={`${event.action}-${event.target}-${event.occurredAt}`} className="border-b border-[var(--border)] last:border-b-0">
+                                <td className="px-4 py-3">{event.actor}</td>
+                                <td className="px-4 py-3">{formatAuditActionLabel(event.action)}</td>
+                                <td className="px-4 py-3 font-mono text-[var(--yor-copper-soft)]">{event.target}</td>
+                                <td className="px-4 py-3 text-[var(--muted-foreground)]">{event.occurredAt}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[var(--muted-foreground)]">No activation-code history yet.</p>
+                  )}
                 </CardContent>
               </Card>
             </section>
@@ -1758,7 +1805,7 @@ export function AdminDashboardPage() {
                     />
                   ) : (
                     <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-8 text-sm text-[var(--muted-foreground)]">
-                      Enter a username such as YOR0001, YOR0002, or a referral code to load the tree.
+                      Enter a username such as yor01, YOR0002, or a referral code to load the tree.
                     </div>
                   )}
                 </CardContent>

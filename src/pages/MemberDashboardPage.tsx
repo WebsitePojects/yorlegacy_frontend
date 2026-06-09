@@ -351,7 +351,10 @@ export function MemberDashboardPage() {
       }
 
       if (targetModuleId === 'genealogy') {
-        binaryTree = await getMemberBinaryTree(rootUsername.trim() || undefined);
+        [binaryTree, activationCodes] = await Promise.all([
+          getMemberBinaryTree(rootUsername.trim() || undefined),
+          getMemberActivationCodes()
+        ]);
       }
 
       if (targetModuleId === 'account-shadow-management') {
@@ -825,6 +828,8 @@ export function MemberDashboardPage() {
   const matchedPoints = binaryTree ? Math.min(binaryTree.root.leftPoints, binaryTree.root.rightPoints) : 0;
   const strongLegCarry = binaryTree ? Math.max(binaryTree.root.leftPoints, binaryTree.root.rightPoints) - matchedPoints : 0;
   const weakLegCarry = binaryTree ? Math.min(binaryTree.root.leftPoints, binaryTree.root.rightPoints) - matchedPoints : 0;
+  const leftRemaining = binaryTree ? Math.max(0, binaryTree.root.leftPoints - binaryTree.root.rightPoints) : 0;
+  const rightRemaining = binaryTree ? Math.max(0, binaryTree.root.rightPoints - binaryTree.root.leftPoints) : 0;
   const matchedSalesmatch = activeModule?.table.rows[0]?.salesmatch ?? 'PHP 0.00';
   const branchNotes = activeModule?.gatedActions.length ? activeModule.gatedActions : office?.gatedActions ?? [];
   const modulePathById = useMemo(
@@ -862,6 +867,11 @@ export function MemberDashboardPage() {
         title: 'Account',
         body: 'Keep profile, sponsor code, payout method, and package status in one clean screen.',
         href: '/member/account-details'
+      },
+      {
+        title: 'Get Yor Five',
+        body: 'Track your 5-referral groups, per-tier progress, and earned bonuses in one view.',
+        href: '/member/get-yor-five'
       }
     ];
   }, []);
@@ -1302,7 +1312,17 @@ export function MemberDashboardPage() {
                 {treeRootUsername ? <Button type="button" variant="outline" size="sm" onClick={() => setTreeRootUsername('')}>Return To My Tree</Button> : null}
               </CardHeader>
               <CardContent>
-                <GenealogyTree root={binaryTree.root} selectedNodeId={selectedTreeNodeId} onSelect={setSelectedTreeNodeId} onNavigateToNode={setTreeRootUsername} onOpenSlot={setPendingRegistrationSlot} />
+                <GenealogyTree
+                  root={binaryTree.root}
+                  selectedNodeId={selectedTreeNodeId}
+                  onSelect={setSelectedTreeNodeId}
+                  onNavigateToNode={setTreeRootUsername}
+                  onOpenSlot={setPendingRegistrationSlot}
+                  availableActivationCodes={(activationCodes?.inventory ?? [])
+                    .filter((i) => i.status === 'available' && i.codeFamily === 'YOR CODES')
+                    .map((i) => ({ code: i.code, packageTier: i.packageTier, codeFamily: i.codeFamily }))
+                  }
+                />
               </CardContent>
             </Card>
             {/* Pairing stats — Nogatu-style */}
@@ -1343,6 +1363,13 @@ export function MemberDashboardPage() {
         {/* ── GET YOR FIVE BONUS ── */}
         {moduleId === 'get-five-bonus' && activeModule ? (
           <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            {/* Standalone page link */}
+            <div className="xl:col-span-2 flex items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+              <p className="text-sm text-[var(--muted-foreground)]">View your full Get Yor Five progress, per-tier referral counts, and wallet entries on the dedicated page.</p>
+              <Button asChild variant="outline" size="sm" className="shrink-0">
+                <Link to="/member/get-yor-five"><Gift className="mr-1.5 size-4" />Full Page<ArrowRight className="ml-1.5 size-4" /></Link>
+              </Button>
+            </div>
             {/* Stat strip */}
             <div className="grid grid-cols-2 gap-3 xl:col-span-2">
               <NogaStatCard icon={<Users className="size-4" />} color="amber" label="Direct Referrals" value={String(activeModule.table.rows[0]?.directSamePackage ?? 0)} sub="same-package directs" />
@@ -1406,7 +1433,7 @@ export function MemberDashboardPage() {
               <NogaStatCard icon={<BarChart3 className="size-4" />} color="amber" label="Salesmatch Basis" value={String(activeModule.table.rows[0]?.salesmatch ?? 'PHP 0.00')} sub="paired volume this cycle" />
               <NogaStatCard icon={<TrendingUp className="size-4" />} color="blue" label="Your Cycle Rate" value={String(activeModule.table.rows[0]?.cycleRate ?? `${office?.profile.packageTier === 'Classic' ? '2%' : office?.profile.packageTier === 'Standard' ? '3%' : office?.profile.packageTier === 'Business' ? '4%' : office?.profile.packageTier === 'VIP' ? '5%' : '—'}`)} sub="package-based percentage" />
               <NogaStatCard icon={<Medal className="size-4" />} color="emerald" label="Weekly Cap" value={String(activeModule.table.rows[0]?.weeklyCap ?? '—')} sub="maximum per cycle week" />
-              <NogaStatCard icon={<Trophy className="size-4" />} color="violet" label="Estimated Cycle Bonus" value={(() => { const s = mvpDashboard?.incomeStreams.find(x => x.streamId === 'binary-cycle'); return s ? `PHP ${s.simulatedNet.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'PHP 0.00'; })()} sub="sandbox simulation" />
+              <NogaStatCard icon={<Trophy className="size-4" />} color="violet" label="Estimated Cycle Bonus" value={(() => { const s = mvpDashboard?.incomeStreams.find(x => x.streamId === 'binary-cycle'); return s ? `PHP ${s.simulatedNet.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'PHP 0.00'; })()} sub="estimated net cycle bonus" />
             </div>
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <Card className="border-[var(--border)] bg-[var(--card)]">
@@ -1443,11 +1470,12 @@ export function MemberDashboardPage() {
                 <CardHeader className="pb-3"><CardTitle className="text-base">Cycle Traceability</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <InfoRow label="Package" value={String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '—')} />
-                  <InfoRow label="Left Points" value={String(binaryTree?.root.leftPoints ?? '—')} />
-                  <InfoRow label="Right Points" value={String(binaryTree?.root.rightPoints ?? '—')} />
+                  <InfoRow label="Gross Left Points" value={String(binaryTree?.root.leftPoints ?? '—')} />
+                  <InfoRow label="Gross Right Points" value={String(binaryTree?.root.rightPoints ?? '—')} />
                   <InfoRow label="Matched Points" value={String(matchedPoints)} highlight />
-                  <InfoRow label="Strong Leg Carry" value={String(strongLegCarry)} />
-                  <InfoRow label="Status" value={String(activeModule.table.rows[0]?.status ?? 'Sandbox simulation')} />
+                  <InfoRow label="Left Remaining" value={String(leftRemaining)} />
+                  <InfoRow label="Right Remaining" value={String(rightRemaining)} />
+                  <InfoRow label="Status" value={String(activeModule.table.rows[0]?.status ?? 'Active')} />
                   <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-[var(--muted-foreground)]">
                     Binary Cycle follows binary placement — spillover accounts qualify when placed on the left or right side used for pairing.
                   </div>
@@ -1667,8 +1695,8 @@ export function MemberDashboardPage() {
         {moduleId === 'salesmatch-bonus' && activeModule ? (
           <section className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <NogaStatCard icon={<BarChart3 className="size-4" />} color="amber" label="Left Points" value={String(binaryTree?.root.leftPoints ?? activeModule.table.rows[0]?.leftPoints ?? '—')} sub="left leg binary volume" />
-              <NogaStatCard icon={<BarChart3 className="size-4" />} color="blue" label="Right Points" value={String(binaryTree?.root.rightPoints ?? activeModule.table.rows[0]?.rightPoints ?? '—')} sub="right leg binary volume" />
+              <NogaStatCard icon={<BarChart3 className="size-4" />} color="amber" label="Left Remaining" value={String(leftRemaining)} sub="left leg carry forward" />
+              <NogaStatCard icon={<BarChart3 className="size-4" />} color="blue" label="Right Remaining" value={String(rightRemaining)} sub="right leg carry forward" />
               <NogaStatCard icon={<TrendingUp className="size-4" />} color="emerald" label="Matched Points" value={String(matchedPoints)} sub="paired volume this cycle" />
               <NogaStatCard icon={<Trophy className="size-4" />} color="violet" label="Strong Leg Carry" value={String(strongLegCarry)} sub="carry forward to next cycle" />
             </div>
@@ -1687,11 +1715,11 @@ export function MemberDashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <InfoRow label="Salesmatch Total" value={String(activeModule.table.rows[0]?.salesmatch ?? '—')} highlight />
-                  <InfoRow label="Left Points" value={String(binaryTree?.root.leftPoints ?? '—')} />
-                  <InfoRow label="Right Points" value={String(binaryTree?.root.rightPoints ?? '—')} />
+                  <InfoRow label="Gross Left Points" value={String(binaryTree?.root.leftPoints ?? '—')} />
+                  <InfoRow label="Gross Right Points" value={String(binaryTree?.root.rightPoints ?? '—')} />
                   <InfoRow label="Matched (Paired)" value={String(matchedPoints)} highlight />
-                  <InfoRow label="Weak Leg Carry" value={String(weakLegCarry)} />
-                  <InfoRow label="Strong Leg Carry" value={String(strongLegCarry)} />
+                  <InfoRow label="Left Remaining" value={String(leftRemaining)} />
+                  <InfoRow label="Right Remaining" value={String(rightRemaining)} />
                   <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-[var(--muted-foreground)]">
                     Salesmatch pairs your weaker leg against your stronger leg. Unmatched volume carries forward to the next cycle.
                   </div>
@@ -1708,7 +1736,7 @@ export function MemberDashboardPage() {
                   </div>
                   <InfoRow label="Package" value={String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '—')} />
                   <InfoRow label="Account Type" value={String(activeModule.table.rows[0]?.accountType ?? 'PD')} />
-                  <InfoRow label="Status" value={String(activeModule.table.rows[0]?.status ?? 'Sandbox simulation')} />
+                  <InfoRow label="Status" value={String(activeModule.table.rows[0]?.status ?? 'Active')} />
                   <ReportTableView table={activeModule.table} />
                 </CardContent>
               </Card>
@@ -2037,6 +2065,27 @@ function WalletView({
   const lifestyleStreams = walletDetail.incomeBreakdown.filter(
     (s) => s.walletType.toLowerCase() === 'lifestyle'
   );
+
+  // Shadow income breakdown — derived from ledger entries referencing shadow placements
+  const shadowLeftIncome = walletDetail.ledger
+    .filter((e) => e.creditAmount > 0 && (
+      e.sourceReference?.toLowerCase().includes('shadow_left') ||
+      e.sourceReference?.toLowerCase().includes('shadow-left') ||
+      e.sourceReference?.toLowerCase().includes('shadow left') ||
+      (e.sourceReference?.toLowerCase().includes('shadow') && e.sourceReference?.toLowerCase().includes('left'))
+    ))
+    .reduce((sum, e) => sum + e.creditAmount, 0);
+
+  const shadowRightIncome = walletDetail.ledger
+    .filter((e) => e.creditAmount > 0 && (
+      e.sourceReference?.toLowerCase().includes('shadow_right') ||
+      e.sourceReference?.toLowerCase().includes('shadow-right') ||
+      e.sourceReference?.toLowerCase().includes('shadow right') ||
+      (e.sourceReference?.toLowerCase().includes('shadow') && e.sourceReference?.toLowerCase().includes('right'))
+    ))
+    .reduce((sum, e) => sum + e.creditAmount, 0);
+
+  const hasShadowIncome = shadowLeftIncome > 0 || shadowRightIncome > 0;
   const lifestyleBalance = lifestyleStreams.reduce((sum, s) => sum + s.amount, 0);
   const lifestyleThreshold = 1000;
 
@@ -2101,6 +2150,43 @@ function WalletView({
                 )}
               </CardContent>
             </Card>
+
+            {/* Shadow Income Breakdown */}
+            {hasShadowIncome ? (
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500/15">
+                      <GitBranch className="size-4 text-amber-400" />
+                    </span>
+                    <div>
+                      <CardTitle className="text-base">Shadow Income Breakdown</CardTitle>
+                      <CardDescription className="text-xs">Binary income attributed to your shadow placements.</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2 pt-0">
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--foreground)]">Shadow Left</p>
+                      <Badge variant="outline" className="mt-1 text-[10px] uppercase tracking-widest">left leg shadow</Badge>
+                    </div>
+                    <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">{formatCurrency(shadowLeftIncome)}</p>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--foreground)]">Shadow Right</p>
+                      <Badge variant="outline" className="mt-1 text-[10px] uppercase tracking-widest">right leg shadow</Badge>
+                    </div>
+                    <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">{formatCurrency(shadowRightIncome)}</p>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+                    <p className="text-sm font-semibold text-[var(--foreground)]">Shadow Total</p>
+                    <p className="text-sm font-semibold text-amber-600 dark:text-amber-300">{formatCurrency(shadowLeftIncome + shadowRightIncome)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
           </div>
           <div className="space-y-4">
             <Card className="border-[var(--border)] bg-[var(--card)]">
@@ -2207,7 +2293,7 @@ function WalletView({
                   </p>
                 </div>
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-xs text-[var(--muted-foreground)]">
-                  <strong className="text-emerald-400">Business Rule LFR-01:</strong> Lifestyle rewards stay in a separate wallet. Reward = 3% of each product repurchase price (Perfume PHP 500 → PHP 15; Refill PHP 150 → PHP 4.50). Threshold for Classic is PHP 1,000 daily / PHP 30,000 monthly.
+                  <strong className="text-emerald-400">Business Rule LFR-01:</strong> Lifestyle rewards stay in a separate wallet. Credited from repeat-purchase product repurchases. Threshold for Classic is PHP 1,000 daily / PHP 30,000 monthly.
                 </div>
               </CardContent>
             </Card>
@@ -2242,9 +2328,9 @@ function WalletView({
               <CardContent className="space-y-3">
                 {[
                   ['Source', 'Repeat-purchase product repurchases'],
-                  ['Rate', '3% of product repurchase price'],
-                  ['Perfume', 'PHP 500 → PHP 15 reward per purchase'],
-                  ['Refill', 'PHP 150 → PHP 4.50 reward per purchase'],
+                  ['Rate', '3% of repurchase product value'],
+                  ['Perfume', 'PHP 500 per purchase'],
+                  ['Refill', 'PHP 150 per purchase (separate code)'],
                   ['Threshold (Classic)', 'PHP 1,000 daily / PHP 30,000 monthly'],
                   ['Release', 'Manual — pending admin review'],
                   ['Wallet Type', 'Separate from main encashable wallet'],
