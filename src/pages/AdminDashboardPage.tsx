@@ -85,7 +85,6 @@ const customAdminModuleIds = new Set([
   'account-genealogy',
   'finance-accounting',
   'get-five-reports',
-  'get-five-package-claims',
   'rankings',
   'global-bonus',
   'cd-accounts',
@@ -1032,7 +1031,7 @@ export function AdminDashboardPage() {
       moduleLabel={activeModule?.label ?? 'Operational Dashboard'}
       moduleDescription={
         moduleId === 'dashboard'
-          ? 'Operational dashboard.'
+          ? ''
           : activeModule?.description ??
             'Operations portal.'
       }
@@ -1044,10 +1043,7 @@ export function AdminDashboardPage() {
       loadingLabel={activeModule?.label ?? 'Loading office workspace'}
       onPrefetchModule={prefetchModule}
       summaryCard={summaryCard}
-      footerLinks={[
-        { label: 'Open public site', href: '/' },
-        { label: 'Open registration page', href: '/register' }
-      ]}
+      footerLinks={[]}
     >
       <div className="ops-admin-page space-y-6">
           {moduleId === 'dashboard' ? (
@@ -1055,7 +1051,6 @@ export function AdminDashboardPage() {
               office={office}
               mvpDashboard={mvpDashboard}
               user={user}
-              quickLinks={quickLinks}
             />
           ) : (
             <>
@@ -1883,10 +1878,6 @@ export function AdminDashboardPage() {
             <GetFiveRedeemView activeModule={activeModule} />
           ) : null}
 
-          {moduleId === 'get-five-package-claims' ? (
-            <GetFivePackageClaimsView activeModule={activeModule} />
-          ) : null}
-
           {moduleId === 'rankings' ? (
             <RankingsView activeModule={activeModule} />
           ) : null}
@@ -2018,93 +2009,149 @@ function resolveStatCardConfig(label: string) {
   return { icon: LayoutDashboard, color: '#6b7280', bg: 'rgba(107,114,128,0.12)' };
 }
 
-function AdminDashboardView({ office, mvpDashboard, user, quickLinks }: AdminDashboardViewProps) {
+type AdminStatCard = {
+  label: string;
+  sub: string;
+  icon: typeof Users;
+  color: string;
+  bg: string;
+  glow: string;
+  border: string;
+  metricKeywords: string[];
+};
+
+const ADMIN_STAT_CARDS: AdminStatCard[] = [
+  {
+    label: 'Total Accounts',
+    sub: 'All registered members',
+    icon: Users,
+    color: '#3b82f6',
+    bg: 'rgba(59,130,246,0.12)',
+    glow: '0 4px 24px 0 rgba(59,130,246,0.15)',
+    border: 'rgba(59,130,246,0.25)',
+    metricKeywords: ['total account', 'total member', 'member count'],
+  },
+  {
+    label: 'Processed Encashments',
+    sub: 'Lifetime paid out',
+    icon: Banknote,
+    color: '#10b981',
+    bg: 'rgba(16,185,129,0.12)',
+    glow: '0 4px 24px 0 rgba(16,185,129,0.15)',
+    border: 'rgba(16,185,129,0.25)',
+    metricKeywords: ['processed encash', 'paid encash', 'lifetime payout'],
+  },
+  {
+    label: 'Get Yor Five Purchases',
+    sub: 'Total purchase points',
+    icon: TrendingUp,
+    color: '#f59e0b',
+    bg: 'rgba(245,158,11,0.12)',
+    glow: '0 4px 24px 0 rgba(245,158,11,0.15)',
+    border: 'rgba(245,158,11,0.25)',
+    metricKeywords: ['five purchase', 'hi-five', 'get yor five', 'purchase point'],
+  },
+  {
+    label: 'Weekly Activations',
+    sub: 'Last 7 days',
+    icon: KeyRound,
+    color: '#8b5cf6',
+    bg: 'rgba(139,92,246,0.12)',
+    glow: '0 4px 24px 0 rgba(139,92,246,0.15)',
+    border: 'rgba(139,92,246,0.25)',
+    metricKeywords: ['weekly activation', 'activation this week', 'last 7'],
+  },
+  {
+    label: 'Pending Encashments',
+    sub: 'Awaiting processing',
+    icon: AlertCircle,
+    color: '#f97316',
+    bg: 'rgba(249,115,22,0.12)',
+    glow: '0 4px 24px 0 rgba(249,115,22,0.15)',
+    border: 'rgba(249,115,22,0.25)',
+    metricKeywords: ['pending encash', 'encash queue', 'awaiting'],
+  },
+  {
+    label: 'Active CD Accounts',
+    sub: 'Still paying CD',
+    icon: FileText,
+    color: '#06b6d4',
+    bg: 'rgba(6,182,212,0.12)',
+    glow: '0 4px 24px 0 rgba(6,182,212,0.15)',
+    border: 'rgba(6,182,212,0.25)',
+    metricKeywords: ['cd account', 'active cd', 'paying cd'],
+  },
+  {
+    label: 'Monthly Registrations',
+    sub: 'This calendar month',
+    icon: Eye,
+    color: '#ec4899',
+    bg: 'rgba(236,72,153,0.12)',
+    glow: '0 4px 24px 0 rgba(236,72,153,0.15)',
+    border: 'rgba(236,72,153,0.25)',
+    metricKeywords: ['monthly reg', 'registration this month', 'new account'],
+  },
+];
+
+function resolveAdminStatValue(cardCfg: AdminStatCard, metrics: AdminOfficeData['metrics']): string {
+  const lower = (s: string) => s.toLowerCase();
+  for (const metric of metrics) {
+    if (cardCfg.metricKeywords.some((kw) => lower(metric.label).includes(kw))) {
+      return metric.value;
+    }
+  }
+  return '—';
+}
+
+function AdminDashboardView({ office, mvpDashboard, user }: Omit<AdminDashboardViewProps, 'quickLinks'>) {
   const metrics = office?.metrics ?? [];
-  const notices = office?.notices ?? [];
   const displayName = user?.name ?? office?.profile.officeTitle ?? 'Admin';
 
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
       <div className="admin-dash-welcome rounded-2xl border border-[var(--border)] bg-gradient-to-r from-[var(--card)] to-[var(--background)] px-6 py-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
-              {office?.profile.officeTitle ?? 'Admin Office'}
-            </p>
-            <h2 className="mt-1 text-xl font-semibold text-[var(--foreground)]">
-              Welcome back, {displayName}
-            </h2>
-            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-              Here's your system overview.
-            </p>
-          </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+            {office?.profile.officeTitle ?? 'Admin Office'}
+          </p>
+          <h2 className="mt-1 text-xl font-semibold text-[var(--foreground)]">
+            Welcome back, {displayName}
+          </h2>
         </div>
       </div>
 
-      {/* Stat Cards Grid */}
-      {metrics.length > 0 && (
-        <section>
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Overview</p>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {metrics.map((metric) => {
-              const cfg = resolveStatCardConfig(metric.label);
-              const Icon = cfg.icon;
-              return (
-                <div
-                  key={metric.label}
-                  className="admin-stat-card group flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 transition-shadow hover:shadow-md"
-                >
-                  <span
-                    className="admin-stat-icon flex size-11 shrink-0 items-center justify-center rounded-xl"
-                    style={{ background: cfg.bg }}
-                  >
-                    <Icon className="size-5" style={{ color: cfg.color }} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
-                      {metric.label}
-                    </p>
-                    <p className="mt-0.5 truncate text-xl font-semibold text-[var(--foreground)]">
-                      {metric.value}
-                    </p>
-                    {metric.detail ? (
-                      <p className="mt-0.5 truncate text-xs text-[var(--muted-foreground)]">{metric.detail}</p>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Quick Access Links */}
+      {/* 7-card Nogatu-style stat grid */}
       <section>
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Quick Access</p>
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Overview</p>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {resolvedQuickLinks(quickLinks).map((link) => {
-            const Icon = link.icon;
+          {ADMIN_STAT_CARDS.map((card) => {
+            const Icon = card.icon;
+            const value = resolveAdminStatValue(card, metrics);
             return (
-              <Link
-                key={link.href}
-                to={link.href}
-                className="admin-quick-link group flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 transition-colors hover:border-[var(--ring)] hover:bg-[var(--accent)]"
+              <div
+                key={card.label}
+                className="admin-stat-card group relative overflow-hidden flex items-center gap-4 rounded-2xl border bg-[var(--card)] px-5 py-4 transition-all hover:scale-[1.015] hover:shadow-xl"
+                style={{ borderColor: card.border, boxShadow: `0 2px 12px 0 ${card.glow.split('0 4px')[1]?.trim() ?? 'transparent'}` }}
               >
-                <div>
-                  <span
-                    className="mb-3 flex size-10 items-center justify-center rounded-xl"
-                    style={{ background: link.iconBg }}
-                  >
-                    <Icon className="size-5" style={{ color: link.iconColor }} />
-                  </span>
-                  <p className="text-sm font-semibold text-[var(--foreground)]">{link.title}</p>
-                  <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">{link.body}</p>
+                {/* Top glow line */}
+                <div className="absolute inset-x-0 top-0 h-px opacity-60" style={{ background: `linear-gradient(to right, transparent, ${card.color}, transparent)` }} />
+                <span
+                  className="flex size-12 shrink-0 items-center justify-center rounded-xl shadow-sm"
+                  style={{ background: card.bg }}
+                >
+                  <Icon className="size-5" style={{ color: card.color }} />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+                    {card.label}
+                  </p>
+                  <p className="mt-0.5 truncate text-xl font-bold" style={{ color: card.color }}>
+                    {value}
+                  </p>
+                  <p className="mt-0.5 truncate text-[10px] text-[var(--muted-foreground)]">{card.sub}</p>
                 </div>
-                <div className="mt-4 flex items-center gap-1 text-xs font-medium text-[var(--muted-foreground)] group-hover:text-[var(--foreground)]">
-                  Open <ArrowRight className="size-3" />
-                </div>
-              </Link>
+              </div>
             );
           })}
         </div>
@@ -2290,12 +2337,15 @@ function GetFiveRedeemView({ activeModule }: ModuleViewProps) {
     <section className="space-y-5">
       <Card className="border-[var(--border)] bg-[var(--card)]">
         <CardHeader>
-          <CardTitle>Get Yor Five Redeem Management</CardTitle>
+          <CardTitle>Get Yor Five — Bonus Report</CardTitle>
           <CardDescription>
-            {activeModule?.description ?? 'Track and process redeem requests for Get Yor Five qualification bonuses.'}
+            Qualification bonuses are posted automatically when the system detects 5 same-package direct referrals. No manual action required.
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">
+            Payouts are system-automated — qualifying groups are credited to the member wallet without admin intervention.
+          </div>
           <div className="flex flex-wrap items-end gap-3">
             <label className="grid gap-1.5 text-sm">
               <span className="font-medium text-[var(--muted-foreground)]">Start Date</span>
@@ -2313,170 +2363,44 @@ function GetFiveRedeemView({ activeModule }: ModuleViewProps) {
 
       <Card className="border-[var(--border)] bg-[var(--card)]">
         <CardHeader>
-          <CardTitle>Redeem Records</CardTitle>
+          <CardTitle>Bonus Records</CardTitle>
+          <CardDescription className="text-xs">Read-only log of all automatically credited Get Yor Five bonuses.</CardDescription>
         </CardHeader>
         <CardContent>
           {rows.length === 0 ? (
-            <ModuleEmptyState message="No redeem records found." />
+            <ModuleEmptyState message="No bonus records yet." />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-              <table className="w-full min-w-[860px] text-sm">
+              <table className="w-full min-w-[760px] text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
                     <th className="px-4 py-3">Name</th>
                     <th className="px-4 py-3">Username</th>
-                    <th className="px-4 py-3">Product</th>
+                    <th className="px-4 py-3">Package</th>
                     <th className="px-4 py-3">Bonus</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3">Date</th>
-                    <th className="px-4 py-3">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row, i) => {
                     const status = String(row['status'] ?? row['Status'] ?? '');
-                    const isPending = /pending/i.test(status);
-                    const isRedeemed = /redeem/i.test(status);
+                    const isPosted = /posted|credited|auto/i.test(status);
                     return (
                       <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
                         <td className="px-4 py-3 text-[var(--foreground)]">{String(row['name'] ?? row['Name'] ?? '—')}</td>
                         <td className="px-4 py-3 font-mono text-[var(--muted-foreground)]">{String(row['username'] ?? row['Username'] ?? '—')}</td>
-                        <td className="px-4 py-3">{String(row['product'] ?? row['Product'] ?? '—')}</td>
-                        <td className="px-4 py-3 text-amber-500">{String(row['bonus'] ?? row['Bonus'] ?? '—')}</td>
+                        <td className="px-4 py-3">{String(row['product'] ?? row['Product'] ?? row['package'] ?? row['Package'] ?? '—')}</td>
+                        <td className="px-4 py-3 font-semibold text-amber-600 dark:text-amber-400">{String(row['bonus'] ?? row['Bonus'] ?? row['total'] ?? '—')}</td>
                         <td className="px-4 py-3">
                           <Badge
                             variant="outline"
-                            className={isPending ? 'border-amber-500/40 bg-amber-500/10 text-amber-400' : isRedeemed ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : undefined}
+                            className={isPosted ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-[var(--border)]'}
                           >
-                            {status || '—'}
+                            {status || 'auto-credited'}
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['date'] ?? row['Date'] ?? '—')}</td>
-                        <td className="px-4 py-3">
-                          <Button type="button" size="sm" variant="outline" className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10">
-                            Mark Redeemed
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </section>
-  );
-}
-
-// ─── 3. Get Five Package Claims View ─────────────────────────────────────────
-
-function GetFivePackageClaimsView({ activeModule }: ModuleViewProps) {
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [packageFilter, setPackageFilter] = useState('all');
-  const rows = activeModule?.table?.rows ?? [];
-
-  return (
-    <section className="space-y-5">
-      <Card className="border-[var(--border)] bg-[var(--card)]">
-        <CardHeader>
-          <CardTitle>Get Yor Five Package Claims</CardTitle>
-          <CardDescription>
-            {activeModule?.description ?? 'Review and process package claim requests submitted by qualified Get Yor Five members.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium text-[var(--muted-foreground)]">Status</span>
-              <select className={SELECT_CLASS + ' w-44'} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="all">All</option>
-                <option value="pending">Pending Review</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-              </select>
-            </label>
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium text-[var(--muted-foreground)]">Start Date</span>
-              <Input type="date" className="w-44" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            </label>
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium text-[var(--muted-foreground)]">End Date</span>
-              <Input type="date" className="w-44" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            </label>
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium text-[var(--muted-foreground)]">Package</span>
-              <select className={SELECT_CLASS + ' w-44'} value={packageFilter} onChange={(e) => setPackageFilter(e.target.value)}>
-                <option value="all">All Packages</option>
-                <option value="basic">Basic</option>
-                <option value="classic">Classic</option>
-                <option value="standard">Standard</option>
-                <option value="business">Business</option>
-                <option value="vip">VIP</option>
-              </select>
-            </label>
-            <Button type="button" variant="outline">Filter</Button>
-            <Button type="button" variant="outline" onClick={() => { setStatusFilter('all'); setStartDate(''); setEndDate(''); setPackageFilter('all'); }}>Clear</Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-[var(--border)] bg-[var(--card)]">
-        <CardHeader>
-          <CardTitle>Package Claim Queue</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {rows.length === 0 ? (
-            <ModuleEmptyState message="No package claims found." />
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-              <table className="w-full min-w-[1200px] text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
-                    <th className="px-4 py-3">Member</th>
-                    <th className="px-4 py-3">Username</th>
-                    <th className="px-4 py-3">Package</th>
-                    <th className="px-4 py-3">Qty</th>
-                    <th className="px-4 py-3">Per Claim</th>
-                    <th className="px-4 py-3">Total</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Submitted</th>
-                    <th className="px-4 py-3">Notes</th>
-                    <th className="px-4 py-3">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, i) => {
-                    const status = String(row['status'] ?? row['Status'] ?? '');
-                    const isPending = /pending/i.test(status);
-                    const isApproved = /approved/i.test(status);
-                    return (
-                      <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
-                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">{String(row['member'] ?? row['Member'] ?? '—')}</td>
-                        <td className="px-4 py-3 font-mono text-[var(--muted-foreground)]">{String(row['username'] ?? row['Username'] ?? '—')}</td>
-                        <td className="px-4 py-3">{String(row['package'] ?? row['Package'] ?? '—')}</td>
-                        <td className="px-4 py-3">{String(row['qty'] ?? row['Qty'] ?? '—')}</td>
-                        <td className="px-4 py-3">{String(row['perClaim'] ?? row['per_claim'] ?? '—')}</td>
-                        <td className="px-4 py-3 text-amber-500">{String(row['total'] ?? row['Total'] ?? '—')}</td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            variant="outline"
-                            className={isPending ? 'border-amber-500/40 bg-amber-500/10 text-amber-400' : isApproved ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : undefined}
-                          >
-                            {status || '—'}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['submitted'] ?? row['Submitted'] ?? '—')}</td>
-                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['notes'] ?? row['Notes'] ?? '—')}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <Button type="button" size="sm" variant="outline" className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10">Approve</Button>
-                            <Button type="button" size="sm" variant="outline">Reject</Button>
-                          </div>
-                        </td>
                       </tr>
                     );
                   })}

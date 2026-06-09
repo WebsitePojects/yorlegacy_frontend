@@ -81,10 +81,7 @@ function officeLabelForBasePath(basePath: OfficeBasePath): string {
 
 function workspaceLinksForRole(role: AppRole | undefined): WorkspaceLink[] {
   if (role === 'member') {
-    return [
-      { href: '/member', label: 'Member' },
-      { href: '/', label: 'Public Site' }
-    ];
+    return [];
   }
 
   if (role === 'cashier') {
@@ -217,19 +214,21 @@ export function ProtectedOfficeFrame({
         </div>
 
         <div className="ops-shell-header-actions flex flex-wrap items-center justify-end gap-3">
-          <nav className="hidden flex-wrap items-center gap-2 lg:flex">
-            {workspaceLinks.map((link) => (
-              <Button
-                key={link.href}
-                asChild
-                variant={location.pathname.startsWith(link.href) && link.href !== '/' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-9 rounded-lg"
-              >
-                <NavLink to={link.href}>{link.label}</NavLink>
-              </Button>
-            ))}
-          </nav>
+          {workspaceLinks.length ? (
+            <nav className="hidden flex-wrap items-center gap-2 lg:flex">
+              {workspaceLinks.map((link) => (
+                <Button
+                  key={link.href}
+                  asChild
+                  variant={location.pathname.startsWith(link.href) && link.href !== '/' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-9 rounded-lg"
+                >
+                  <NavLink to={link.href}>{link.label}</NavLink>
+                </Button>
+              ))}
+            </nav>
+          ) : null}
 
           <div className="ops-shell-header-tools flex items-center gap-3">
             <div className="ops-shell-theme-toggle">

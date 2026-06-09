@@ -112,8 +112,8 @@ export function OfficeSidebar({
                         onMouseEnter={() => onPrefetchModule?.(module.id)}
                         onFocus={() => onPrefetchModule?.(module.id)}
                       >
-                        <div className="flex items-start gap-3">
-                          <span className="ops-sidebar-item-icon mt-0.5">{renderIcon(getModuleIcon(module.id), 'size-4')}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="ops-sidebar-item-icon shrink-0">{renderIcon(getModuleIcon(module.id), 'size-4')}</span>
                           <span className="ops-sidebar-link-text flex-1 whitespace-normal break-words text-sm font-medium leading-5 text-[var(--foreground)]">
                             {module.label}
                           </span>
@@ -146,14 +146,12 @@ export function OfficeSidebar({
             <>
               <Separator className="my-4" />
               <button
-                className="group flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm text-[var(--muted-foreground)] transition-all hover:border-red-500/20 hover:bg-red-500/8 hover:text-red-400"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-sm font-semibold text-red-400 transition-all hover:border-red-500/60 hover:bg-red-500/20 hover:text-red-300 active:scale-95"
                 type="button"
                 onClick={onSignOut}
               >
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] transition-colors group-hover:bg-red-500/15">
-                  <LogOut className="size-3.5 transition-colors group-hover:text-red-400" />
-                </span>
-                <span className="font-medium">Sign Out</span>
+                <LogOut className="size-4" />
+                <span>Sign Out</span>
               </button>
             </>
           ) : null}

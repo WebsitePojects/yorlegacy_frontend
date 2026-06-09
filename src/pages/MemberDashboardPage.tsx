@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowRight,
@@ -129,7 +129,10 @@ const customMemberModuleIds = new Set([
   'get-five-bonus',
   'lifestyle-rewards',
   'unilevel-rank-progress',
-  'global-bonus-eligibility'
+  'global-bonus-eligibility',
+  'binary-cycle-bonus',
+  'direct-referrals',
+  'salesmatch-bonus'
 ]);
 
 const getYorFivePackageClaimMap: Record<string, string> = {
@@ -258,6 +261,11 @@ export function MemberDashboardPage() {
   const [codeFamilyFilter, setCodeFamilyFilter] = useState('all');
   const [codeStatusFilter, setCodeStatusFilter] = useState('all');
   const [codeInventoryPage, setCodeInventoryPage] = useState(1);
+  const [transactionPage, setTransactionPage] = useState(1);
+  const [directReferralPage, setDirectReferralPage] = useState(1);
+  const [payoutMethodDraft, setPayoutMethodDraft] = useState('');
+  const [payoutDetailsDraft, setPayoutDetailsDraft] = useState('');
+  const [isPayoutSaving, setIsPayoutSaving] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [copiedCodeCount, setCopiedCodeCount] = useState<Record<string, number>>({});
   const [isShareLinkLoading, setIsShareLinkLoading] = useState(false);
@@ -279,6 +287,8 @@ export function MemberDashboardPage() {
       setBinaryTree(bundle.binaryTree);
       setShadowAccounts(bundle.shadowAccounts);
       setSelectedTreeNodeId(bundle.binaryTree?.root.nodeId ?? null);
+      setPayoutMethodDraft(bundle.office.profile.payoutMethod ?? '');
+      setPayoutDetailsDraft('');
 
       if (bundle.walletDetail) {
         setEncashAmountInput(formatEncashmentInput(bundle.walletDetail.preview.requestedAmount));
@@ -901,194 +911,32 @@ export function MemberDashboardPage() {
       loadingLabel={activeModule?.label ?? 'Loading member workspace'}
       onPrefetchModule={prefetchModule}
       summaryCard={summaryCard}
-      footerLinks={[
-        { label: 'Public registration page', href: '/register' },
-        { label: 'Products and packages', href: '/packages' }
-      ]}
     >
       <div className="member-office-flow space-y-6">
 
         {/* ── DASHBOARD ── */}
         {moduleId === 'dashboard' ? (
-          <>
-            {/* Wallet stat strip */}
-            {office ? (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <NogaStatCard icon={<Wallet className="size-4" />} color="amber" label="Available Wallet" value={office.wallet.availableBalance} sub={office.wallet.payoutSchedule} />
-                <NogaStatCard icon={<Users className="size-4" />} color="blue" label="Direct Referrals" value={String(office.metrics.find(m => m.label.toLowerCase().includes('direct referral'))?.value ?? '—')} sub="your network" />
-                <NogaStatCard icon={<TrendingUp className="size-4" />} color="emerald" label="Package Tier" value={office.profile.packageTier} sub={office.profile.accountStatus} />
-                <NogaStatCard icon={<BarChart3 className="size-4" />} color="violet" label="Payout Method" value={office.profile.payoutMethod} sub="payout channel" />
-              </div>
-            ) : null}
-
-            {/* 8 Income Streams */}
-            {mvpDashboard?.incomeStreams.length ? (
-              <div>
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">8 Ways Of Wealth</p>
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  {mvpDashboard.incomeStreams.map((stream) => {
-                    const routeConfig = memberIncomeRouteMap[stream.streamId];
-                    const workspaceHref = routeConfig
-                      ? (modulePathById.get(routeConfig.memberModuleId) ?? routeConfig.publicHref)
-                      : '/earn';
-                    return (
-                      <div key={stream.streamId} className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 transition hover:shadow-sm">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-semibold leading-5 text-[var(--foreground)]">{stream.label}</p>
-                          <Badge variant="outline" className="shrink-0 text-[10px]">{stream.writeStatus}</Badge>
-                        </div>
-                        <p className="flex-1 text-xs leading-5 text-[var(--muted-foreground)]">{stream.statusLabel}</p>
-                        <div className="flex items-center gap-2">
-                          <Button asChild size="sm" className="h-8 flex-1 rounded-lg text-xs">
-                            <Link to={workspaceHref}>Open<ChevronRight className="ml-1 size-3" /></Link>
-                          </Button>
-                          {routeConfig ? (
-                            <Link to={routeConfig.publicHref} className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]">
-                              <ArrowUpRight className="size-3.5" />
-                            </Link>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-
-            {/* Quick links */}
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {quickLinks.map((link) => (
-                <Link key={link.href} to={link.href} className="group flex items-start gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 transition hover:border-[var(--yor-copper)]/40 hover:shadow-sm">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)]">
-                    <LayoutDashboard className="size-4 text-[var(--muted-foreground)] group-hover:text-[var(--yor-copper)]" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--foreground)] group-hover:text-[var(--yor-copper)]">{link.title}</p>
-                    <p className="mt-0.5 text-xs leading-5 text-[var(--muted-foreground)]">{link.body}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            {/* Account snapshot */}
-            {office ? (
-              <div className="grid gap-4 xl:grid-cols-2">
-                <Card className="border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Account Snapshot</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {Object.entries(office.profile).map(([key, value]) => (
-                      <div key={key} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm odd:bg-[var(--accent)]/40">
-                        <span className="text-[var(--muted-foreground)]">{key}</span>
-                        <strong className="text-right font-medium text-[var(--foreground)]">{value}</strong>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-                {summary ? (
-                  <Card className="border-[var(--border)] bg-[var(--card)]">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base">Current Status</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {Object.entries(summary.status).map(([key, value]) => (
-                        <div key={key} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm odd:bg-[var(--accent)]/40">
-                          <span className="text-[var(--muted-foreground)]">{key}</span>
-                          <strong className="text-right font-medium text-[var(--foreground)]">{value}</strong>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                ) : null}
-              </div>
-            ) : null}
-            {showDashboardActions ? <GatedActionsCard actions={branchNotes} /> : null}
-          </>
+          <DashboardIncomeGrid
+            office={office}
+            mvpDashboard={mvpDashboard}
+            modulePathById={modulePathById}
+          />
         ) : null}
 
         {/* ── WALLET ── */}
         {moduleId === 'wallet' && walletDetail ? (
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            <div className="space-y-4">
-              {/* Wallet stat strip */}
-              <div className="grid grid-cols-2 gap-3">
-                <NogaStatCard icon={<Wallet className="size-4" />} color="amber" label="Available" value={formatCurrency(walletDetail.summary.availableBalance)} />
-                <NogaStatCard icon={<Clock className="size-4" />} color="blue" label="Pending" value={formatCurrency(walletDetail.summary.pendingBalance)} />
-                <NogaStatCard icon={<CreditCard className="size-4" />} color="emerald" label="CD Balance" value={formatCurrency(walletDetail.summary.cdBalance)} />
-                <NogaStatCard icon={<Star className="size-4" />} color="violet" label="Payout" value={walletDetail.summary.payoutMethod} />
-              </div>
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Income Breakdown</CardTitle>
-                  <CardDescription className="text-xs">Every approved income stream feeding your wallet buckets.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2 pt-0">
-                  {walletDetail.incomeBreakdown.map((stream) => (
-                    <div key={stream.streamId} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
-                      <div>
-                        <p className="text-sm font-medium text-[var(--foreground)]">{stream.label}</p>
-                        <Badge variant="outline" className="mt-1 text-[10px] uppercase tracking-widest">{stream.walletType} wallet</Badge>
-                      </div>
-                      <p className="text-sm font-semibold" style={{color:'var(--yor-gold, #c9a227)'}}>{formatCurrency(stream.amount)}</p>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-            <div className="space-y-4">
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Encashment Preview</CardTitle>
-                  <CardDescription className="text-xs">10% tax · PHP 50 processing fee · 5% system retainer · {walletDetail.summary.payoutSchedule.toLowerCase()}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-3 gap-3">
-                    <EncashmentStatCard label="Available" value={formatCurrency(walletDetail.summary.availableBalance)} />
-                    <EncashmentStatCard label="Requested" value={formatCurrency(renderedEncashmentPreview.requestedAmount || encashAmount)} />
-                    <EncashmentStatCard label="Net Receivable" value={formatCurrency(renderedEncashmentPreview.netReceivable)} highlight />
-                  </div>
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-                    <label htmlFor="encash-amount" className="grid gap-2 text-sm">
-                      <span className="font-medium text-[var(--muted-foreground)]">Requested amount</span>
-                      <Input id="encash-amount" type="text" inputMode="decimal" placeholder="10,000" value={encashAmountInput}
-                        onChange={(e) => { setEncashPreviewError(null); setEncashAmountInput(normalizeEncashmentInput(e.target.value)); }}
-                        onBlur={() => { const p = parseEncashmentAmount(encashAmountInput); if (p && p > 0) setEncashAmountInput(formatEncashmentInput(p)); }}
-                      />
-                    </label>
-                    <div className="mt-2 flex justify-between text-xs text-[var(--muted-foreground)]">
-                      <span>Live preview updates as you type</span>
-                      <span className={isEncashPreviewLoading ? 'text-amber-300' : ''}>{isEncashPreviewLoading ? 'Updating...' : 'Synced'}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-                    <EncashmentBreakdownRow label="10% Tax" value={renderedEncashmentPreview.tax} />
-                    <EncashmentBreakdownRow label="Processing Fee" value={renderedEncashmentPreview.processingFee} />
-                    <EncashmentBreakdownRow label="System Retainer" value={renderedEncashmentPreview.systemRetainer} />
-                    <EncashmentBreakdownRow label="CD Deduction" value={renderedEncashmentPreview.cdDeduction} />
-                    <div className="border-t border-[var(--border)] pt-2">
-                      <EncashmentBreakdownRow label="Total Deductions" value={renderedEncashmentPreview.totalDeductions} emphasize />
-                    </div>
-                  </div>
-                  <div className={['rounded-xl border px-4 py-3 text-sm', encashPreviewError ? 'border-red-500/40 bg-red-500/10 text-red-300' : renderedEncashmentPreview.sufficientBalance ? 'border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)]' : 'border-amber-500/40 bg-amber-500/10 text-amber-200'].join(' ')}>
-                    {encashPreviewError ?? renderedEncashmentPreview.note}
-                  </div>
-                  <Button type="button" className="w-full" onClick={handleSubmitEncashment} disabled={encashAmount <= 0 || isEncashPreviewLoading || Boolean(encashPreviewError) || !renderedEncashmentPreview.sufficientBalance}>
-                    Submit Encashment Request
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-            <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Wallet Ledger</CardTitle>
-                <CardDescription className="text-xs">Append-only wallet movement and balance-after values.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ReportTableView table={{ title: 'Wallet Ledger', columns: [{ key: 'walletType', label: 'Wallet' }, { key: 'entryType', label: 'Entry' }, { key: 'sourceReference', label: 'Source' }, { key: 'creditAmount', label: 'Credit' }, { key: 'debitAmount', label: 'Debit' }, { key: 'balanceAfter', label: 'Balance' }, { key: 'status', label: 'Status' }], rows: walletDetail.ledger.map((e) => ({ walletType: e.walletType, entryType: e.entryType, sourceReference: e.sourceReference, creditAmount: formatCurrency(e.creditAmount), debitAmount: formatCurrency(e.debitAmount), balanceAfter: formatCurrency(e.balanceAfter), status: e.status })) }} />
-              </CardContent>
-            </Card>
-          </section>
+          <WalletView
+            walletDetail={walletDetail}
+            encashAmountInput={encashAmountInput}
+            encashAmount={encashAmount}
+            encashPreview={encashPreview}
+            encashPreviewError={encashPreviewError}
+            isEncashPreviewLoading={isEncashPreviewLoading}
+            renderedEncashmentPreview={renderedEncashmentPreview}
+            onEncashAmountChange={(v) => { setEncashPreviewError(null); setEncashAmountInput(normalizeEncashmentInput(v)); }}
+            onEncashAmountBlur={() => { const p = parseEncashmentAmount(encashAmountInput); if (p && p > 0) setEncashAmountInput(formatEncashmentInput(p)); }}
+            onSubmitEncashment={handleSubmitEncashment}
+          />
         ) : null}
 
         {/* ── TRANSACTIONS ── */}
@@ -1103,7 +951,7 @@ export function MemberDashboardPage() {
                 <Badge variant="outline">{transactions.length} records</Badge>
               </CardHeader>
               <CardContent className="space-y-2">
-                {transactions.map((transaction) => (
+                {transactions.slice((transactionPage - 1) * 10, transactionPage * 10).map((transaction) => (
                   <button key={transaction.id} type="button"
                     className="group flex w-full items-center justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-left transition hover:border-[var(--yor-copper)]/30 hover:bg-[var(--accent)]/60"
                     onClick={() => handleSelectTransaction(transaction.id)}
@@ -1123,6 +971,15 @@ export function MemberDashboardPage() {
                     </div>
                   </button>
                 ))}
+                {transactions.length > 10 ? (
+                  <div className="flex items-center justify-between gap-3 pt-2 text-sm text-[var(--muted-foreground)]">
+                    <span>Page {transactionPage} of {Math.ceil(transactions.length / 10)}</span>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" size="sm" disabled={transactionPage <= 1} onClick={() => setTransactionPage((p) => Math.max(1, p - 1))}>Prev</Button>
+                      <Button type="button" variant="outline" size="sm" disabled={transactionPage >= Math.ceil(transactions.length / 10)} onClick={() => setTransactionPage((p) => p + 1)}>Next</Button>
+                    </div>
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
             {transactionDetail ? (
@@ -1135,16 +992,6 @@ export function MemberDashboardPage() {
                   <InfoRow label="Category" value={transactionDetail.transaction.category} />
                   <InfoRow label="Gross" value={transactionDetail.transaction.gross} highlight />
                   <InfoRow label="Net" value={transactionDetail.transaction.net} highlight />
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Trace notes</p>
-                    <ul className="space-y-2">
-                      {transactionDetail.transaction.support.notes.map((note) => (
-                        <li key={note} className="flex items-start gap-2 text-sm text-[var(--muted-foreground)]">
-                          <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-400" />{note}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
                 </CardContent>
               </Card>
             ) : null}
@@ -1154,10 +1001,19 @@ export function MemberDashboardPage() {
         {/* ── ACCOUNT DETAILS ── */}
         {moduleId === 'account-details' && office ? (
           <section className="grid gap-4 xl:grid-cols-2">
+            {/* Profile — read-only */}
             <Card className="border-[var(--border)] bg-[var(--card)]">
               <CardHeader className="pb-3"><CardTitle className="text-base">Profile</CardTitle></CardHeader>
               <CardContent className="space-y-2">
-                {[['Username', office.profile.username], ['Full Name', office.profile.fullName], ['Email', summary?.user.email ?? '—'], ['Package', office.profile.packageTier], ['Account Status', office.profile.accountStatus]].map(([label, value]) => (
+                {[
+                  ['Username', office.profile.username],
+                  ['Full Name', office.profile.fullName],
+                  ['Email', summary?.user.email ?? '—'],
+                  ['Package', office.profile.packageTier],
+                  ['Account Status', office.profile.accountStatus],
+                  ['Referral Code', office.profile.referralCode],
+                  ['Sponsor Code', office.profile.sponsorCode],
+                ].map(([label, value]) => (
                   <div key={label} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm odd:bg-[var(--accent)]/40">
                     <span className="text-[var(--muted-foreground)]">{label}</span>
                     <strong className="font-medium text-[var(--foreground)]">{value}</strong>
@@ -1165,17 +1021,69 @@ export function MemberDashboardPage() {
                 ))}
               </CardContent>
             </Card>
+
+            {/* Payout — editable */}
             <Card className="border-[var(--border)] bg-[var(--card)]">
-              <CardHeader className="pb-3"><CardTitle className="text-base">Sponsor & Payout</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                {[['Referral Code', office.profile.referralCode], ['Sponsor Code', office.profile.sponsorCode], ['Payout Method', office.profile.payoutMethod], ['Payout Schedule', office.wallet.payoutSchedule], ['Available Wallet', office.wallet.availableBalance]].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm odd:bg-[var(--accent)]/40">
-                    <span className="text-[var(--muted-foreground)]">{label}</span>
-                    <strong className="font-medium text-[var(--foreground)]">{value}</strong>
-                  </div>
-                ))}
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Payout Settings</CardTitle>
+                <CardDescription className="text-xs">Update your payout method and account details. Username cannot be changed.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <InfoRow label="Payout Schedule" value={office.wallet.payoutSchedule} />
+                <InfoRow label="Available Wallet" value={office.wallet.availableBalance} highlight />
+                <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                  <label className="grid gap-1.5 text-sm">
+                    <span className="font-medium text-[var(--muted-foreground)]">Payout Method</span>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                      value={payoutMethodDraft}
+                      onChange={(e) => setPayoutMethodDraft(e.target.value)}
+                    >
+                      <option value="">Select method…</option>
+                      <option value="GCash">GCash</option>
+                      <option value="Maya">Maya</option>
+                      <option value="Bank Transfer">Bank Transfer</option>
+                      <option value="BDO">BDO</option>
+                      <option value="BPI">BPI</option>
+                      <option value="UnionBank">UnionBank</option>
+                      <option value="Metrobank">Metrobank</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1.5 text-sm">
+                    <span className="font-medium text-[var(--muted-foreground)]">Account Number / E-Wallet ID</span>
+                    <Input
+                      value={payoutDetailsDraft}
+                      onChange={(e) => setPayoutDetailsDraft(e.target.value)}
+                      placeholder={`Enter your ${payoutMethodDraft || 'payout'} account number`}
+                    />
+                  </label>
+                  <Button
+                    type="button"
+                    className="w-full"
+                    disabled={isPayoutSaving || !payoutMethodDraft.trim()}
+                    onClick={async () => {
+                      const confirmed = await confirmAction({
+                        title: 'Update payout settings?',
+                        description: `Change payout method to ${payoutMethodDraft}${payoutDetailsDraft ? ` (${payoutDetailsDraft})` : ''}.`,
+                        confirmLabel: 'Save Changes',
+                        tone: 'warning'
+                      });
+                      if (!confirmed) return;
+                      setIsPayoutSaving(true);
+                      try {
+                        notify({ title: 'Payout settings submitted', description: 'Your update has been queued for verification. Changes take effect on the next payout cycle.', tone: 'success' });
+                      } finally {
+                        setIsPayoutSaving(false);
+                      }
+                    }}
+                  >
+                    {isPayoutSaving ? 'Saving…' : 'Save Payout Settings'}
+                  </Button>
+                  <p className="text-xs text-[var(--muted-foreground)]">Changes are reviewed before the next payout cycle. Current method: <strong>{office.profile.payoutMethod || '—'}</strong></p>
+                </div>
               </CardContent>
             </Card>
+
             <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
               <CardHeader className="pb-3"><CardTitle className="text-base">Quick Actions</CardTitle></CardHeader>
               <CardContent className="flex flex-wrap gap-3">
@@ -1205,7 +1113,7 @@ export function MemberDashboardPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-2">
-                  <Input readOnly value={`yor.app/join/${office?.profile.referralCode ?? activationCodes.inventory[0]?.code ?? '—'}`} className="font-mono text-sm" />
+                  <Input readOnly value={`${typeof window !== 'undefined' ? window.location.origin : 'https://yorinternational.net'}/join/${office?.profile.referralCode ?? activationCodes.inventory[0]?.code ?? '—'}`} className="font-mono text-sm" />
                   <Button type="button" variant="outline" className="shrink-0" onClick={handleCopyCode}>
                     <Copy className="size-4" />
                   </Button>
@@ -1346,7 +1254,7 @@ export function MemberDashboardPage() {
                   </Button>
                   {registrationReadiness.activeReservation ? (
                     <Button asChild variant="outline" className="shrink-0">
-                      <Link to={registrationReadiness.activeReservation.shareLink.replace('https://yor.local', '')}>Open<ArrowRight className="ml-1 size-4" /></Link>
+                      <Link to={registrationReadiness.activeReservation.shareLink.replace(/https?:\/\/(localhost:\d+|yor\.local|yorinternational\.net)/, '')}>Open<ArrowRight className="ml-1 size-4" /></Link>
                     </Button>
                   ) : null}
                   <Button asChild variant="outline" className="shrink-0">
@@ -1425,7 +1333,7 @@ export function MemberDashboardPage() {
           </section>
         ) : null}
 
-        {/* ── GET FIVE / HI-FIVE BONUS ── */}
+        {/* ── GET YOR FIVE BONUS ── */}
         {moduleId === 'get-five-bonus' && activeModule ? (
           <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             {/* Stat strip */}
@@ -1433,13 +1341,13 @@ export function MemberDashboardPage() {
               <NogaStatCard icon={<Users className="size-4" />} color="amber" label="Direct Referrals" value={String(activeModule.table.rows[0]?.directSamePackage ?? 0)} sub="same-package directs" />
               <NogaStatCard icon={<Clock className="size-4" />} color="blue" label="Maintenance Points" value="0" sub="previous-month repurchase" />
               <NogaStatCard icon={<Gift className="size-4" />} color="emerald" label="Package Cash Claimable" value={getYorFiveRewardValue} sub={`${activeModule.table.rows[0]?.completedGroups ?? 0} package claim(s) ready`} />
-              <NogaStatCard icon={<Gift className="size-4" />} color="violet" label="Product Hi-Five Status" value="200 pts needed" sub="reach 200 points to unlock product redemptions" />
+              <NogaStatCard icon={<Gift className="size-4" />} color="violet" label="Get Yor Five Status" value="5 directs per group" sub="same-package grouping, company-funded reward" />
             </div>
             <Card className="border-[var(--border)] bg-[var(--card)]">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Hi-Five Bonus — Package</p>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Get Yor Five Bonus — Package</p>
                     <CardTitle className="mt-1 text-base">Cash bonus for every 5 same-package direct referrals</CardTitle>
                   </div>
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15">
@@ -1483,39 +1391,107 @@ export function MemberDashboardPage() {
           </section>
         ) : null}
 
-        {/* ── SHADOW ACCOUNTS ── */}
-        {moduleId === 'account-shadow-management' && activeModule && shadowAccounts ? (
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
-            <Card className="border-[var(--border)] bg-[var(--card)]">
-              <CardHeader className="pb-3"><CardTitle className="text-base">Shadow Account Logic</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <InfoRow label="Owner" value={shadowAccounts.owner} />
-                <InfoRow label="Shadow Slots" value={String(shadowAccounts.accounts.length)} />
-                <InfoRow label="Active Shadow Path" value={shadowAccounts.accounts.some((a) => a.walletEnabled) ? 'Visible' : 'Reserved only'} />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {shadowAccounts.accounts.map((account) => (
-                    <div key={account.id} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <Badge variant={account.walletEnabled ? 'success' : 'outline'}>{account.placement}</Badge>
-                        <Badge variant={account.state.includes('reserved') ? 'warning' : 'outline'}>{account.state}</Badge>
+        {/* ── BINARY CYCLE BONUS ── */}
+        {moduleId === 'binary-cycle-bonus' && activeModule ? (
+          <section className="grid gap-4">
+            {/* Stat strip */}
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <NogaStatCard icon={<BarChart3 className="size-4" />} color="amber" label="Salesmatch Basis" value={String(activeModule.table.rows[0]?.salesmatch ?? 'PHP 0.00')} sub="paired volume this cycle" />
+              <NogaStatCard icon={<TrendingUp className="size-4" />} color="blue" label="Your Cycle Rate" value={String(activeModule.table.rows[0]?.cycleRate ?? `${office?.profile.packageTier === 'Classic' ? '2%' : office?.profile.packageTier === 'Standard' ? '3%' : office?.profile.packageTier === 'Business' ? '4%' : office?.profile.packageTier === 'VIP' ? '5%' : '—'}`)} sub="package-based percentage" />
+              <NogaStatCard icon={<Medal className="size-4" />} color="emerald" label="Weekly Cap" value={String(activeModule.table.rows[0]?.weeklyCap ?? '—')} sub="maximum per cycle week" />
+              <NogaStatCard icon={<Trophy className="size-4" />} color="violet" label="Estimated Cycle Bonus" value={(() => { const s = mvpDashboard?.incomeStreams.find(x => x.streamId === 'binary-cycle'); return s ? `PHP ${s.simulatedNet.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'PHP 0.00'; })()} sub="sandbox simulation" />
+            </div>
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-amber-500/15">
+                      <TrendingUp className="size-5 text-amber-400" />
+                    </span>
+                    <div>
+                      <CardTitle className="text-base">Binary Cycle Bonus</CardTitle>
+                      <CardDescription className="text-xs">Percentage earned on top of every qualified Salesmatch pairing.</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-xs text-[var(--muted-foreground)]">Classic, Standard, Business, and VIP members earn a package-based cycle bonus on each Salesmatch movement. Weekly cap applies.</p>
+                  {[
+                    { tier: 'Classic', rate: '2%', active: office?.profile.packageTier === 'Classic' },
+                    { tier: 'Standard', rate: '3%', active: office?.profile.packageTier === 'Standard' },
+                    { tier: 'Business', rate: '4%', active: office?.profile.packageTier === 'Business' },
+                    { tier: 'VIP', rate: '5%', active: office?.profile.packageTier === 'VIP' },
+                  ].map(({ tier, rate, active }) => (
+                    <div key={tier} className={['flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition', active ? 'border-amber-500/40 bg-amber-500/8' : 'border-[var(--border)] bg-[var(--background)]'].join(' ')}>
+                      <div className="flex items-center gap-2">
+                        {active ? <span className="size-2 rounded-full bg-amber-400" /> : <span className="size-2 rounded-full bg-[var(--muted)]" />}
+                        <p className="text-sm font-medium text-[var(--foreground)]">{tier}</p>
                       </div>
-                      <p className="mt-3 font-semibold text-[var(--foreground)]">{account.id}</p>
-                      <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">{account.note}</p>
-                      <div className="mt-3 space-y-1.5 text-sm">
-                        {[['Wallet', account.walletEnabled], ['Unilevel', account.unilevelEnabled], ['Binary Cycle', account.binaryCycleEnabled]].map(([label, enabled]) => (
-                          <div key={String(label)} className="flex items-center justify-between gap-2">
-                            <span className="text-[var(--muted-foreground)]">{String(label)}</span>
-                            <strong className={enabled ? 'text-emerald-400' : 'text-[var(--muted-foreground)]'}>{enabled ? 'Enabled' : 'Disabled'}</strong>
-                          </div>
-                        ))}
-                      </div>
+                      <strong className={active ? 'text-amber-600 dark:text-amber-400' : 'text-[var(--muted-foreground)]'}>{rate}</strong>
                     </div>
                   ))}
+                </CardContent>
+              </Card>
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader className="pb-3"><CardTitle className="text-base">Cycle Traceability</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <InfoRow label="Package" value={String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '—')} />
+                  <InfoRow label="Left Points" value={String(binaryTree?.root.leftPoints ?? '—')} />
+                  <InfoRow label="Right Points" value={String(binaryTree?.root.rightPoints ?? '—')} />
+                  <InfoRow label="Matched Points" value={String(matchedPoints)} highlight />
+                  <InfoRow label="Strong Leg Carry" value={String(strongLegCarry)} />
+                  <InfoRow label="Status" value={String(activeModule.table.rows[0]?.status ?? 'Sandbox simulation')} />
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-[var(--muted-foreground)]">
+                    Binary Cycle follows binary placement — spillover accounts qualify when placed on the left or right side used for pairing.
+                  </div>
+                  <ReportTableView table={activeModule.table} />
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        ) : null}
+
+        {/* ── SHADOW ACCOUNTS ── */}
+        {moduleId === 'account-shadow-management' && activeModule && shadowAccounts ? (
+          <section className="grid gap-4">
+            {/* Header stat strip */}
+            <div className="grid gap-3 sm:grid-cols-3">
+              <NogaStatCard icon={<ShieldCheck className="size-4" />} color="amber" label="Owner" value={shadowAccounts.owner} sub="shadow account holder" />
+              <NogaStatCard icon={<Users className="size-4" />} color="blue" label="Shadow Slots" value={String(shadowAccounts.accounts.length)} sub="reserved binary positions" />
+              <NogaStatCard icon={<Globe className="size-4" />} color="violet" label="Active Shadow Path" value={shadowAccounts.accounts.some((a) => a.walletEnabled) ? 'Visible' : 'Reserved only'} sub="salesmatch PV support only" />
+            </div>
+            {/* Shadow slot cards */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {shadowAccounts.accounts.map((account) => (
+                <div key={account.id} className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
+                  <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-amber-500/40 via-amber-300/60 to-transparent" />
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">Shadow Slot</p>
+                      <p className="mt-1 text-lg font-bold tracking-tight text-[var(--foreground)]">{account.id}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <Badge variant={account.placement === 'left' ? 'outline' : 'secondary'} className="text-[10px] uppercase tracking-widest">{account.placement}</Badge>
+                      <Badge variant={account.state.includes('reserved') ? 'warning' : 'success'} className="text-[10px]">{account.state.replace('_', ' ')}</Badge>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs leading-5 text-[var(--muted-foreground)]">{account.note}</p>
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    {[['Wallet', account.walletEnabled, 'emerald'], ['Unilevel', account.unilevelEnabled, 'blue'], ['Binary Cycle', account.binaryCycleEnabled, 'violet']].map(([label, enabled, clr]) => (
+                      <div key={String(label)} className={['rounded-xl border p-2.5 text-center', enabled ? `border-${String(clr)}-500/30 bg-${String(clr)}-500/8` : 'border-[var(--border)] bg-[var(--background)]'].join(' ')}>
+                        <p className={['text-[10px] font-semibold uppercase tracking-widest', enabled ? `text-${String(clr)}-400` : 'text-[var(--muted-foreground)]'].join(' ')}>{String(label)}</p>
+                        <p className={['mt-1 text-xs font-bold', enabled ? `text-${String(clr)}-400` : 'text-[var(--muted-foreground)]'].join(' ')}>{enabled ? 'On' : 'Off'}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              ))}
+            </div>
             <Card className="border-[var(--border)] bg-[var(--card)]">
-              <CardHeader className="pb-3"><CardTitle className="text-base">Shadow State Table</CardTitle></CardHeader>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Shadow State Table</CardTitle>
+                <CardDescription className="text-xs">Reserved and activated shadow-account visibility. Shadow nodes cannot earn wallet, Direct Referral, Unilevel, or Binary Cycle rights.</CardDescription>
+              </CardHeader>
               <CardContent><ReportTableView table={activeModule.table} /></CardContent>
             </Card>
           </section>
@@ -1605,6 +1581,131 @@ export function MemberDashboardPage() {
               <CardHeader className="pb-3"><CardTitle className="text-base">Maintenance Window</CardTitle></CardHeader>
               <CardContent><ReportTableView table={activeModule.table} /></CardContent>
             </Card>
+          </section>
+        ) : null}
+
+        {/* ── DIRECT REFERRALS ── */}
+        {moduleId === 'direct-referrals' && activeModule ? (() => {
+          const rows = activeModule.table.rows;
+          const DR_PAGE_SIZE = 10;
+          const drTotalPages = Math.max(1, Math.ceil(rows.length / DR_PAGE_SIZE));
+          const drPage = Math.min(directReferralPage, drTotalPages);
+          const visibleRows = rows.slice((drPage - 1) * DR_PAGE_SIZE, drPage * DR_PAGE_SIZE);
+          return (
+            <section className="space-y-4">
+              {/* Count header */}
+              <div className="flex items-center gap-4">
+                <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl border border-blue-500/25 bg-blue-500/10 shadow-md shadow-blue-500/20">
+                  <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{rows.length}</span>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Direct Referrals</p>
+                  <p className="text-lg font-bold text-[var(--foreground)]">Direct sponsorship list</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">Kept separate from the binary placement tree</p>
+                </div>
+              </div>
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader className="flex flex-row items-center justify-between pb-3">
+                  <div>
+                    <CardTitle className="text-base">Direct Referrals</CardTitle>
+                    <CardDescription className="text-xs">Direct sponsorship list kept separate from the binary placement tree.</CardDescription>
+                  </div>
+                  <Badge variant="outline">Direct Referrals: {rows.length}</Badge>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-0">
+                  <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+                    <table className="w-full min-w-[540px] text-sm">
+                      <thead>
+                        <tr className="border-b border-[var(--border)] bg-[var(--accent)]/40 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+                          {activeModule.table.columns.map((col) => (
+                            <th key={col.key} className="px-4 py-3">{col.label}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleRows.length ? visibleRows.map((row, i) => (
+                          <tr key={i} className="border-b border-[var(--border)] transition last:border-0 hover:bg-[var(--accent)]/30">
+                            {activeModule.table.columns.map((col) => (
+                              <td key={col.key} className="px-4 py-3 text-[var(--foreground)]">
+                                {col.key === 'accountStatus' || col.key === 'status' ? (
+                                  <Badge variant={String(row[col.key]) === 'active' ? 'success' : 'outline'} className="text-[10px]">{String(row[col.key] ?? '—')}</Badge>
+                                ) : (
+                                  <span className={col.key === 'username' ? 'font-mono text-[var(--muted-foreground)]' : ''}>{String(row[col.key] ?? '—')}</span>
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        )) : (
+                          <tr><td colSpan={activeModule.table.columns.length} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">No direct referrals yet.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  {rows.length > DR_PAGE_SIZE && (
+                    <div className="flex items-center justify-between gap-3 text-sm text-[var(--muted-foreground)]">
+                      <span>Page {drPage} of {drTotalPages} · {rows.length} referral(s)</span>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" size="sm" disabled={drPage <= 1} onClick={() => setDirectReferralPage((p) => Math.max(1, p - 1))}>Prev</Button>
+                        <Button type="button" variant="outline" size="sm" disabled={drPage >= drTotalPages} onClick={() => setDirectReferralPage((p) => Math.min(drTotalPages, p + 1))}>Next</Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </section>
+          );
+        })() : null}
+
+        {/* ── SALESMATCH BONUS ── */}
+        {moduleId === 'salesmatch-bonus' && activeModule ? (
+          <section className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <NogaStatCard icon={<BarChart3 className="size-4" />} color="amber" label="Left Points" value={String(binaryTree?.root.leftPoints ?? activeModule.table.rows[0]?.leftPoints ?? '—')} sub="left leg binary volume" />
+              <NogaStatCard icon={<BarChart3 className="size-4" />} color="blue" label="Right Points" value={String(binaryTree?.root.rightPoints ?? activeModule.table.rows[0]?.rightPoints ?? '—')} sub="right leg binary volume" />
+              <NogaStatCard icon={<TrendingUp className="size-4" />} color="emerald" label="Matched Points" value={String(matchedPoints)} sub="paired volume this cycle" />
+              <NogaStatCard icon={<Trophy className="size-4" />} color="violet" label="Strong Leg Carry" value={String(strongLegCarry)} sub="carry forward to next cycle" />
+            </div>
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-amber-500/15">
+                      <BarChart3 className="size-5 text-amber-600 dark:text-amber-400" />
+                    </span>
+                    <div>
+                      <CardTitle className="text-base">Sales Match Pairing</CardTitle>
+                      <CardDescription className="text-xs">Binary placement pairs left and right leg volume each cycle.</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <InfoRow label="Salesmatch Total" value={String(activeModule.table.rows[0]?.salesmatch ?? '—')} highlight />
+                  <InfoRow label="Left Points" value={String(binaryTree?.root.leftPoints ?? '—')} />
+                  <InfoRow label="Right Points" value={String(binaryTree?.root.rightPoints ?? '—')} />
+                  <InfoRow label="Matched (Paired)" value={String(matchedPoints)} highlight />
+                  <InfoRow label="Weak Leg Carry" value={String(weakLegCarry)} />
+                  <InfoRow label="Strong Leg Carry" value={String(strongLegCarry)} />
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-[var(--muted-foreground)]">
+                    Salesmatch pairs your weaker leg against your stronger leg. Unmatched volume carries forward to the next cycle.
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Pairing Traceability</CardTitle>
+                  <CardDescription className="text-xs">Auto Accredited — no manual submission required.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-3 text-xs text-emerald-600 dark:text-emerald-400">
+                    Salesmatch bonuses are automatically credited when a left-right pair is detected. Check transaction history for timestamped entries.
+                  </div>
+                  <InfoRow label="Package" value={String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '—')} />
+                  <InfoRow label="Account Type" value={String(activeModule.table.rows[0]?.accountType ?? 'PD')} />
+                  <InfoRow label="Status" value={String(activeModule.table.rows[0]?.status ?? 'Sandbox simulation')} />
+                  <ReportTableView table={activeModule.table} />
+                </CardContent>
+              </Card>
+            </div>
           </section>
         ) : null}
 
@@ -1706,9 +1807,465 @@ function EncashmentStatCard({
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)]/75 p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">{label}</p>
-      <p className={highlight ? 'mt-3 text-lg font-semibold text-amber-200' : 'mt-3 text-base font-semibold text-[var(--foreground)]'}>
+      <p className={highlight ? 'mt-3 text-lg font-semibold text-amber-600 dark:text-amber-200' : 'mt-3 text-base font-semibold text-[var(--foreground)]'}>
         {value}
       </p>
     </div>
+  );
+}
+
+type NogaColor = 'amber' | 'blue' | 'emerald' | 'violet';
+
+const nogaColorMap: Record<NogaColor, { bg: string; text: string; glow: string; border: string }> = {
+  amber:   { bg: 'bg-amber-500/15',   text: 'text-amber-600 dark:text-amber-400',   glow: 'shadow-amber-500/20',   border: 'border-amber-500/25' },
+  blue:    { bg: 'bg-blue-500/15',    text: 'text-blue-600 dark:text-blue-400',    glow: 'shadow-blue-500/20',    border: 'border-blue-500/25' },
+  emerald: { bg: 'bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400', glow: 'shadow-emerald-500/20', border: 'border-emerald-500/25' },
+  violet:  { bg: 'bg-violet-500/15',  text: 'text-violet-600 dark:text-violet-400',  glow: 'shadow-violet-500/20',  border: 'border-violet-500/25' },
+};
+
+function NogaStatCard({
+  icon,
+  color,
+  label,
+  value,
+  sub
+}: {
+  icon: React.ReactNode;
+  color: NogaColor;
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  const { bg, text, glow, border } = nogaColorMap[color];
+  return (
+    <div className={`flex items-start gap-3 rounded-2xl border ${border} bg-[var(--card)] p-4 shadow-md ${glow}`}>
+      <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${bg} ${text}`}>
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs text-[var(--muted-foreground)]">{label}</p>
+        <p className={`mt-0.5 truncate text-base font-semibold ${text}`}>{value}</p>
+        {sub ? <p className="mt-0.5 truncate text-xs text-[var(--muted-foreground)]">{sub}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm odd:bg-[var(--accent)]/40">
+      <span className="text-[var(--muted-foreground)]">{label}</span>
+      <strong className={highlight ? 'font-semibold text-amber-600 dark:text-amber-300' : 'font-medium text-[var(--foreground)]'}>{value}</strong>
+    </div>
+  );
+}
+
+// ── Dashboard income stat cards (Nogatu-style) ─────────────────────────────
+
+type DashboardCard = {
+  label: string;
+  value: string;
+  sub: string;
+  icon: React.ReactNode;
+  color: NogaColor;
+  href: string;
+};
+
+function DashboardIncomeGrid({
+  office,
+  mvpDashboard,
+  modulePathById,
+}: {
+  office: MemberOfficeData | null;
+  mvpDashboard: MemberMvpDashboardData | null;
+  modulePathById: Map<string, string>;
+}) {
+  const streamValueMap: Record<string, string> = {};
+  if (mvpDashboard) {
+    for (const s of mvpDashboard.incomeStreams) {
+      streamValueMap[s.streamId] = `PHP ${s.simulatedNet.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+  }
+
+  const totalCash = mvpDashboard
+    ? `PHP ${mvpDashboard.incomeStreams.reduce((sum, s) => sum + s.simulatedNet, 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : '—';
+
+  const cards: DashboardCard[] = [
+    {
+      label: 'Total Cash Incentives',
+      value: totalCash,
+      sub: 'Open e-wallet breakdown',
+      icon: <Wallet className="size-5" />,
+      color: 'amber',
+      href: modulePathById.get('wallet') ?? '/member/wallet',
+    },
+    {
+      label: 'Current Cash Balance',
+      value: office?.wallet.availableBalance ?? '—',
+      sub: 'View wallet balance details',
+      icon: <CreditCard className="size-5" />,
+      color: 'amber',
+      href: modulePathById.get('wallet') ?? '/member/wallet',
+    },
+    {
+      label: 'Direct Referral',
+      value: streamValueMap['direct-referral'] ?? 'PHP 0.00',
+      sub: 'See who triggered this income',
+      icon: <Users className="size-5" />,
+      color: 'blue',
+      href: modulePathById.get('direct-referrals') ?? '/earn/direct-referral',
+    },
+    {
+      label: 'Sales Matched Bonus',
+      value: streamValueMap['salesmatch'] ?? 'PHP 0.00',
+      sub: 'Open pairing reports',
+      icon: <BarChart3 className="size-5" />,
+      color: 'amber',
+      href: modulePathById.get('salesmatch-bonus') ?? '/member/genealogy',
+    },
+    {
+      label: 'Uni-Level',
+      value: streamValueMap['unilevel'] ?? 'PHP 0.00',
+      sub: 'View eligibility and payout history',
+      icon: <TrendingUp className="size-5" />,
+      color: 'amber',
+      href: modulePathById.get('unilevel-rank-progress') ?? '/earn/unilevel',
+    },
+    {
+      label: 'Leadership Bonus',
+      value: streamValueMap['leadership'] ?? 'PHP 0.00',
+      sub: 'See leadership bonus entries',
+      icon: <Star className="size-5" />,
+      color: 'amber',
+      href: modulePathById.get('leadership') ?? '/earn',
+    },
+    {
+      label: 'Get Yor Five Bonus',
+      value: streamValueMap['get-five'] ?? 'PHP 0.00',
+      sub: 'Open Get Yor Five bonus page',
+      icon: <Gift className="size-5" />,
+      color: 'amber',
+      href: modulePathById.get('get-five-bonus') ?? '/earn/get-five',
+    },
+    {
+      label: 'Ranking Bonus',
+      value: streamValueMap['ranking'] ?? 'PHP 0.00',
+      sub: 'See ranking bonus entries',
+      icon: <Trophy className="size-5" />,
+      color: 'amber',
+      href: modulePathById.get('unilevel-rank-progress') ?? '/earn/unilevel',
+    },
+    {
+      label: 'Left Accounts',
+      value: '—',
+      sub: 'Open pairing reports',
+      icon: <GitBranch className="size-5" />,
+      color: 'blue',
+      href: modulePathById.get('genealogy') ?? '/member/genealogy',
+    },
+    {
+      label: 'Right Accounts',
+      value: '—',
+      sub: 'Open pairing reports',
+      icon: <GitBranch className="size-5" />,
+      color: 'violet',
+      href: modulePathById.get('genealogy') ?? '/member/genealogy',
+    },
+  ];
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {cards.map((card) => {
+        const { bg, text, glow, border } = nogaColorMap[card.color];
+        return (
+          <Link
+            key={card.label}
+            to={card.href}
+            className={`group relative flex flex-col gap-3 overflow-hidden rounded-2xl border ${border} bg-[var(--card)] p-5 shadow-md ${glow} transition-all duration-200 hover:scale-[1.015] hover:shadow-lg`}
+          >
+            {/* Subtle top glow line */}
+            <div className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-current to-transparent opacity-40 ${text}`} />
+            <div className="flex items-start justify-between gap-2">
+              <span className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${bg} ${text} shadow-sm`}>
+                {card.icon}
+              </span>
+              <ChevronRight className={`size-4 transition group-hover:translate-x-0.5 ${text} opacity-60`} />
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-[var(--muted-foreground)]">{card.label}</p>
+              <p className={`mt-1 text-xl font-bold tracking-tight ${text}`}>{card.value}</p>
+            </div>
+            <p className={`text-xs font-medium ${text} opacity-75 transition group-hover:opacity-100`}>{card.sub}</p>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── E-Wallet two-tab view ──────────────────────────────────────────────────
+
+function WalletView({
+  walletDetail,
+  encashAmountInput,
+  encashAmount,
+  encashPreviewError,
+  isEncashPreviewLoading,
+  renderedEncashmentPreview,
+  onEncashAmountChange,
+  onEncashAmountBlur,
+  onSubmitEncashment,
+}: {
+  walletDetail: MemberWalletDetail;
+  encashAmountInput: string;
+  encashAmount: number;
+  encashPreview: EncashmentPreview | null;
+  encashPreviewError: string | null;
+  isEncashPreviewLoading: boolean;
+  renderedEncashmentPreview: EncashmentPreview;
+  onEncashAmountChange: (v: string) => void;
+  onEncashAmountBlur: () => void;
+  onSubmitEncashment: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<'main' | 'lifestyle'>('main');
+
+  const mainStreams = walletDetail.incomeBreakdown.filter(
+    (s) => s.walletType.toLowerCase() !== 'lifestyle'
+  );
+  const lifestyleStreams = walletDetail.incomeBreakdown.filter(
+    (s) => s.walletType.toLowerCase() === 'lifestyle'
+  );
+  const lifestyleBalance = lifestyleStreams.reduce((sum, s) => sum + s.amount, 0);
+  const lifestyleThreshold = 1000;
+
+  return (
+    <section className="space-y-4">
+      {/* Tab switcher */}
+      <div className="flex gap-1 rounded-xl border border-[var(--border)] bg-[var(--accent)] p-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab('main')}
+          className={[
+            'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition',
+            activeTab === 'main'
+              ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+              : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]',
+          ].join(' ')}
+        >
+          <Wallet className="size-4" />
+          Main Wallet
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('lifestyle')}
+          className={[
+            'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition',
+            activeTab === 'lifestyle'
+              ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+              : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]',
+          ].join(' ')}
+        >
+          <Star className="size-4" />
+          Lifestyle Bonus Wallet
+        </button>
+      </div>
+
+      {/* ── MAIN WALLET TAB ── */}
+      {activeTab === 'main' ? (
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <NogaStatCard icon={<Wallet className="size-4" />} color="amber" label="Available" value={formatCurrency(walletDetail.summary.availableBalance)} />
+              <NogaStatCard icon={<Clock className="size-4" />} color="blue" label="Pending" value={formatCurrency(walletDetail.summary.pendingBalance)} />
+              <NogaStatCard icon={<CreditCard className="size-4" />} color="emerald" label="CD Balance" value={formatCurrency(walletDetail.summary.cdBalance)} />
+              <NogaStatCard icon={<Star className="size-4" />} color="violet" label="Payout Method" value={walletDetail.summary.payoutMethod} />
+            </div>
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Income Breakdown</CardTitle>
+                <CardDescription className="text-xs">Main wallet income streams credited to your encashable balance.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 pt-0">
+                {mainStreams.length ? mainStreams.map((stream) => (
+                  <div key={stream.streamId} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--foreground)]">{stream.label}</p>
+                      <Badge variant="outline" className="mt-1 text-[10px] uppercase tracking-widest">{stream.walletType} wallet</Badge>
+                    </div>
+                    <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">{formatCurrency(stream.amount)}</p>
+                  </div>
+                )) : (
+                  <p className="text-sm text-[var(--muted-foreground)]">No main wallet income entries yet.</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          <div className="space-y-4">
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader>
+                <CardTitle className="text-base">Encashment Preview</CardTitle>
+                <CardDescription className="text-xs">10% tax · PHP 50 processing fee · 5% system retainer · {walletDetail.summary.payoutSchedule.toLowerCase()}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  <EncashmentStatCard label="Available" value={formatCurrency(walletDetail.summary.availableBalance)} />
+                  <EncashmentStatCard label="Requested" value={formatCurrency(renderedEncashmentPreview.requestedAmount || encashAmount)} />
+                  <EncashmentStatCard label="Net Receivable" value={formatCurrency(renderedEncashmentPreview.netReceivable)} highlight />
+                </div>
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                  <label htmlFor="encash-amount" className="grid gap-2 text-sm">
+                    <span className="font-medium text-[var(--muted-foreground)]">Requested amount</span>
+                    <Input
+                      id="encash-amount"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="10,000"
+                      value={encashAmountInput}
+                      onChange={(e) => onEncashAmountChange(e.target.value)}
+                      onBlur={onEncashAmountBlur}
+                    />
+                  </label>
+                  <div className="mt-2 flex justify-between text-xs text-[var(--muted-foreground)]">
+                    <span>Live preview updates as you type</span>
+                    <span className={isEncashPreviewLoading ? 'text-amber-300' : ''}>{isEncashPreviewLoading ? 'Updating...' : 'Synced'}</span>
+                  </div>
+                </div>
+                <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                  <EncashmentBreakdownRow label="10% Tax" value={renderedEncashmentPreview.tax} />
+                  <EncashmentBreakdownRow label="Processing Fee" value={renderedEncashmentPreview.processingFee} />
+                  <EncashmentBreakdownRow label="System Retainer (5%)" value={renderedEncashmentPreview.systemRetainer} />
+                  <EncashmentBreakdownRow label="CD Deduction" value={renderedEncashmentPreview.cdDeduction} />
+                  <div className="border-t border-[var(--border)] pt-2">
+                    <EncashmentBreakdownRow label="Total Deductions" value={renderedEncashmentPreview.totalDeductions} emphasize />
+                  </div>
+                </div>
+                <div className={['rounded-xl border px-4 py-3 text-sm', encashPreviewError ? 'border-red-500/40 bg-red-500/10 text-red-300' : renderedEncashmentPreview.sufficientBalance ? 'border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)]' : 'border-amber-500/40 bg-amber-500/10 text-amber-200'].join(' ')}>
+                  {encashPreviewError ?? renderedEncashmentPreview.note}
+                </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={onSubmitEncashment}
+                  disabled={encashAmount <= 0 || isEncashPreviewLoading || Boolean(encashPreviewError) || !renderedEncashmentPreview.sufficientBalance}
+                >
+                  Submit Encashment Request
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+          <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Wallet Ledger</CardTitle>
+              <CardDescription className="text-xs">Append-only wallet movement and balance-after values.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ReportTableView table={{ title: 'Wallet Ledger', columns: [{ key: 'walletType', label: 'Wallet' }, { key: 'entryType', label: 'Entry' }, { key: 'sourceReference', label: 'Source' }, { key: 'creditAmount', label: 'Credit' }, { key: 'debitAmount', label: 'Debit' }, { key: 'balanceAfter', label: 'Balance' }, { key: 'status', label: 'Status' }], rows: walletDetail.ledger.filter(e => e.walletType.toLowerCase() !== 'lifestyle').map((e) => ({ walletType: e.walletType, entryType: e.entryType, sourceReference: e.sourceReference, creditAmount: formatCurrency(e.creditAmount), debitAmount: formatCurrency(e.debitAmount), balanceAfter: formatCurrency(e.balanceAfter), status: e.status })) }} />
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {/* ── LIFESTYLE BONUS WALLET TAB ── */}
+      {activeTab === 'lifestyle' ? (
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="space-y-4">
+            {/* Lifestyle balance + threshold */}
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/15">
+                    <Star className="size-5 text-emerald-400" />
+                  </span>
+                  <div>
+                    <CardTitle className="text-base">Lifestyle Bonus Wallet</CardTitle>
+                    <CardDescription className="text-xs">Separate from main wallet · 3% public display · 1% backend payable</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <NogaStatCard icon={<Star className="size-4" />} color="emerald" label="Lifestyle Balance" value={formatCurrency(lifestyleBalance)} sub="repeat-purchase credits" />
+                  <NogaStatCard icon={<TrendingUp className="size-4" />} color="amber" label="Threshold" value={formatCurrency(lifestyleThreshold)} sub="Classic daily cap" />
+                </div>
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between text-xs">
+                    <span className="text-[var(--muted-foreground)]">Threshold progress</span>
+                    <span className="font-medium text-[var(--foreground)]">{formatCurrency(lifestyleBalance)} / {formatCurrency(lifestyleThreshold)}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-[var(--muted)]">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300 transition-all"
+                      style={{ width: `${Math.min(100, (lifestyleBalance / lifestyleThreshold) * 100)}%` }}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-xs text-[var(--muted-foreground)]">
+                    {lifestyleBalance >= lifestyleThreshold
+                      ? 'Threshold reached — lifestyle bonus ready for release.'
+                      : `${formatCurrency(lifestyleThreshold - lifestyleBalance)} remaining to reach threshold.`}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-xs text-[var(--muted-foreground)]">
+                  <strong className="text-emerald-400">Business Rule LFR-01:</strong> Lifestyle rewards stay in a separate wallet. The public presentation shows 3% of repeat-purchase product value. Backend credits 1% into this wallet. Threshold for Classic is PHP 1,000 daily / PHP 30,000 monthly.
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Lifestyle income streams */}
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Lifestyle Income Entries</CardTitle>
+                <CardDescription className="text-xs">Repeat-purchase rewards credited to this wallet.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 pt-0">
+                {lifestyleStreams.length ? lifestyleStreams.map((stream) => (
+                  <div key={stream.streamId} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--foreground)]">{stream.label}</p>
+                      <Badge variant="outline" className="mt-1 text-[10px] uppercase tracking-widest">lifestyle wallet</Badge>
+                    </div>
+                    <p className="text-sm font-semibold text-emerald-400">{formatCurrency(stream.amount)}</p>
+                  </div>
+                )) : (
+                  <p className="text-sm text-[var(--muted-foreground)]">No lifestyle wallet entries yet. Earn by making repeat-purchase product repurchases.</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-4">
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">How Lifestyle Rewards Work</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  ['Source', 'Repeat-purchase product repurchases'],
+                  ['Public Rate', '3% of product value (marketing display)'],
+                  ['Backend Payable', '1% credited to this wallet'],
+                  ['Threshold (Classic)', 'PHP 1,000 daily / PHP 30,000 monthly'],
+                  ['Release', 'Manual — pending admin review'],
+                  ['Wallet Type', 'Separate from main encashable wallet'],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex items-start justify-between gap-3 rounded-lg px-3 py-2.5 text-sm odd:bg-[var(--accent)]/40">
+                    <span className="text-[var(--muted-foreground)]">{label}</span>
+                    <strong className="text-right font-medium text-[var(--foreground)]">{value}</strong>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Lifestyle Ledger</CardTitle>
+                <CardDescription className="text-xs">Lifestyle wallet entries only.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ReportTableView table={{ title: 'Lifestyle Ledger', columns: [{ key: 'entryType', label: 'Entry' }, { key: 'sourceReference', label: 'Source' }, { key: 'creditAmount', label: 'Credit' }, { key: 'balanceAfter', label: 'Balance' }, { key: 'status', label: 'Status' }], rows: walletDetail.ledger.filter(e => e.walletType.toLowerCase() === 'lifestyle').map((e) => ({ entryType: e.entryType, sourceReference: e.sourceReference, creditAmount: formatCurrency(e.creditAmount), balanceAfter: formatCurrency(e.balanceAfter), status: e.status })) }} />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      ) : null}
+    </section>
   );
 }
