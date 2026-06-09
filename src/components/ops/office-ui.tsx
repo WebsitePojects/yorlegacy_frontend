@@ -75,10 +75,7 @@ export function OfficeSidebar({
   const grouped = useMemo(() => groupModules(modules), [modules]);
 
   return (
-    <aside
-      className="relative hidden h-full min-h-0 overflow-hidden lg:block ops-sidebar-expanded"
-      style={{ width: '300px', minWidth: '300px', flex: '0 0 300px' }}
-    >
+    <aside className="ops-sidebar-aside">
       <div className="ops-sidebar-shell is-expanded">
         <div className="ops-sidebar-panel">
           <div className="ops-sidebar-panel-header">
@@ -94,7 +91,7 @@ export function OfficeSidebar({
           <div className="space-y-3">
             {grouped.map(([group, groupModules]) => (
               <div key={group} className="space-y-2">
-                <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+                <p className="ops-sidebar-group-label px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
                   {group}
                 </p>
                 <div className="space-y-1">
@@ -104,6 +101,8 @@ export function OfficeSidebar({
                       <NavLink
                         key={module.id}
                         to={module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`}
+                        title={module.label}
+                        aria-label={module.label}
                         className={cn(
                           'block rounded-xl border px-3 py-2.5 transition-colors',
                           active
@@ -129,7 +128,7 @@ export function OfficeSidebar({
           {footerLinks.length ? (
             <>
               <Separator className="my-4" />
-              <div className="space-y-2">
+              <div className="ops-sidebar-footer-links space-y-2">
                 {footerLinks.map((link) => (
                   <Link
                     key={link.href}
@@ -147,12 +146,12 @@ export function OfficeSidebar({
             <>
               <Separator className="my-4" />
               <button
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-sm font-semibold text-red-400 transition-all hover:border-red-500/60 hover:bg-red-500/20 hover:text-red-300 active:scale-95"
+                className="ops-sidebar-signout-btn flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2.5 text-sm font-semibold text-red-400 transition-all hover:border-red-500/60 hover:bg-red-500/20 hover:text-red-300 active:scale-95"
                 type="button"
                 onClick={onSignOut}
               >
                 <LogOut className="size-4" />
-                <span>Sign Out</span>
+                <span className="ops-sidebar-signout-label">Sign Out</span>
               </button>
             </>
           ) : null}
@@ -206,7 +205,7 @@ export function MobileOfficeNav({
     <>
       <button
         type="button"
-        className="ops-mobile-drawer-trigger lg:hidden"
+        className="ops-mobile-drawer-trigger md:hidden"
         aria-label="Open office navigation"
         aria-expanded={open}
         onClick={() => setOpen(true)}
@@ -216,7 +215,7 @@ export function MobileOfficeNav({
       </button>
 
       {open ? (
-        <div className="ops-mobile-drawer-shell lg:hidden">
+        <div className="ops-mobile-drawer-shell md:hidden">
           <button
             type="button"
             className="ops-mobile-drawer-overlay"

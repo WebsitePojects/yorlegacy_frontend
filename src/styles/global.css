@@ -9364,7 +9364,7 @@ body {
 
 @media (max-width: 980px) {
   .public-shell {
-    padding-bottom: max(88px, env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .public-shell-main {
@@ -11231,6 +11231,85 @@ html, body {
   display: block;
 }
 
+/* ── Responsive Sidebar — mobile hidden / tablet rail / desktop full ─────── */
+.ops-sidebar-aside {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  min-height: 0;
+  display: none; /* mobile: use hamburger drawer */
+}
+
+/* Tablet (768px – 1023px): icon-only rail */
+@media (min-width: 768px) {
+  .ops-sidebar-aside {
+    display: block;
+    width: 64px;
+    min-width: 64px;
+    flex: 0 0 64px;
+  }
+  .ops-sidebar-aside .ops-sidebar-panel {
+    padding: 12px 6px 24px;
+  }
+  /* Hide text / header / footer elements */
+  .ops-sidebar-aside .ops-sidebar-panel-header,
+  .ops-sidebar-aside .ops-sidebar-group-label,
+  .ops-sidebar-aside .ops-sidebar-link-text,
+  .ops-sidebar-aside .ops-sidebar-footer-links,
+  .ops-sidebar-aside .ops-sidebar-signout-label {
+    display: none;
+  }
+  /* Center each nav item around its icon */
+  .ops-sidebar-aside .block.rounded-xl {
+    display: flex !important;
+    justify-content: center !important;
+    padding: 10px 4px !important;
+  }
+  .ops-sidebar-aside .block.rounded-xl .flex {
+    gap: 0;
+    justify-content: center;
+  }
+  /* Compact sign-out icon-only button */
+  .ops-sidebar-aside .ops-sidebar-signout-btn {
+    padding: 10px 4px;
+    justify-content: center;
+  }
+  /* Hide the footer-links separator + block */
+  .ops-sidebar-aside .ops-sidebar-panel > .my-4 + .ops-sidebar-footer-links { display: none; }
+}
+
+/* Desktop (1024px+): full labelled sidebar */
+@media (min-width: 1024px) {
+  .ops-sidebar-aside {
+    width: 300px;
+    min-width: 300px;
+    flex: 0 0 300px;
+  }
+  .ops-sidebar-aside .ops-sidebar-panel {
+    padding: 16px 12px 24px;
+  }
+  .ops-sidebar-aside .ops-sidebar-panel-header,
+  .ops-sidebar-aside .ops-sidebar-group-label,
+  .ops-sidebar-aside .ops-sidebar-link-text,
+  .ops-sidebar-aside .ops-sidebar-footer-links,
+  .ops-sidebar-aside .ops-sidebar-signout-label {
+    display: revert;
+  }
+  .ops-sidebar-aside .block.rounded-xl {
+    display: block !important;
+    justify-content: unset !important;
+    padding: 9px 10px 9px 12px !important;
+  }
+  .ops-sidebar-aside .block.rounded-xl .flex {
+    gap: 12px;
+    justify-content: unset;
+  }
+  .ops-sidebar-aside .ops-sidebar-signout-btn {
+    padding: 0.625rem 0.75rem;
+    justify-content: center;
+  }
+}
+
 /* ── KPI / Metric Cards ───────────────────────────────────────────────────── */
 .ops-metric-grid {
   display: grid;
@@ -12028,8 +12107,6 @@ html, body {
   .ops-content-shell { padding: 12px 14px 20px; gap: 14px; }
   .office-workspace-tabs { display: none !important; }
   .ops-shell-header-main .office-breadcrumb { display: none; }
-  /* Extra bottom clearance so fixed nav doesn't overlap content */
-  .ops-content-stage { padding-bottom: 90px; }
   /* Metric grid compact on small screens */
   .ops-metric-grid { grid-template-columns: repeat(2, 1fr); gap: 9px; }
 }
@@ -13507,6 +13584,13 @@ img, video, canvas, svg {
 
 .ops-mobile-drawer-trigger:active {
   transform: scale(0.97);
+}
+
+/* Hide hamburger trigger on tablet and above (sidebar rail is visible) */
+@media (min-width: 768px) {
+  .ops-mobile-drawer-trigger {
+    display: none !important;
+  }
 }
 
 .ops-mobile-drawer-shell {
