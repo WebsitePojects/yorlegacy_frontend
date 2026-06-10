@@ -12102,11 +12102,18 @@ html, body {
   .ops-quicklink-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+@media (max-width: 767px) {
+  /* Breadcrumb hidden on mobile — both class names */
+  .ops-shell-header-main .office-breadcrumb,
+  .ops-shell-header-main .protected-office-breadcrumb { display: none; }
+  /* Office label badge hidden on mobile to save space */
+  .ops-header-office-badge { display: none; }
+}
+
 @media (max-width: 640px) {
   .ops-stage-hero { padding: 14px 14px 12px; }
   .ops-content-shell { padding: 12px 14px 20px; gap: 14px; }
   .office-workspace-tabs { display: none !important; }
-  .ops-shell-header-main .office-breadcrumb { display: none; }
   /* Metric grid compact on small screens */
   .ops-metric-grid { grid-template-columns: repeat(2, 1fr); gap: 9px; }
 }
@@ -13646,7 +13653,7 @@ img, video, canvas, svg {
   line-height: 1.5;
 }
 
-.ops-mobile-drawer-head button {
+.ops-mobile-drawer-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -13656,6 +13663,13 @@ img, video, canvas, svg {
   border-radius: 999px;
   background: transparent;
   color: var(--office-text);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+  flex-shrink: 0;
+}
+.ops-mobile-drawer-close:hover {
+  background: var(--office-hover-bg);
+  border-color: var(--office-border-mid);
 }
 
 .ops-mobile-drawer-eyebrow {

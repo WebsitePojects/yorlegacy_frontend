@@ -196,33 +196,33 @@ export function ProtectedOfficeFrame({
   return (
     <section className="ops-shell bg-[var(--background)] text-[var(--foreground)]">
       <header className={cn('ops-shell-header', scrollElevated ? 'is-scrolled' : '')}>
-        <div className="ops-shell-header-main flex min-w-0 items-center gap-4">
+        <div className="ops-shell-header-main flex min-w-0 items-center gap-3">
           <Link to={basePath} className="protected-brand-link">
             <YorBrandMark className="protected-brand-mark" />
           </Link>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-0 overflow-hidden">
+            <div className="flex items-center gap-2 overflow-hidden">
               <p className="protected-office-title truncate text-sm font-semibold text-[var(--foreground)]">Yor International</p>
-              <Badge variant="outline">{officeLabel}</Badge>
+              <Badge variant="outline" className="ops-header-office-badge shrink-0">{officeLabel}</Badge>
             </div>
-            <div className="protected-office-breadcrumb mt-1 flex flex-wrap items-center gap-2 text-sm text-[var(--muted-foreground)]">
-              <span>{sidebarHeading}</span>
-              <ChevronRight className="size-4" />
-              <span>{moduleLabel}</span>
+            <div className="office-breadcrumb protected-office-breadcrumb mt-0.5 flex items-center gap-1 text-xs text-[var(--muted-foreground)] overflow-hidden">
+              <span className="truncate">{sidebarHeading}</span>
+              <ChevronRight className="size-3 shrink-0" />
+              <span className="truncate">{moduleLabel}</span>
             </div>
           </div>
         </div>
 
-        <div className="ops-shell-header-actions flex flex-wrap items-center justify-end gap-3">
+        <div className="ops-shell-header-actions flex items-center justify-end gap-2">
           {workspaceLinks.length ? (
-            <nav className="hidden flex-wrap items-center gap-2 lg:flex">
+            <nav className="hidden items-center gap-1 lg:flex">
               {workspaceLinks.map((link) => (
                 <Button
                   key={link.href}
                   asChild
                   variant={location.pathname.startsWith(link.href) && link.href !== '/' ? 'secondary' : 'ghost'}
                   size="sm"
-                  className="h-9 rounded-lg"
+                  className="h-8 rounded-lg text-xs"
                 >
                   <NavLink to={link.href}>{link.label}</NavLink>
                 </Button>
@@ -230,7 +230,7 @@ export function ProtectedOfficeFrame({
             </nav>
           ) : null}
 
-          <div className="ops-shell-header-tools flex items-center gap-3">
+          <div className="ops-shell-header-tools flex items-center gap-2">
             <MobileOfficeNav
               basePath={basePath}
               currentModuleId={currentModuleId}
@@ -241,7 +241,7 @@ export function ProtectedOfficeFrame({
               onSignOut={() => void handleSignOut()}
               onPrefetchModule={handlePrefetchModule}
             />
-            <div className="ops-shell-theme-toggle">
+            <div className="ops-shell-theme-toggle hidden md:block">
               <ModeToggle />
             </div>
             <DropdownMenu>

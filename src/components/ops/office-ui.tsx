@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { ModeToggle } from '@/components/mode-toggle';
 import {
   Activity,
   ArrowLeftRight,
@@ -234,9 +235,12 @@ export function MobileOfficeNav({
                 <h2>{heading}</h2>
                 <p>{subheading}</p>
               </div>
-              <button type="button" onClick={() => setOpen(false)} aria-label="Close office navigation">
-                <X className="size-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <ModeToggle />
+                <button type="button" onClick={() => setOpen(false)} aria-label="Close office navigation" className="ops-mobile-drawer-close">
+                  <X className="size-4" />
+                </button>
+              </div>
             </div>
 
             <nav className="ops-mobile-drawer-nav">
