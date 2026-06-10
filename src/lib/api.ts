@@ -11,6 +11,7 @@ import type {
   GatedActionResponse,
   GenealogyCenter,
   MemberActivationCodeCenter,
+  MemberGetYorFiveData,
   MemberOfficeData,
   MemberMvpDashboardData,
   ShadowAccountCenter,
@@ -223,6 +224,10 @@ export function useMaintenanceCode(payload: { code: string; transType: number })
 
 export function fetchMemberWalletDetail(): Promise<MemberWalletDetail> {
   return fetchJson('/api/member/wallet-detail', { method: 'GET' });
+}
+
+export function fetchMemberGetYorFive(): Promise<MemberGetYorFiveData> {
+  return fetchJson('/api/member/get-yor-five', { method: 'GET' });
 }
 
 export function previewMemberEncashment(amount: number): Promise<{

@@ -5,7 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { MemberWalletDetail } from '../types/auth';
+import type { MemberGetYorFiveData } from '../types/auth';
 
 const formatCurrency = (value: number): string =>
   `PHP ${value.toLocaleString('en-PH', {
@@ -13,114 +13,36 @@ const formatCurrency = (value: number): string =>
     maximumFractionDigits: 2
   })}`;
 
-const packageClaimMap: Record<string, number> = {
-  Classic: 5998,
-  Standard: 25998,
-  Business: 50998,
-  VIP: 159998
-};
-
 const packageColors: Record<string, { border: string; bg: string; text: string }> = {
-  Classic: { border: 'border-amber-500/25', bg: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400' },
-  Standard: { border: 'border-blue-500/25', bg: 'bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400' },
+  Classic:  { border: 'border-amber-500/25',   bg: 'bg-amber-500/10',   text: 'text-amber-600 dark:text-amber-400' },
+  Standard: { border: 'border-blue-500/25',    bg: 'bg-blue-500/10',    text: 'text-blue-600 dark:text-blue-400' },
   Business: { border: 'border-emerald-500/25', bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400' },
-  VIP: { border: 'border-violet-500/25', bg: 'bg-violet-500/10', text: 'text-violet-600 dark:text-violet-400' }
-};
-
-type GetFiveEntry = {
-  id: string;
-  sourceReference: string;
-  creditAmount: number;
-  balanceAfter: number;
-  status: string;
-};
-
-type PackageProgress = {
-  tier: string;
-  referralCount: number;
-  completedGroups: number;
-  remainingToNext: number;
-  nextThreshold: number;
-  claimValue: number;
+  VIP:      { border: 'border-violet-500/25',  bg: 'bg-violet-500/10',  text: 'text-violet-600 dark:text-violet-400' }
 };
 
 export function GetYorFivePage() {
-  const { getMemberWalletDetail } = useAuth();
-  const [walletDetail, setWalletDetail] = useState<MemberWalletDetail | null>(null);
+  const { getMemberGetYorFive } = useAuth();
+  const [data, setData] = useState<MemberGetYorFiveData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-
-    async function loadData() {
+    async function load() {
       try {
         setIsLoading(true);
         setError(null);
-        const detail = await getMemberWalletDetail();
-        if (!cancelled) {
-          setWalletDetail(detail);
-        }
+        const result = await getMemberGetYorFive();
+        if (!cancelled) setData(result);
       } catch (cause) {
-        if (!cancelled) {
-          setError(cause instanceof Error ? cause.message : 'Unable to load Get Yor Five data.');
-        }
+        if (!cancelled) setError(cause instanceof Error ? cause.message : 'Unable to load Get Yor Five data.');
       } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+        if (!cancelled) setIsLoading(false);
       }
     }
-
-    void loadData();
+    void load();
     return () => { cancelled = true; };
-  }, [getMemberWalletDetail]);
-
-  const getFiveEntries: GetFiveEntry[] = walletDetail
-    ? walletDetail.ledger
-        .filter((entry) => entry.entryType.toLowerCase().includes('get_five') || entry.entryType.toLowerCase().includes('get-five') || entry.entryType.toLowerCase().includes('getfive') || entry.sourceReference.toLowerCase().includes('get_five') || entry.sourceReference.toLowerCase().includes('get-five'))
-        .map((entry) => ({
-          id: entry.id,
-          sourceReference: entry.sourceReference,
-          creditAmount: entry.creditAmount,
-          balanceAfter: entry.balanceAfter,
-          status: entry.status
-        }))
-    : [];
-
-  const getFiveIncomeStream = walletDetail?.incomeBreakdown.find(
-    (s) =>
-      s.streamId === 'get-five' ||
-      s.streamId === 'get_five' ||
-      s.label.toLowerCase().includes('get yor five') ||
-      s.label.toLowerCase().includes('get five')
-  );
-
-  const totalGetFiveEarnings = getFiveEntries.reduce((sum, e) => sum + e.creditAmount, 0);
-  const displayEarnings = getFiveIncomeStream ? getFiveIncomeStream.amount : totalGetFiveEarnings;
-
-  // Build package-tier progress from income stream hints (best we can do without a dedicated endpoint)
-  // We show the referral count per tier from wallet income breakdown entries grouped by source
-  const packageProgressList: PackageProgress[] = Object.entries(packageClaimMap).map(([tier, claimValue]) => {
-    // Count get_five entries that reference this tier
-    const tierEntries = getFiveEntries.filter((e) =>
-      e.sourceReference.toLowerCase().includes(tier.toLowerCase())
-    );
-    const completedGroups = tierEntries.length;
-    // Without a dedicated endpoint we display earned groups; referral count is derived
-    const referralCount = completedGroups * 5;
-    const nextThreshold = (completedGroups + 1) * 5;
-    const remainingToNext = 5; // within current group — unknown without a direct-referrals per-tier endpoint
-
-    return {
-      tier,
-      referralCount,
-      completedGroups,
-      remainingToNext,
-      nextThreshold,
-      claimValue
-    };
-  });
+  }, [getMemberGetYorFive]);
 
   if (error) {
     return (
@@ -137,6 +59,9 @@ export function GetYorFivePage() {
       </section>
     );
   }
+
+  const tierProgress = data?.tierProgress ?? [];
+  const ledgerEntries = data?.ledgerEntries ?? [];
 
   return (
     <section className="min-h-screen bg-[var(--background)] px-4 py-10 text-[var(--foreground)]">
@@ -172,14 +97,14 @@ export function GetYorFivePage() {
             icon={<Gift className="size-4" />}
             color="amber"
             label="Total Get Yor Five Earned"
-            value={isLoading ? '—' : formatCurrency(displayEarnings)}
+            value={isLoading ? '—' : formatCurrency(data?.totalEarned ?? 0)}
             sub="lifetime get_five credits"
           />
           <StatCard
             icon={<Users className="size-4" />}
             color="blue"
             label="Completed Groups"
-            value={isLoading ? '—' : String(getFiveEntries.length)}
+            value={isLoading ? '—' : String(data?.completedGroupsTotal ?? 0)}
             sub="5-referral groups triggered"
           />
           <StatCard
@@ -220,47 +145,80 @@ export function GetYorFivePage() {
           </CardContent>
         </Card>
 
-        {/* Package claim values */}
+        {/* Per-tier progress cards */}
         <Card className="border-[var(--border)] bg-[var(--card)]">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Package Claim Values</CardTitle>
-            <CardDescription className="text-xs">Bonus amount you earn for every completed group of 5 direct referrals in each tier.</CardDescription>
+            <CardTitle className="text-base">Per-Tier Progress</CardTitle>
+            <CardDescription className="text-xs">
+              Live referral counts and group completion status from the database.
+              {data?.memberPackageTier ? ` Your package: ${data.memberPackageTier}.` : ''}
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {packageProgressList.map(({ tier, claimValue, completedGroups }) => {
-              const colors = packageColors[tier] ?? packageColors['Classic'];
-              return (
-                <div
-                  key={tier}
-                  className={`rounded-2xl border ${colors.border} ${colors.bg} p-4`}
-                >
-                  <p className={`text-xs font-semibold uppercase tracking-widest ${colors.text}`}>{tier}</p>
-                  <p className="mt-2 text-xl font-bold text-[var(--foreground)]">{formatCurrency(claimValue)}</p>
-                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">per group of 5 same-tier directs</p>
-                  {completedGroups > 0 ? (
-                    <Badge variant="outline" className={`mt-3 text-[10px] ${colors.text}`}>
-                      {completedGroups} group{completedGroups !== 1 ? 's' : ''} earned
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="mt-3 text-[10px] text-[var(--muted-foreground)]">
-                      No groups yet
-                    </Badge>
-                  )}
-                </div>
-              );
-            })}
+            {isLoading
+              ? [1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-36 animate-pulse rounded-2xl bg-[var(--accent)]/40" />
+                ))
+              : tierProgress.map(({ tier, claimValue, referralCount, completedGroups, remainingToNext, nextThreshold }) => {
+                  const colors = packageColors[tier] ?? packageColors['Classic'];
+                  const isMyTier = tier === data?.memberPackageTier;
+                  return (
+                    <div
+                      key={tier}
+                      className={`rounded-2xl border ${colors.border} ${colors.bg} p-4 ${isMyTier ? 'ring-1 ring-inset ring-amber-500/30' : ''}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className={`text-xs font-semibold uppercase tracking-widest ${colors.text}`}>{tier}</p>
+                        {isMyTier && (
+                          <Badge variant="outline" className={`text-[9px] ${colors.text}`}>Your tier</Badge>
+                        )}
+                      </div>
+                      <p className="mt-2 text-xl font-bold text-[var(--foreground)]">{formatCurrency(claimValue)}</p>
+                      <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">per group of 5 same-tier directs</p>
+
+                      {/* Progress bar */}
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)] mb-1">
+                          <span>{referralCount} directs</span>
+                          <span>next at {nextThreshold}</span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-[var(--background)]">
+                          <div
+                            className={`h-1.5 rounded-full ${colors.text.replace('text-', 'bg-').split(' ')[0]}`}
+                            style={{ width: `${Math.min(100, ((referralCount % 5 || (completedGroups > 0 ? 5 : 0)) / 5) * 100)}%` }}
+                          />
+                        </div>
+                        <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+                          {remainingToNext} more to next group
+                        </p>
+                      </div>
+
+                      {completedGroups > 0 ? (
+                        <Badge variant="outline" className={`mt-3 text-[10px] ${colors.text}`}>
+                          {completedGroups} group{completedGroups !== 1 ? 's' : ''} earned
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="mt-3 text-[10px] text-[var(--muted-foreground)]">
+                          No groups yet
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
           </CardContent>
         </Card>
 
-        {/* Wallet earnings from get_five entries */}
+        {/* Wallet ledger entries */}
         <Card className="border-[var(--border)] bg-[var(--card)]">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base">Get Yor Five Wallet Entries</CardTitle>
-                <CardDescription className="text-xs">Ledger entries with entry_type = get_five credited to your main wallet.</CardDescription>
+                <CardDescription className="text-xs">
+                  Ledger entries with entry_type = get_five credited to your main wallet.
+                </CardDescription>
               </div>
-              <Badge variant="outline">{isLoading ? '—' : `${getFiveEntries.length} records`}</Badge>
+              <Badge variant="outline">{isLoading ? '—' : `${ledgerEntries.length} records`}</Badge>
             </div>
           </CardHeader>
           <CardContent>
@@ -270,7 +228,7 @@ export function GetYorFivePage() {
                   <div key={i} className="h-14 animate-pulse rounded-xl bg-[var(--accent)]/40" />
                 ))}
               </div>
-            ) : getFiveEntries.length === 0 ? (
+            ) : ledgerEntries.length === 0 ? (
               <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-6 py-8 text-center">
                 <Gift className="mx-auto mb-3 size-8 text-[var(--muted-foreground)]/40" />
                 <p className="text-sm font-medium text-[var(--foreground)]">No Get Yor Five bonuses yet</p>
@@ -280,17 +238,18 @@ export function GetYorFivePage() {
               </div>
             ) : (
               <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-                <table className="w-full min-w-[500px] text-sm">
+                <table className="w-full min-w-[560px] text-sm">
                   <thead>
                     <tr className="border-b border-[var(--border)] bg-[var(--accent)]/40 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
                       <th className="px-4 py-3">Source Reference</th>
                       <th className="px-4 py-3">Credit</th>
                       <th className="px-4 py-3">Balance After</th>
+                      <th className="px-4 py-3">Date</th>
                       <th className="px-4 py-3">Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {getFiveEntries.map((entry) => (
+                    {ledgerEntries.map((entry) => (
                       <tr
                         key={entry.id}
                         className="border-b border-[var(--border)] transition last:border-0 hover:bg-[var(--accent)]/30"
@@ -304,9 +263,12 @@ export function GetYorFivePage() {
                         <td className="px-4 py-3 text-[var(--foreground)]">
                           {formatCurrency(entry.balanceAfter)}
                         </td>
+                        <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">
+                          {entry.occurredAt ? new Date(entry.occurredAt).toLocaleDateString('en-PH') : '—'}
+                        </td>
                         <td className="px-4 py-3">
                           <Badge
-                            variant={entry.status.toLowerCase() === 'posted' || entry.status.toLowerCase() === 'confirmed' ? 'success' : 'outline'}
+                            variant={entry.status === 'posted' ? 'success' : 'outline'}
                             className="text-[10px]"
                           >
                             {entry.status}
@@ -321,7 +283,7 @@ export function GetYorFivePage() {
           </CardContent>
         </Card>
 
-        {/* Navigation footer */}
+        {/* Footer navigation */}
         <div className="flex flex-wrap gap-3 pt-2">
           <Button asChild variant="outline">
             <Link to="/member/direct-referrals">
@@ -330,14 +292,10 @@ export function GetYorFivePage() {
             </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link to="/member/wallet">
-              View Full Wallet
-            </Link>
+            <Link to="/member/wallet">View Full Wallet</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link to="/earn/get-five">
-              Learn About Get Yor Five
-            </Link>
+            <Link to="/earn/get-five">Learn About Get Yor Five</Link>
           </Button>
         </div>
 
@@ -346,7 +304,7 @@ export function GetYorFivePage() {
   );
 }
 
-// ── Local stat card ────────────────────────────────────────────────────────
+// ── Stat card ────────────────────────────────────────────────────────────────
 
 type StatColor = 'amber' | 'blue' | 'emerald' | 'violet';
 

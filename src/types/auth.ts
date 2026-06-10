@@ -313,6 +313,29 @@ export type MemberTransactionDetail = {
   };
 };
 
+export type MemberGetYorFiveData = {
+  moneyMode: MoneyMode;
+  memberPackageTier: string;
+  tierProgress: Array<{
+    tier: string;
+    claimValue: number;
+    referralCount: number;
+    completedGroups: number;
+    remainingToNext: number;
+    nextThreshold: number;
+  }>;
+  ledgerEntries: Array<{
+    id: string;
+    sourceReference: string;
+    creditAmount: number;
+    balanceAfter: number;
+    status: string;
+    occurredAt: string;
+  }>;
+  totalEarned: number;
+  completedGroupsTotal: number;
+};
+
 export type RegistrationReadiness = {
   moneyMode: MoneyMode;
   sponsor: {
