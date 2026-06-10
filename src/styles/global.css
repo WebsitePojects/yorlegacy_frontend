@@ -13783,5 +13783,240 @@ img, video, canvas, svg {
   }
 }
 
+/* ==========================================================================
+   UNIFIED HEADER & SIDEBAR OVERRIDES (MOBILE/TABLET USABILITY FIX)
+   ========================================================================== */
+
+/* 1. Ensure the top header is ALWAYS a clean, single horizontal row on all devices */
+.ops-shell-header {
+  position: fixed !important;
+  inset: 0 0 auto !important;
+  height: 56px !important;
+  min-height: 56px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 16px !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  z-index: 100 !important;
+  background-color: #FAF7F2 !important;
+  background: var(--office-sidebar, #FAF7F2) !important;
+  border-bottom: 1px solid var(--office-border) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.dark .ops-shell-header {
+  background-color: #161616 !important;
+  background: var(--office-sidebar, #161616) !important;
+}
+
+.ops-shell-header-main,
+.ops-shell-header-actions {
+  width: auto !important;
+  flex-direction: row !important;
+  align-items: center !important;
+}
+
+.ops-shell-header-tools {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-left: 0 !important;
+  width: auto !important;
+}
+
+/* 2. Ensure ops-shell-body always has correct padding-top to prevent content from going under the header */
+.ops-shell-body {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  min-height: 100vh !important;
+  padding-top: 56px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-bottom: 0 !important;
+  height: auto !important;
+}
+
+/* 3. Ensure the content stage behaves correctly */
+.ops-content-stage {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  height: calc(100vh - 56px) !important;
+  overflow-y: auto !important;
+  padding: 24px !important;
+  border-radius: 0 !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+@media (max-width: 767px) {
+  .ops-content-stage {
+    padding: 16px !important;
+  }
+}
+
+/* 4. Fix sidebar styling on mobile, tablet, and desktop */
+.ops-sidebar-aside {
+  height: calc(100vh - 56px) !important;
+  top: 56px !important;
+  position: sticky !important;
+  z-index: 120 !important;
+}
+
+/* 5. Unify panel backgrounds and provide solid fallbacks to resolve transparency issues */
+.ops-sidebar-panel {
+  background-color: #FAF7F2 !important;
+  background: var(--office-sidebar, #FAF7F2) !important;
+  border-right: 1px solid var(--office-border) !important;
+  border-left: 0 !important;
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.dark .ops-sidebar-panel {
+  background-color: #161616 !important;
+  background: var(--office-sidebar, #161616) !important;
+}
+
+.ops-mobile-drawer-shell {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2000 !important;
+}
+
+.ops-mobile-drawer-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  border: 0 !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(4px) !important;
+  z-index: 2005 !important;
+}
+
+.ops-mobile-drawer-panel {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  bottom: 0 !important;
+  width: min(88vw, 340px) !important;
+  padding: 1.1rem 1rem 1rem !important;
+  background-color: #FAF7F2 !important;
+  background: var(--office-sidebar, #FAF7F2) !important;
+  border-right: 1px solid var(--office-border) !important;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: none !important;
+  z-index: 2010 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1rem !important;
+  animation: ops-mobile-drawer-slide 220ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+.dark .ops-mobile-drawer-panel {
+  background-color: #161616 !important;
+  background: var(--office-sidebar, #161616) !important;
+}
+
+/* 6. Fix mobile navigation drawer links background using the newly defined --office-surface */
+.ops-mobile-drawer-link {
+  background: var(--office-surface, #1C1C1C) !important;
+  border: 1px solid var(--office-border) !important;
+  color: var(--office-text) !important;
+}
+
+.ops-mobile-drawer-link:hover,
+.ops-mobile-drawer-link:focus-visible,
+.ops-mobile-drawer-link.is-active {
+  border-color: var(--color-primary, #D98014) !important;
+  background: var(--office-active-bg, rgba(217, 128, 20, 0.15)) !important;
+}
+
+/* ==========================================================================
+   STANDARDIZED MOBILE RESPONSIVENESS & SCALING (MEMBER & ADMIN SIDES)
+   ========================================================================== */
+
+/* 1. Prevent layout wrappers, main body, and content stages from expanding beyond viewport */
+.ops-shell,
+.ops-shell-body,
+.ops-content-stage,
+.ops-content-shell,
+.ops-content-shell-stage,
+.ops-admin-page,
+.member-office-flow,
+.ops-admin-activation-grid,
+.ops-admin-encashment-grid,
+.ops-admin-tree-grid,
+.ops-admin-footer-grid,
+.ops-quicklink-grid,
+.ops-metric-grid,
+.ops-admin-queue-grid {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* 2. Enforce bounding limits on all card components to prevent horizontal overflow */
+.card,
+.ops-admin-control-card,
+.ops-admin-table-card,
+.ops-admin-process-card,
+.ops-admin-tree-card,
+.ops-admin-tree-detail-card,
+.ops-admin-security-card,
+.ops-gated-card,
+.ops-module-table-card,
+.ops-metric-card,
+.ops-quicklink-card,
+.ops-admin-queue-card,
+.ops-data-list-card {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* 3. Handle wide tables gracefully - lock them to horizontal scrolling inside cards */
+.overflow-x-auto {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  display: block !important;
+  -webkit-overflow-scrolling: touch !important;
+  box-sizing: border-box !important;
+}
+
+/* 4. Compact card padding and form element spacing on mobile viewports for premium look */
+@media (max-width: 640px) {
+  .card,
+  .ops-admin-control-card,
+  .ops-admin-table-card,
+  .ops-admin-process-card,
+  .ops-admin-tree-card,
+  .ops-admin-tree-detail-card,
+  .ops-admin-security-card,
+  .ops-gated-card,
+  .ops-module-table-card,
+  .ops-metric-card,
+  .ops-quicklink-card,
+  .ops-admin-queue-card,
+  .ops-data-list-card {
+    padding: 16px !important;
+  }
+
+  input, select, textarea, button {
+    font-size: 13px !important;
+  }
+}
+
+
 
 

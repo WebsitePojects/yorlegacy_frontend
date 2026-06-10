@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { createPortal } from 'react-dom';
 import { ModeToggle } from '@/components/mode-toggle';
 import {
   Activity,
@@ -215,7 +216,7 @@ export function MobileOfficeNav({
         <span>Menu</span>
       </button>
 
-      {open ? (
+      {open ? createPortal(
         <div className="ops-mobile-drawer-shell md:hidden">
           <button
             type="button"
@@ -297,7 +298,8 @@ export function MobileOfficeNav({
               </button>
             ) : null}
           </aside>
-        </div>
+        </div>,
+        document.body
       ) : null}
     </>
   );

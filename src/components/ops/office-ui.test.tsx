@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { MobileOfficeNav } from './office-ui';
+import { ThemeProvider } from '@/components/theme-provider';
 import type { OperationalModule } from '@/types/auth';
 
 const modules: OperationalModule[] = [
@@ -49,15 +50,17 @@ const modules: OperationalModule[] = [
 describe('MobileOfficeNav', () => {
   it('opens a hamburger drawer instead of rendering a bottom navigation bar', async () => {
     render(
-      <MemoryRouter>
-        <MobileOfficeNav
-          basePath="/admin"
-          currentModuleId="dashboard"
-          heading="yoradmin"
-          subheading="Admin Office"
-          modules={modules}
-        />
-      </MemoryRouter>
+      <ThemeProvider>
+        <MemoryRouter>
+          <MobileOfficeNav
+            basePath="/admin"
+            currentModuleId="dashboard"
+            heading="yoradmin"
+            subheading="Admin Office"
+            modules={modules}
+          />
+        </MemoryRouter>
+      </ThemeProvider>
     );
 
     expect(screen.getByRole('button', { name: /open office navigation/i })).toBeInTheDocument();

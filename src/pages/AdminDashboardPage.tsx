@@ -1056,7 +1056,7 @@ export function AdminDashboardPage() {
 
           {moduleId === 'activation-codes' && activationCodes ? (
             <section className="ops-admin-activation-grid grid gap-4">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
                 <DataPoint label="Tracked Codes" value={activationCodes.metrics.totalCodes} />
                 <DataPoint label="Activation Codes" value={activationFamilyCount} />
                 <DataPoint label="Product Codes" value={productFamilyCount} />
@@ -1072,7 +1072,7 @@ export function AdminDashboardPage() {
                   <CardContent className="space-y-4">
                     {canGenerateCodes ? (
                       <>
-                        <div className="grid gap-3 sm:grid-cols-4">
+                        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                           <label className="grid gap-2 text-sm">
                             <span className="font-medium text-[var(--muted-foreground)]">Quantity</span>
                             <Input
@@ -1121,7 +1121,7 @@ export function AdminDashboardPage() {
                             placeholder="Leave blank for general pool"
                           />
                         </label>
-                        <label className="grid gap-2 text-sm sm:col-span-4">
+                        <label className="grid gap-2 text-sm sm:col-span-2 lg:col-span-4">
                           <span className="font-medium text-[var(--muted-foreground)]">Remarks (optional)</span>
                           <textarea
                             maxLength={200}

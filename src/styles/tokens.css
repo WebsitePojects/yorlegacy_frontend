@@ -54,6 +54,7 @@
   --office-bg:          #F2EDE4;
   --office-card:        #FFFDF9;
   --office-sidebar:     #FAF7F2;
+  --office-surface:     #FFFDF9;
   --office-text:        #1A1208;
   --office-muted:       #6B5C45;
   --office-border:      rgba(175, 110, 30, 0.14);
@@ -137,6 +138,7 @@
   --office-bg:          #121212;
   --office-card:        #1C1C1C;
   --office-sidebar:     #161616;
+  --office-surface:     #1C1C1C;
   --office-text:        #F0E6D3;
   --office-muted:       #8A7A65;
   --office-border:      rgba(242, 184, 75, 0.10);
