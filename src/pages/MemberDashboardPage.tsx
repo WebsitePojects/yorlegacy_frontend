@@ -214,6 +214,20 @@ type MemberTransferSearchResult = {
   packageTier: string;
 };
 
+const GYF_SYNTHETIC_MODULE: OperationalModule = {
+  id: 'get-yor-five',
+  label: 'Get Yor Five',
+  path: '/member/get-yor-five',
+  group: 'Compensation',
+  description: 'Full Get Yor Five progress — per-tier referral counts, completed groups, and wallet ledger entries.',
+  status: 'live-report' as const,
+  legacyReference: 'ecom/hifive-bonus.php',
+  permissions: ['member'],
+  metrics: [],
+  table: { title: '', columns: [], rows: [] },
+  gatedActions: []
+};
+
 export function MemberDashboardPage() {
   const {
     getMemberActivationCodes,
@@ -316,11 +330,15 @@ export function MemberDashboardPage() {
 
   const buildMemberBundle = useCallback(
     async (targetModuleId: string, rootUsername: string): Promise<MemberModuleBundle> => {
+      const modulePromise = targetModuleId === 'get-yor-five'
+        ? Promise.resolve(GYF_SYNTHETIC_MODULE)
+        : getMemberModule(targetModuleId);
+
       const [nextSummary, nextOffice, nextMvpDashboard, nextModule] = await Promise.all([
         getMemberSummary(),
         getMemberOffice(),
         getMemberMvpDashboard(),
-        getMemberModule(targetModuleId)
+        modulePromise
       ]);
 
       let activationCodes: MemberActivationCodeCenter | null = null;
@@ -838,6 +856,18 @@ export function MemberDashboardPage() {
     () => new Map((office?.modules ?? []).map((module) => [module.id, module.path])),
     [office?.modules]
   );
+
+  // Inject get-yor-five into the sidebar regardless of what the backend returns,
+  // so the tab is always visible even before VPS backend is redeployed.
+  const sidebarModules = useMemo(() => {
+    const mods = office?.modules ?? [];
+    if (mods.find((m) => m.id === 'get-yor-five')) return mods;
+    const afterIdx = mods.findIndex((m) => m.id === 'get-five-bonus');
+    const insertAt = afterIdx >= 0 ? afterIdx + 1 : mods.findIndex((m) => m.id === 'salesmatch-bonus') + 1;
+    const result = [...mods];
+    result.splice(insertAt >= 0 ? insertAt : mods.length, 0, GYF_SYNTHETIC_MODULE);
+    return result;
+  }, [office?.modules]);
   const quickLinks = useMemo(() => {
     return [
       {
@@ -920,7 +950,7 @@ export function MemberDashboardPage() {
       }
       sidebarHeading={office?.profile.username ?? 'Yor Member'}
       sidebarSubheading={office?.profile.fullName ?? 'Protected member office'}
-      modules={office?.modules ?? []}
+      modules={sidebarModules}
       headerBadge="Member Office"
       isContentLoading={isContentLoading}
       loadingLabel={activeModule?.label ?? 'Loading member workspace'}
