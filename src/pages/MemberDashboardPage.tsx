@@ -42,6 +42,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { searchMemberTransferTargets } from '@/lib/api';
 import { createMemberPlacementReservation } from '@/lib/api';
+import { GetYorFiveInFrame } from './GetYorFivePage';
 import type {
   DashboardSummary,
   GenealogyCenter,
@@ -127,6 +128,7 @@ const customMemberModuleIds = new Set([
   'genealogy',
   'account-shadow-management',
   'get-five-bonus',
+  'get-yor-five',
   'lifestyle-rewards',
   'unilevel-rank-progress',
   'global-bonus-eligibility',
@@ -1422,6 +1424,25 @@ export function MemberDashboardPage() {
                 <ReportTableView table={activeModule.table} />
               </CardContent>
             </Card>
+          </section>
+        ) : null}
+
+        {/* ── GET YOR FIVE (full dedicated page, inside office frame) ── */}
+        {moduleId === 'get-yor-five' ? (
+          <section>
+            <div className="mb-5 flex items-start gap-4">
+              <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-amber-500/25 bg-amber-500/10 shadow-md shadow-amber-500/20">
+                <Gift className="size-7 text-amber-600 dark:text-amber-400" />
+              </span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Compensation</p>
+                <h2 className="text-2xl font-bold tracking-tight text-[var(--foreground)]">Get Yor Five</h2>
+                <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                  Earn a cash bonus equal to your package price for every 5 direct referrals in the same package tier.
+                </p>
+              </div>
+            </div>
+            <GetYorFiveInFrame />
           </section>
         ) : null}
 
