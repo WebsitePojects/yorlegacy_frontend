@@ -1292,8 +1292,7 @@ body {
   width: max-content;
   min-width: 900px;
   margin: 40px auto 56px;
-  transform-origin: top center;
-  transition: transform 80ms linear;
+  transform-origin: 0 0;
 }
 
 .genealogy-canvas-overlay {
@@ -13814,7 +13813,7 @@ img, video, canvas, svg {
   flex-direction: row !important;
   justify-content: center !important;
   align-items: start !important;
-  gap: 24px !important;
+  gap: 8px !important;
   width: max-content !important;
   margin: 0 auto !important;
 }

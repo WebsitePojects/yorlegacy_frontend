@@ -109,17 +109,17 @@ function packageTone(packageTier: string) {
 function getVerticalGap(level: number): number {
   switch (level) {
     case 0:
-      return 140;
+      return 80;
     case 1:
-      return 90;
+      return 56;
     case 2:
-      return 60;
-    case 3:
       return 40;
+    case 3:
+      return 28;
     case 4:
-      return 30;
+      return 20;
     default:
-      return 24;
+      return 16;
   }
 }
 
@@ -395,7 +395,23 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
   }
 
   function updateScale(delta: number) {
-    setScale((current) => clampScale(current + delta));
+    const currentScale = scaleRef.current;
+    const nextScale = clampScale(currentScale + delta);
+    if (nextScale === currentScale) return;
+
+    const viewport = viewportRef.current;
+    if (viewport) {
+      const viewportRect = viewport.getBoundingClientRect();
+      const cx = viewportRect.width / 2;
+      const cy = viewportRect.height / 2;
+      const scaleRatio = nextScale / currentScale;
+      setOffset((current) => ({
+        x: current.x + cx * (1 - scaleRatio),
+        y: current.y + cy * (1 - scaleRatio)
+      }));
+    }
+
+    setScale(nextScale);
   }
 
   function queueNodeFocus(nodeKey: string, yBias = 0) {
