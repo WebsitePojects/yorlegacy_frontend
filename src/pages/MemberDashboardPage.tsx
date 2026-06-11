@@ -9,11 +9,15 @@ import {
   Clock,
   Copy,
   CreditCard,
+  Eye,
+  EyeOff,
   Gift,
   GitBranch,
   Globe,
   KeyRound,
   LayoutDashboard,
+  Lock,
+  Mail,
   Medal,
   ShieldCheck,
   Star,
@@ -243,6 +247,7 @@ export function MemberDashboardPage() {
     getMemberWalletDetail,
     previewEncashment,
     submitEncashment,
+    updateMemberCredentials,
     updatePayoutSettings,
     transferActivationCodes,
     upgradeActivationCode,
@@ -285,6 +290,10 @@ export function MemberDashboardPage() {
   const [payoutMethodDraft, setPayoutMethodDraft] = useState('');
   const [payoutDetailsDraft, setPayoutDetailsDraft] = useState('');
   const [isPayoutSaving, setIsPayoutSaving] = useState(false);
+  const [emailDraft, setEmailDraft] = useState('');
+  const [passwordDraft, setPasswordDraft] = useState('');
+  const [showMemberPassword, setShowMemberPassword] = useState(false);
+  const [isCredentialsSaving, setIsCredentialsSaving] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [copiedCodeCount, setCopiedCodeCount] = useState<Record<string, number>>({});
   const [isShareLinkLoading, setIsShareLinkLoading] = useState(false);
@@ -308,6 +317,8 @@ export function MemberDashboardPage() {
       setSelectedTreeNodeId(bundle.binaryTree?.root.nodeId ?? null);
       setPayoutMethodDraft(bundle.office.profile.payoutMethod ?? '');
       setPayoutDetailsDraft('');
+      setEmailDraft(bundle.summary?.user.email ?? '');
+      setPasswordDraft('');
 
       if (bundle.walletDetail) {
         setEncashAmountInput(formatEncashmentInput(bundle.walletDetail.preview.requestedAmount));
@@ -1045,42 +1056,165 @@ export function MemberDashboardPage() {
 
         {/* ── ACCOUNT DETAILS ── */}
         {moduleId === 'account-details' && office ? (
-          <section className="grid gap-4 xl:grid-cols-2">
-            {/* Profile — read-only */}
+          <section className="space-y-4">
+            {/* ── Profile overview card ── */}
             <Card className="border-[var(--border)] bg-[var(--card)]">
-              <CardHeader className="pb-3"><CardTitle className="text-base">Profile</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                {[
-                  ['Username', office.profile.username],
-                  ['Full Name', office.profile.fullName],
-                  ['Email', summary?.user.email ?? '—'],
-                  ['Package', office.profile.packageTier],
-                  ['Account Status', office.profile.accountStatus],
-                  ['Referral Code', office.profile.referralCode],
-                  ['Sponsor Code', office.profile.sponsorCode],
-                ].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm odd:bg-[var(--accent)]/40">
-                    <span className="text-[var(--muted-foreground)]">{label}</span>
-                    <strong className="font-medium text-[var(--foreground)]">{value}</strong>
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-[var(--yor-copper)]/15">
+                    <ShieldCheck className="size-5 text-[var(--yor-copper)]" />
+                  </span>
+                  <div>
+                    <CardTitle className="text-base">Account Profile</CardTitle>
+                    <CardDescription className="text-xs">Your Yor International membership details.</CardDescription>
                   </div>
-                ))}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
+                  {[
+                    ['Username', office.profile.username],
+                    ['Full Name', office.profile.fullName],
+                    ['Email', summary?.user.email ?? '—'],
+                    ['Package', office.profile.packageTier],
+                    ['Account Status', office.profile.accountStatus],
+                    ['Referral Code', office.profile.referralCode],
+                    ['Sponsor Code', office.profile.sponsorCode || '—'],
+                    ['Payout Method', office.profile.payoutMethod || '—'],
+                    ['Payout Schedule', office.wallet.payoutSchedule],
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex flex-col gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 py-3">
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">{label}</span>
+                      <span className="text-sm font-medium text-[var(--foreground)]">{value}</span>
+                    </div>
+                  ))}
+                  {/* Password masked */}
+                  <div className="flex flex-col gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 py-3">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Password</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium tracking-widest text-[var(--foreground)]">
+                        {showMemberPassword ? (passwordDraft || '••••••••') : '••••••••'}
+                      </span>
+                      <button
+                        type="button"
+                        className="text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]"
+                        onClick={() => setShowMemberPassword((v) => !v)}
+                        aria-label={showMemberPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showMemberPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Payout — editable */}
-            <Card className="border-[var(--border)] bg-[var(--card)]">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Payout Settings</CardTitle>
-                <CardDescription className="text-xs">Update your payout method and account details. Username cannot be changed.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <InfoRow label="Payout Schedule" value={office.wallet.payoutSchedule} />
-                <InfoRow label="Available Wallet" value={office.wallet.availableBalance} highlight />
-                <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+            {/* ── Edit cards ── */}
+            <div className="grid gap-4 xl:grid-cols-2">
+              {/* Security — email + password */}
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-9 items-center justify-center rounded-lg bg-blue-500/10">
+                      <Lock className="size-4 text-blue-400" />
+                    </span>
+                    <div>
+                      <CardTitle className="text-sm font-semibold">Security Settings</CardTitle>
+                      <CardDescription className="text-xs">Update your login email or password.</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
                   <label className="grid gap-1.5 text-sm">
-                    <span className="font-medium text-[var(--muted-foreground)]">Payout Method</span>
+                    <span className="font-medium text-[var(--muted-foreground)]">Email Address</span>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+                      <Input
+                        type="email"
+                        value={emailDraft}
+                        onChange={(e) => setEmailDraft(e.target.value)}
+                        placeholder="your@email.com"
+                        className="pl-9"
+                      />
+                    </div>
+                  </label>
+                  <label className="grid gap-1.5 text-sm">
+                    <span className="font-medium text-[var(--muted-foreground)]">New Password</span>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+                      <Input
+                        type={showMemberPassword ? 'text' : 'password'}
+                        value={passwordDraft}
+                        onChange={(e) => setPasswordDraft(e.target.value)}
+                        placeholder="Leave blank to keep current"
+                        className="pl-9 pr-10"
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]"
+                        onClick={() => setShowMemberPassword((v) => !v)}
+                        aria-label={showMemberPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showMemberPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
+                    </div>
+                  </label>
+                  <Button
+                    type="button"
+                    className="w-full"
+                    disabled={isCredentialsSaving || (!emailDraft.trim() && !passwordDraft.trim())}
+                    onClick={async () => {
+                      const confirmed = await confirmAction({
+                        title: 'Update security credentials?',
+                        description: 'Your email and/or password will be updated immediately.',
+                        confirmLabel: 'Update Credentials',
+                        tone: 'warning'
+                      });
+                      if (!confirmed) return;
+                      setIsCredentialsSaving(true);
+                      try {
+                        await updateMemberCredentials({
+                          email: emailDraft.trim() || undefined,
+                          password: passwordDraft.trim() || undefined
+                        });
+                        notify({ title: 'Credentials updated', description: 'Your security settings have been saved.', tone: 'success' });
+                        setPasswordDraft('');
+                        setReloadNonce((current) => current + 1);
+                      } catch (err) {
+                        notify({ title: 'Update failed', description: err instanceof Error ? err.message : 'Unable to update credentials.', tone: 'destructive' });
+                      } finally {
+                        setIsCredentialsSaving(false);
+                      }
+                    }}
+                  >
+                    {isCredentialsSaving ? 'Saving…' : 'Update Credentials'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Payout settings */}
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-9 items-center justify-center rounded-lg bg-amber-500/10">
+                      <CreditCard className="size-4 text-amber-400" />
+                    </span>
+                    <div>
+                      <CardTitle className="text-sm font-semibold">Payout Settings</CardTitle>
+                      <CardDescription className="text-xs">Update your payment method and account number.</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 py-3 text-sm">
+                    <span className="text-[var(--muted-foreground)]">Available Balance</span>
+                    <strong className="font-semibold text-emerald-400">{office.wallet.availableBalance}</strong>
+                  </div>
+                  <label className="grid gap-1.5 text-sm">
+                    <span className="font-medium text-[var(--muted-foreground)]">Payment Method</span>
                     <select
-                      className="flex h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                      className="flex h-10 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                       value={payoutMethodDraft}
                       onChange={(e) => setPayoutMethodDraft(e.target.value)}
                     >
@@ -1117,7 +1251,7 @@ export function MemberDashboardPage() {
                       setIsPayoutSaving(true);
                       try {
                         await updatePayoutSettings(payoutMethodDraft, payoutDetailsDraft);
-                        notify({ title: 'Payout settings updated', description: `Payout method set to ${payoutMethodDraft}. Changes take effect on the next payout cycle.`, tone: 'success' });
+                        notify({ title: 'Payout settings updated', description: `Payout method set to ${payoutMethodDraft}.`, tone: 'success' });
                         setReloadNonce((current) => current + 1);
                       } catch (err) {
                         notify({ title: 'Update failed', description: err instanceof Error ? err.message : 'Unable to update payout settings.', tone: 'destructive' });
@@ -1126,14 +1260,15 @@ export function MemberDashboardPage() {
                       }
                     }}
                   >
-                    {isPayoutSaving ? 'Saving…' : 'Save Payout Settings'}
+                    {isPayoutSaving ? 'Saving…' : 'Update Payout Settings'}
                   </Button>
-                  <p className="text-xs text-[var(--muted-foreground)]">Changes are reviewed before the next payout cycle. Current method: <strong>{office.profile.payoutMethod || '—'}</strong></p>
-                </div>
-              </CardContent>
-            </Card>
+                  <p className="text-xs text-[var(--muted-foreground)]">Current method on file: <strong className="text-[var(--foreground)]">{office.profile.payoutMethod || '—'}</strong></p>
+                </CardContent>
+              </Card>
+            </div>
 
-            <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
+            {/* Quick Actions */}
+            <Card className="border-[var(--border)] bg-[var(--card)]">
               <CardHeader className="pb-3"><CardTitle className="text-base">Quick Actions</CardTitle></CardHeader>
               <CardContent className="flex flex-wrap gap-3">
                 <Button asChild><Link to="/member/wallet"><Wallet className="mr-2 size-4" />Open Wallet</Link></Button>

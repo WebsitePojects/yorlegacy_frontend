@@ -6,6 +6,7 @@ import {
   Banknote,
   Bell,
   Eye,
+  EyeOff,
   FileText,
   GitBranch,
   KeyRound,
@@ -15,6 +16,7 @@ import {
   MessageSquare,
   Newspaper,
   Plus,
+  Search,
   Tag,
   TrendingUp,
   Users
@@ -144,6 +146,7 @@ const CODE_GENERATION_OPTIONS: CodeGenerationOption[] = [
 const customAdminModuleIds = new Set([
   'dashboard',
   'member-management',
+  'account-details',
   'activation-codes',
   'encashment-reports',
   'account-genealogy',
@@ -189,6 +192,8 @@ type AdminModuleBundle = {
 
 type MemberProfileDraft = {
   username: string;
+  newUsername: string;
+  email: string;
   firstName: string;
   lastName: string;
   middleName: string;
@@ -216,6 +221,8 @@ type TransferSearchResult = {
 
 const EMPTY_MEMBER_PROFILE_DRAFT: MemberProfileDraft = {
   username: '',
+  newUsername: '',
+  email: '',
   firstName: '',
   lastName: '',
   middleName: '',
@@ -246,6 +253,8 @@ function buildMemberProfileDraft(profile: AdminMemberProfile | null): MemberProf
 
   return {
     username: profile.username,
+    newUsername: profile.username,
+    email: profile.email,
     firstName: profile.firstName,
     lastName: profile.lastName,
     middleName: profile.middleName,
@@ -346,6 +355,8 @@ export function AdminDashboardPage() {
   const [selectedEncashmentId, setSelectedEncashmentId] = useState('');
   const [encashmentDraft, setEncashmentDraft] = useState<EncashmentDraft>(EMPTY_ENCASHMENT_DRAFT);
   const [selectedCodeTransferTarget, setSelectedCodeTransferTarget] = useState<TransferSearchResult | null>(null);
+  const [showAdminMemberPassword, setShowAdminMemberPassword] = useState(false);
+  const [isMemberProfileSaving, setIsMemberProfileSaving] = useState(false);
 
   const applyAdminBundle = useCallback((bundle: AdminModuleBundle) => {
     setSummary(bundle.summary);
@@ -418,7 +429,7 @@ export function AdminDashboardPage() {
         encashments = await getAdminEncashments();
       }
 
-      if (targetModuleId === 'member-management') {
+      if (targetModuleId === 'member-management' || targetModuleId === 'account-details') {
         memberCenter = await getAdminMemberManagement({
           query: options.memberQuery,
           username: options.memberUsername,
@@ -494,7 +505,7 @@ export function AdminDashboardPage() {
       return;
     }
 
-    if (moduleId !== 'activation-codes') {
+    if (moduleId !== 'activation-codes' && moduleId !== 'account-details') {
       navigate('/cashier/activation-codes', { replace: true });
     }
   }, [moduleId, navigate, officeBasePath, user?.role]);
@@ -807,7 +818,7 @@ export function AdminDashboardPage() {
   async function handleSaveMemberProfile() {
     const confirmed = await confirmAction({
       title: 'Save member profile update?',
-      description: `Update ${memberProfileDraft.username || 'the selected member'} using the current account-details form fields.`,
+      description: `Update ${memberProfileDraft.username || 'the selected member'} profile details.`,
       confirmLabel: 'Save Profile',
       tone: 'warning'
     });
@@ -816,6 +827,7 @@ export function AdminDashboardPage() {
       return;
     }
 
+    setIsMemberProfileSaving(true);
     try {
       const result = await updateMemberProfile(memberProfileDraft.username, {
         firstName: memberProfileDraft.firstName,
@@ -825,13 +837,16 @@ export function AdminDashboardPage() {
         payoutOption: memberProfileDraft.payoutOption,
         payoutDetails: memberProfileDraft.payoutDetails,
         address: memberProfileDraft.address,
-        contactNumber: memberProfileDraft.contactNumber
+        contactNumber: memberProfileDraft.contactNumber,
+        email: memberProfileDraft.email || undefined,
+        newUsername: memberProfileDraft.newUsername !== memberProfileDraft.username ? memberProfileDraft.newUsername : undefined
       });
       notify({
         title: 'Member profile updated',
         description: result.detail ?? result.reason,
         tone: 'success'
       });
+      setShowAdminMemberPassword(false);
       setReloadNonce((value) => value + 1);
     } catch (cause) {
       notify({
@@ -839,6 +854,8 @@ export function AdminDashboardPage() {
         description: cause instanceof Error ? cause.message : 'Please try again.',
         tone: 'destructive'
       });
+    } finally {
+      setIsMemberProfileSaving(false);
     }
   }
 
@@ -959,9 +976,11 @@ export function AdminDashboardPage() {
   const showModuleTable = Boolean(activeModule && !customAdminModuleIds.has(moduleId));
   const currentOpsRole = office?.profile.accessScope ?? user?.role ?? 'admin';
   const effectiveAdminRole = currentOpsRole === 'platform' ? 'admin' : currentOpsRole;
+  const isCashierRole = effectiveAdminRole === 'cashier' || user?.role === 'cashier';
   const canGenerateCodes = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin';
   const canApproveEncashment = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin';
   const canChangeMemberStatus = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin';
+  const canEditFullMemberProfile = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin' || effectiveAdminRole === 'bod';
   const showDashboardActions = moduleId === 'dashboard' && (mvpDashboard?.moneyMode ?? 'playground') !== 'sandbox' && branchNotes.length > 0;
   const visibleMetrics = office ? getVisibleAdminMetrics(moduleId, office.metrics) : [];
   const selectedCodeBatchOption =
@@ -1147,57 +1166,69 @@ export function AdminDashboardPage() {
                         This role can review, release, transfer, and correct codes, but general code generation is admin-side only.
                       </div>
                     )}
+                  </CardContent>
+                </Card>
 
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
-                      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                        <label className="grid gap-2 text-sm">
-                          <span className="font-medium text-[var(--muted-foreground)]">Search codes or owners</span>
-                          <Input
-                            value={codeSearchQuery}
-                            onChange={(event) => setCodeSearchQuery(event.target.value)}
-                            placeholder="Code, username, package, remarks"
-                          />
-                        </label>
-                        <div className="grid gap-2 text-sm">
-                          <span className="font-medium text-[var(--muted-foreground)]">Search by username</span>
-                          <div className="flex gap-2">
-                            <Input
-                              value={codeTransferSearchQuery}
-                              onChange={(event) => setCodeTransferSearchQuery(event.target.value)}
-                              placeholder="Search target username"
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter') {
-                                  event.preventDefault();
-                                  void handleSearchCodeTransferTargets();
-                                }
-                              }}
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => void handleSearchCodeTransferTargets()}
-                              disabled={codeTransferSearchLoading}
-                            >
-                              {codeTransferSearchLoading ? 'Searching...' : 'Search'}
-                            </Button>
-                          </div>
-                        </div>
+                {/* ── Release & Transfer panel ── */}
+                <Card className="ops-admin-transfer-card border-[var(--border)] bg-[var(--card)]">
+                  <CardHeader>
+                    <CardTitle>Release &amp; Transfer</CardTitle>
+                    <CardDescription className="text-xs">Filter the inventory below, select codes, then release or transfer them to a member.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Inventory search */}
+                    <label className="grid gap-2 text-sm">
+                      <span className="font-medium text-[var(--muted-foreground)]">Filter inventory</span>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+                        <Input
+                          value={codeSearchQuery}
+                          onChange={(event) => setCodeSearchQuery(event.target.value)}
+                          placeholder="Code, username, package, remarks…"
+                          className="pl-9"
+                        />
+                      </div>
+                    </label>
+
+                    {/* Transfer target search */}
+                    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 space-y-3">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Transfer Target</p>
+                      <div className="flex gap-2">
+                        <Input
+                          value={codeTransferSearchQuery}
+                          onChange={(event) => setCodeTransferSearchQuery(event.target.value)}
+                          placeholder="Search recipient username…"
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              void handleSearchCodeTransferTargets();
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => void handleSearchCodeTransferTargets()}
+                          disabled={codeTransferSearchLoading}
+                        >
+                          {codeTransferSearchLoading ? '…' : 'Search'}
+                        </Button>
                       </div>
                       {codeTransferSearchError ? (
-                        <p className="mt-3 text-sm text-amber-200">{codeTransferSearchError}</p>
+                        <p className="text-sm text-amber-400">{codeTransferSearchError}</p>
                       ) : null}
-                      {codeTransferSearchResults.length ? (
-                        <div className="mt-3 grid gap-2">
+                      {codeTransferSearchResults.length > 0 ? (
+                        <div className="grid gap-1.5">
                           {codeTransferSearchResults.map((result) => {
                             const isSelected = selectedCodeTransferTarget?.username === result.username;
                             return (
                               <button
                                 key={result.username}
                                 type="button"
-                                className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition ${
+                                className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition ${
                                   isSelected
                                     ? 'border-[var(--yor-copper)] bg-[var(--muted)]/40'
-                                    : 'border-[var(--border)] bg-[var(--background)] hover:bg-[var(--muted)]/20'
+                                    : 'border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)]/20'
                                 }`}
                                 onClick={() => {
                                   setSelectedCodeTransferTarget(result);
@@ -1206,30 +1237,53 @@ export function AdminDashboardPage() {
                               >
                                 <span className="font-medium text-[var(--foreground)]">{result.username}</span>
                                 <span className="text-xs text-[var(--muted-foreground)]">
-                                  {result.displayName} / {result.packageTier}
+                                  {result.displayName} · {result.packageTier}
                                 </span>
                               </button>
                             );
                           })}
                         </div>
                       ) : codeTransferSearchQuery.trim().length >= 3 && !codeTransferSearchLoading && !codeTransferSearchError ? (
-                        <p className="mt-3 text-sm text-[var(--muted-foreground)]">Search results will appear here.</p>
+                        <p className="text-sm text-[var(--muted-foreground)]">No results found. Try a different username.</p>
                       ) : null}
                       {selectedCodeTransferTarget ? (
-                        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--border)] px-3 py-2 text-sm">
+                        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--yor-copper)]/40 bg-[var(--yor-copper)]/5 px-3 py-2 text-sm">
                           <Badge variant="outline">{selectedCodeTransferTarget.username}</Badge>
                           <span className="text-[var(--foreground)]">{selectedCodeTransferTarget.displayName}</span>
-                          <span className="text-[var(--muted-foreground)]">{selectedCodeTransferTarget.packageTier}</span>
+                          <span className="text-[var(--muted-foreground)]">· {selectedCodeTransferTarget.packageTier}</span>
                         </div>
                       ) : null}
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length} onClick={handleReleaseCodes}>
-                          Release
-                        </Button>
-                        <Button type="button" variant="outline" disabled={!selectedAdminCodes.length || !adminTransferTarget} onClick={handleTransferCodes}>
-                          Transfer
-                        </Button>
+                    </div>
+
+                    {/* Selection summary + actions */}
+                    {selectedAdminCodes.length > 0 ? (
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm">
+                        <span className="text-[var(--muted-foreground)]">
+                          <strong className="text-[var(--foreground)]">{selectedAdminCodes.length}</strong> code{selectedAdminCodes.length !== 1 ? 's' : ''} selected
+                        </span>
                       </div>
+                    ) : (
+                      <p className="text-xs text-[var(--muted-foreground)]">Select codes from the inventory table below to enable actions.</p>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={!selectedAdminCodes.length}
+                        onClick={handleReleaseCodes}
+                        className="flex-1"
+                      >
+                        Release Selected
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={!selectedAdminCodes.length || !adminTransferTarget}
+                        onClick={handleTransferCodes}
+                        className="ops-admin-primary-action flex-1"
+                      >
+                        Transfer to {selectedCodeTransferTarget?.username ?? 'Member'}
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -1399,6 +1453,7 @@ export function AdminDashboardPage() {
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        {/* Names — all roles can edit */}
                         <label className="grid gap-2 text-sm">
                           <span className="font-medium text-[var(--muted-foreground)]">First Name</span>
                           <Input value={memberProfileDraft.firstName} onChange={(event) => handleMemberProfileField('firstName', event.target.value)} />
@@ -1411,40 +1466,82 @@ export function AdminDashboardPage() {
                           <span className="font-medium text-[var(--muted-foreground)]">Middle Name</span>
                           <Input value={memberProfileDraft.middleName} onChange={(event) => handleMemberProfileField('middleName', event.target.value)} />
                         </label>
-                        <label className="grid gap-2 text-sm">
-                          <span className="font-medium text-[var(--muted-foreground)]">Username</span>
-                          <Input value={memberProfileDraft.username} readOnly />
-                        </label>
-                        <label className="grid gap-2 text-sm">
-                          <span className="font-medium text-[var(--muted-foreground)]">Password</span>
-                          <Input
-                            type="password"
-                            value={memberProfileDraft.password}
-                            onChange={(event) => handleMemberProfileField('password', event.target.value)}
-                            placeholder="Leave blank to keep current password"
-                          />
-                        </label>
-                        <label className="grid gap-2 text-sm">
-                          <span className="font-medium text-[var(--muted-foreground)]">Contact Number</span>
-                          <Input value={memberProfileDraft.contactNumber} onChange={(event) => handleMemberProfileField('contactNumber', event.target.value)} />
-                        </label>
-                        <label className="grid gap-2 text-sm md:col-span-2 xl:col-span-1">
-                          <span className="font-medium text-[var(--muted-foreground)]">Payout Option</span>
-                          <Input value={memberProfileDraft.payoutOption} onChange={(event) => handleMemberProfileField('payoutOption', event.target.value)} />
-                        </label>
-                        <label className="grid gap-2 text-sm md:col-span-2">
-                          <span className="font-medium text-[var(--muted-foreground)]">Payout Details</span>
-                          <Input value={memberProfileDraft.payoutDetails} onChange={(event) => handleMemberProfileField('payoutDetails', event.target.value)} />
-                        </label>
-                        <label className="grid gap-2 text-sm md:col-span-2 xl:col-span-3">
-                          <span className="font-medium text-[var(--muted-foreground)]">Address</span>
-                          <Input value={memberProfileDraft.address} onChange={(event) => handleMemberProfileField('address', event.target.value)} />
-                        </label>
+                        {/* Admin-only fields */}
+                        {canEditFullMemberProfile ? (
+                          <>
+                            <label className="grid gap-2 text-sm">
+                              <span className="font-medium text-[var(--muted-foreground)]">Username</span>
+                              <Input
+                                value={memberProfileDraft.newUsername}
+                                onChange={(event) => handleMemberProfileField('newUsername', event.target.value)}
+                                placeholder={memberProfileDraft.username}
+                              />
+                            </label>
+                            <label className="grid gap-2 text-sm">
+                              <span className="font-medium text-[var(--muted-foreground)]">Email</span>
+                              <Input
+                                type="email"
+                                value={memberProfileDraft.email}
+                                onChange={(event) => handleMemberProfileField('email', event.target.value)}
+                              />
+                            </label>
+                            <label className="grid gap-2 text-sm">
+                              <span className="font-medium text-[var(--muted-foreground)]">Password</span>
+                              <div className="relative">
+                                <Input
+                                  type={showAdminMemberPassword ? 'text' : 'password'}
+                                  value={memberProfileDraft.password}
+                                  onChange={(event) => handleMemberProfileField('password', event.target.value)}
+                                  placeholder="Leave blank to keep current"
+                                  className="pr-10"
+                                />
+                                <button
+                                  type="button"
+                                  tabIndex={-1}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]"
+                                  onClick={() => setShowAdminMemberPassword((v) => !v)}
+                                  aria-label={showAdminMemberPassword ? 'Hide password' : 'Show password'}
+                                >
+                                  {showAdminMemberPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                                </button>
+                              </div>
+                            </label>
+                            <label className="grid gap-2 text-sm">
+                              <span className="font-medium text-[var(--muted-foreground)]">Contact Number</span>
+                              <Input value={memberProfileDraft.contactNumber} onChange={(event) => handleMemberProfileField('contactNumber', event.target.value)} />
+                            </label>
+                            <label className="grid gap-2 text-sm">
+                              <span className="font-medium text-[var(--muted-foreground)]">Payout Method</span>
+                              <select
+                                className="flex h-10 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                                value={memberProfileDraft.payoutOption}
+                                onChange={(event) => handleMemberProfileField('payoutOption', event.target.value)}
+                              >
+                                <option value="">Select method…</option>
+                                <option value="GCash">GCash</option>
+                                <option value="Maya">Maya</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="BDO">BDO</option>
+                                <option value="BPI">BPI</option>
+                                <option value="UnionBank">UnionBank</option>
+                                <option value="Metrobank">Metrobank</option>
+                              </select>
+                            </label>
+                            <label className="grid gap-2 text-sm">
+                              <span className="font-medium text-[var(--muted-foreground)]">Account Number</span>
+                              <Input value={memberProfileDraft.payoutDetails} onChange={(event) => handleMemberProfileField('payoutDetails', event.target.value)} placeholder="E-wallet or bank account number" />
+                            </label>
+                            <label className="grid gap-2 text-sm md:col-span-2 xl:col-span-3">
+                              <span className="font-medium text-[var(--muted-foreground)]">Address</span>
+                              <Input value={memberProfileDraft.address} onChange={(event) => handleMemberProfileField('address', event.target.value)} />
+                            </label>
+                          </>
+                        ) : null}
                       </div>
 
                       <div className="flex flex-wrap gap-3">
-                        <Button type="button" className="ops-admin-primary-action" onClick={handleSaveMemberProfile}>
-                          Save Profile
+                        <Button type="button" className="ops-admin-primary-action" disabled={isMemberProfileSaving} onClick={handleSaveMemberProfile}>
+                          {isMemberProfileSaving ? 'Saving…' : 'Save Profile'}
                         </Button>
                         {canChangeMemberStatus ? (
                           <>
@@ -1515,6 +1612,12 @@ export function AdminDashboardPage() {
                             <td className="px-4 py-3 text-[var(--muted-foreground)]">{row.lastActivity}</td>
                             <td className="px-4 py-3">
                               <div className="flex min-w-[360px] flex-wrap gap-2">
+                                <Button type="button" size="sm" className="ops-admin-primary-action" onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleSelectMember(row.username);
+                                }}>
+                                  Account Details
+                                </Button>
                                 <Button type="button" size="sm" variant="outline" onClick={(event) => {
                                   event.stopPropagation();
                                   openMemberWorkflow(financeModulePath, row.username);
@@ -1586,6 +1689,219 @@ export function AdminDashboardPage() {
                       </Button>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </section>
+          ) : null}
+
+          {/* ── ACCOUNT DETAILS (cashier + admin) ── */}
+          {moduleId === 'account-details' && memberCenter ? (
+            <section className="space-y-4">
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader>
+                  <CardTitle>Account Details</CardTitle>
+                  <CardDescription className="text-xs">
+                    {isCashierRole
+                      ? 'Search a member to update their name. Cashier accounts may only edit first name, middle name, and last name.'
+                      : 'Search a member to view and update their profile, credentials, and payout settings.'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+                      <Input
+                        value={memberSearchDraft}
+                        onChange={(event) => setMemberSearchDraft(event.target.value)}
+                        placeholder="Search by username, name, or referral code"
+                        className="pl-9"
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            handleSearchMembers();
+                          }
+                        }}
+                      />
+                    </div>
+                    <Button type="button" className="ops-admin-primary-action" onClick={handleSearchMembers}>
+                      Search
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setMemberSearchDraft('');
+                        setMemberSearchQuery('');
+                        setMemberPage(1);
+                        setMemberDetailUsername('');
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+
+                  {memberCenter.selectedMember ? (
+                    <>
+                      {/* Read-only profile info */}
+                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                        {[
+                          ['Username', memberCenter.selectedMember.username],
+                          ['Package', memberCenter.selectedMember.packageTier],
+                          ['Status', memberCenter.selectedMember.accountStatus],
+                          ['Referral Code', memberCenter.selectedMember.referralCode],
+                        ].map(([label, value]) => (
+                          <div key={label} className="flex flex-col gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 py-3">
+                            <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">{label}</span>
+                            <span className="text-sm font-medium text-[var(--foreground)]">{String(value)}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">
+                          {isCashierRole ? 'Edit Names' : 'Edit Profile'}
+                        </p>
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                          <label className="grid gap-2 text-sm">
+                            <span className="font-medium text-[var(--muted-foreground)]">First Name</span>
+                            <Input value={memberProfileDraft.firstName} onChange={(event) => handleMemberProfileField('firstName', event.target.value)} />
+                          </label>
+                          <label className="grid gap-2 text-sm">
+                            <span className="font-medium text-[var(--muted-foreground)]">Last Name</span>
+                            <Input value={memberProfileDraft.lastName} onChange={(event) => handleMemberProfileField('lastName', event.target.value)} />
+                          </label>
+                          <label className="grid gap-2 text-sm">
+                            <span className="font-medium text-[var(--muted-foreground)]">Middle Name</span>
+                            <Input value={memberProfileDraft.middleName} onChange={(event) => handleMemberProfileField('middleName', event.target.value)} />
+                          </label>
+
+                          {canEditFullMemberProfile ? (
+                            <>
+                              <label className="grid gap-2 text-sm">
+                                <span className="font-medium text-[var(--muted-foreground)]">Username</span>
+                                <Input
+                                  value={memberProfileDraft.newUsername}
+                                  onChange={(event) => handleMemberProfileField('newUsername', event.target.value)}
+                                  placeholder={memberProfileDraft.username}
+                                />
+                              </label>
+                              <label className="grid gap-2 text-sm">
+                                <span className="font-medium text-[var(--muted-foreground)]">Email</span>
+                                <Input
+                                  type="email"
+                                  value={memberProfileDraft.email}
+                                  onChange={(event) => handleMemberProfileField('email', event.target.value)}
+                                />
+                              </label>
+                              <label className="grid gap-2 text-sm">
+                                <span className="font-medium text-[var(--muted-foreground)]">Password</span>
+                                <div className="relative">
+                                  <Input
+                                    type={showAdminMemberPassword ? 'text' : 'password'}
+                                    value={memberProfileDraft.password}
+                                    onChange={(event) => handleMemberProfileField('password', event.target.value)}
+                                    placeholder="Leave blank to keep current"
+                                    className="pr-10"
+                                  />
+                                  <button
+                                    type="button"
+                                    tabIndex={-1}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]"
+                                    onClick={() => setShowAdminMemberPassword((v) => !v)}
+                                  >
+                                    {showAdminMemberPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                                  </button>
+                                </div>
+                              </label>
+                              <label className="grid gap-2 text-sm">
+                                <span className="font-medium text-[var(--muted-foreground)]">Payout Method</span>
+                                <select
+                                  className="flex h-10 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                                  value={memberProfileDraft.payoutOption}
+                                  onChange={(event) => handleMemberProfileField('payoutOption', event.target.value)}
+                                >
+                                  <option value="">Select method…</option>
+                                  <option value="GCash">GCash</option>
+                                  <option value="Maya">Maya</option>
+                                  <option value="Bank Transfer">Bank Transfer</option>
+                                  <option value="BDO">BDO</option>
+                                  <option value="BPI">BPI</option>
+                                  <option value="UnionBank">UnionBank</option>
+                                  <option value="Metrobank">Metrobank</option>
+                                </select>
+                              </label>
+                              <label className="grid gap-2 text-sm">
+                                <span className="font-medium text-[var(--muted-foreground)]">Account Number</span>
+                                <Input value={memberProfileDraft.payoutDetails} onChange={(event) => handleMemberProfileField('payoutDetails', event.target.value)} placeholder="E-wallet or bank account number" />
+                              </label>
+                            </>
+                          ) : null}
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-3">
+                          <Button type="button" className="ops-admin-primary-action" disabled={isMemberProfileSaving} onClick={handleSaveMemberProfile}>
+                            {isMemberProfileSaving ? 'Saving…' : 'Update Profile'}
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-6 text-center text-sm text-[var(--muted-foreground)]">
+                      Search a member username or name above to load their account details.
+                    </div>
+                  )}
+
+                  {/* Member directory list (compact) */}
+                  {memberCenter.rows.length > 0 && (
+                    <div className="overflow-hidden rounded-xl border border-[var(--border)]">
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[640px] text-sm">
+                          <thead>
+                            <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                              <th className="px-4 py-3">Username</th>
+                              <th className="px-4 py-3">Full Name</th>
+                              <th className="px-4 py-3">Package</th>
+                              <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {memberCenter.rows.map((row) => (
+                              <tr
+                                key={row.username}
+                                className={cn(
+                                  'cursor-pointer border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30',
+                                  memberCenter.selectedMember?.username === row.username && 'bg-[var(--muted)]/40'
+                                )}
+                                onClick={() => handleSelectMember(row.username)}
+                              >
+                                <td className="px-4 py-3 font-mono text-[var(--yor-copper-soft)]">{row.username}</td>
+                                <td className="px-4 py-3">{row.fullName}</td>
+                                <td className="px-4 py-3">{row.packageTier}</td>
+                                <td className="px-4 py-3">
+                                  <Badge variant={row.accountStatus === 'active' ? 'success' : row.accountStatus === 'pending' ? 'warning' : 'outline'}>
+                                    {row.accountStatus}
+                                  </Badge>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <Button type="button" size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleSelectMember(row.username); }}>
+                                    Select
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                        <span className="text-xs text-[var(--muted-foreground)]">Page {memberCenter.page} of {memberCenter.totalPages} / {memberCenter.total} members</span>
+                        <div className="flex gap-2">
+                          <Button type="button" variant="outline" size="sm" disabled={memberCenter.page <= 1} onClick={() => setMemberPage((p) => Math.max(1, p - 1))}>Prev</Button>
+                          <Button type="button" variant="outline" size="sm" disabled={memberCenter.page >= memberCenter.totalPages} onClick={() => setMemberPage((p) => Math.min(memberCenter.totalPages, p + 1))}>Next</Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </section>

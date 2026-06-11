@@ -41,6 +41,7 @@ import {
   resetAdminSandbox,
   searchMemberProfile,
   submitMemberEncashment,
+  updateMemberCredentials,
   updateMemberPayoutSettings,
   transferAdminActivationCodes,
   transferMemberActivationCodes,
@@ -106,6 +107,7 @@ type AuthContextValue = AuthState & {
     requestedAmount: number;
   }>;
   submitEncashment: (amount: number) => Promise<GatedActionResponse>;
+  updateMemberCredentials: (payload: { email?: string; password?: string }) => Promise<GatedActionResponse>;
   updatePayoutSettings: (payoutOption: string, payoutDetails: string) => Promise<GatedActionResponse>;
   getMemberTransactions: () => Promise<{ moneyMode: 'playground' | 'sandbox'; transactions: MemberTransactionSummary[] }>;
   getMemberTransactionDetail: (transactionId: string) => Promise<MemberTransactionDetail>;
@@ -255,6 +257,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     getMemberGetYorFive: fetchMemberGetYorFive,
     previewEncashment: previewMemberEncashment,
     submitEncashment: submitMemberEncashment,
+    updateMemberCredentials,
     updatePayoutSettings: updateMemberPayoutSettings,
     getMemberTransactions: fetchMemberTransactions,
     getMemberTransactionDetail: fetchMemberTransactionDetail,

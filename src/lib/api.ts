@@ -248,6 +248,16 @@ export function submitMemberEncashment(amount: number): Promise<GatedActionRespo
   });
 }
 
+export function updateMemberCredentials(payload: {
+  email?: string;
+  password?: string;
+}): Promise<GatedActionResponse> {
+  return fetchJson('/api/member/profile/credentials', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
 export function updateMemberPayoutSettings(
   payoutOption: string,
   payoutDetails: string
@@ -432,6 +442,8 @@ export function updateAdminMemberProfile(
     payoutDetails?: string;
     address?: string;
     contactNumber?: string;
+    email?: string;
+    newUsername?: string;
   }
 ): Promise<GatedActionResponse> {
   return fetchJson(`/api/admin/members/${encodeURIComponent(username)}/profile`, {
