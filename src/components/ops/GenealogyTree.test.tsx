@@ -179,9 +179,8 @@ describe('GenealogyTree', () => {
     });
   }, 10000);
 
-  it('blocks clicking on a disabled open slot (under another open slot)', () => {
-    const onOpenSlot = vi.fn();
-    renderTree({ onOpenSlot });
+  it('does not render disabled open slots (no blank spacer nodes)', () => {
+    renderTree();
 
     const select = screen.getByLabelText(/depth/i);
     fireEvent.change(select, { target: { value: '5' } });
@@ -191,9 +190,6 @@ describe('GenealogyTree', () => {
       (n) => n.className.includes('is-open-slot') && n.className.includes('is-disabled')
     );
 
-    expect(disabledSlot).toBeInTheDocument();
-
-    fireEvent.click(disabledSlot!);
-    expect(onOpenSlot).not.toHaveBeenCalled();
+    expect(disabledSlot).toBeUndefined();
   }, 10000);
 });

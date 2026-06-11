@@ -1354,6 +1354,7 @@ export function MemberDashboardPage() {
                     .filter((i) => i.status === 'available' && i.codeFamily === 'YOR CODES')
                     .map((i) => ({ code: i.code, packageTier: i.packageTier, codeFamily: i.codeFamily }))
                   }
+                  onUpgradeSuccess={() => setReloadNonce((value) => value + 1)}
                 />
               </CardContent>
             </Card>

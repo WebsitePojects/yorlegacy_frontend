@@ -1420,6 +1420,44 @@ body {
   box-shadow: none !important;
 }
 
+/* ── Open Slot: pulse animation & badge ─────────────────────────── */
+@keyframes genealogy-slot-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(85, 214, 161, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 20px rgba(85, 214, 161, 0.28);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(85, 214, 161, 0), inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 20px rgba(85, 214, 161, 0.1);
+  }
+}
+
+.genealogy-slot-orb-pulse {
+  animation: genealogy-slot-pulse 2.4s ease-in-out infinite;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.28), transparent 32%),
+    linear-gradient(145deg, #0e1711, #1d7a53 48%, #d9f99d) !important;
+  color: #f8ffe8 !important;
+}
+
+.genealogy-canvas-node:hover .genealogy-slot-orb-pulse {
+  animation-play-state: paused;
+}
+
+.genealogy-canvas-slot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border: 1px solid rgba(85, 214, 161, 0.45);
+  border-radius: 999px;
+  background: rgba(85, 214, 161, 0.12);
+  color: #56d6a1;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
 .genealogy-canvas-node.is-shadow-slot {
   align-content: center;
   background:
@@ -13766,6 +13804,21 @@ img, video, canvas, svg {
   font-weight: 600;
 }
 
+/* ==========================================================================
+   GENEALOGY BINARY TREE UNIFORM RECTANGULAR OVERRIDES
+   ========================================================================== */
+
+/* 1. Prevent vertical stretching of leaf/open slot nodes and resolve excessive horizontal gaps */
+.genealogy-canvas-children {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  align-items: start !important;
+  gap: 24px !important;
+  width: max-content !important;
+  margin: 0 auto !important;
+}
+
 @keyframes ops-mobile-drawer-slide {
   from {
     transform: translateX(-100%);
@@ -13945,7 +13998,6 @@ img, video, canvas, svg {
 /* 1. Prevent layout wrappers, main body, and content stages from expanding beyond viewport */
 .ops-shell,
 .ops-shell-body,
-.ops-content-stage,
 .ops-content-shell,
 .ops-content-shell-stage,
 .ops-admin-page,
@@ -14017,6 +14069,151 @@ img, video, canvas, svg {
   }
 }
 
+.genealogy-canvas-node.is-open-slot,
+.genealogy-canvas-node.is-shadow-slot,
+.genealogy-canvas-node.is-shadow-activated {
+  width: 210px !important;
+  min-width: 210px !important;
+  max-width: 210px !important;
+  height: 90px !important;
+  min-height: 90px !important;
+  max-height: 90px !important;
+  aspect-ratio: auto !important;
+  border-radius: 12px !important;
+  padding: 8px 12px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  text-align: left !important;
+  gap: 12px !important;
+  justify-content: flex-start !important;
+}
 
+/* 3. Adjust internal node elements for horizontal layout */
+.genealogy-canvas-node-orb {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+  font-size: 11px !important;
+  border-radius: 999px !important;
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+}
 
+.genealogy-canvas-node-main {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  text-align: left !important;
+}
 
+.genealogy-canvas-node-title {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 1px !important;
+  text-align: left !important;
+}
+
+.genealogy-canvas-node-title strong {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: var(--foreground) !important;
+  max-width: 140px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
+}
+
+.genealogy-canvas-node-main p {
+  font-size: 11px !important;
+  color: var(--muted-foreground) !important;
+  max-width: 140px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  line-height: 1.2 !important;
+}
+
+.genealogy-canvas-node-stats {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 4px !important;
+  margin-top: 4px !important;
+  justify-content: flex-start !important;
+  width: 100% !important;
+}
+
+.genealogy-canvas-node-stats span {
+  font-size: 9px !important;
+  padding: 1px 6px !important;
+  border-radius: 4px !important;
+}
+
+/* 4. Slot Badge & Inactive styles positioning */
+.genealogy-canvas-slot-badge {
+  position: absolute !important;
+  bottom: 6px !important;
+  right: 8px !important;
+  font-size: 8px !important;
+  padding: 1px 6px !important;
+  margin: 0 !important;
+}
+
+.genealogy-canvas-node.is-shadow-slot .genealogy-canvas-node-title strong {
+  font-size: 13px !important;
+  color: #fff45f !important;
+}
+
+.genealogy-canvas-node.is-shadow-slot .genealogy-canvas-node-main p {
+  font-size: 11px !important;
+  color: rgba(255, 248, 230, 0.76) !important;
+  display: block !important;
+  white-space: nowrap !important;
+  -webkit-line-clamp: unset !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* ==========================================================================
+   REGISTRATION FORM TABLET USABILITY & SCALING OVERRIDES
+   ========================================================================== */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .registration-shell--modal {
+    max-width: 540px !important;
+  }
+  
+  .registration-card--modal {
+    padding: 20px !important;
+  }
+  
+  .registration-form {
+    gap: 10px !important;
+  }
+  
+  .registration-form input,
+  .registration-form select,
+  .registration-form button {
+    padding: 8px 12px !important;
+    font-size: 13.5px !important;
+  }
+  
+  .registration-modal-topbar {
+    margin-bottom: 16px !important;
+    padding-bottom: 12px !important;
+  }
+}

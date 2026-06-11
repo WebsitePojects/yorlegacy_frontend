@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { useFeedback } from '@/components/feedback/FeedbackProvider';
 import { cn } from '@/lib/utils';
 import {
@@ -19,6 +18,7 @@ import {
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent as ReactWheelEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { GenealogyTreeNode } from '../../types/auth';
+import { upgradeMemberActivationCode } from '@/lib/api';
 
 type ActivationCodeOption = {
   code: string;
@@ -34,6 +34,7 @@ type GenealogyTreeProps = {
   onOpenSlot?: (slot: { parentUsername: string; parentReferralCode?: string; side: 'left' | 'right' }) => void;
   availableActivationCodes?: ActivationCodeOption[];
   adminMode?: boolean;
+  onUpgradeSuccess?: () => void;
 };
 
 type SearchOption = {
@@ -104,6 +105,24 @@ function packageTone(packageTier: string) {
 
   return 'is-basic';
 }
+
+function getVerticalGap(level: number): number {
+  switch (level) {
+    case 0:
+      return 140;
+    case 1:
+      return 90;
+    case 2:
+      return 60;
+    case 3:
+      return 40;
+    case 4:
+      return 30;
+    default:
+      return 24;
+  }
+}
+
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -202,9 +221,43 @@ function openPrintableExport(title: string, rows: Array<Record<string, string>>,
   return true;
 }
 
-export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode, onOpenSlot, availableActivationCodes = [], adminMode = false }: GenealogyTreeProps) {
+export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode, onOpenSlot, availableActivationCodes = [], adminMode = false, onUpgradeSuccess }: GenealogyTreeProps) {
   const navigate = useNavigate();
-  const { confirmAction, presentNotice } = useFeedback();
+  const { confirmAction, presentNotice, notify } = useFeedback();
+  const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
+  const [selectedActivationCode, setSelectedActivationCode] = useState('');
+  const [activeShadowNodeLabel, setActiveShadowNodeLabel] = useState<string | null>(null);
+  const [isActivating, setIsActivating] = useState(false);
+
+  useEffect(() => {
+    if (isActivationModalOpen && availableActivationCodes.length > 0) {
+      setSelectedActivationCode(availableActivationCodes[0].code);
+    }
+  }, [isActivationModalOpen, availableActivationCodes]);
+
+  async function handleConfirmActivation() {
+    if (!selectedActivationCode) return;
+    setIsActivating(true);
+    try {
+      const result = await upgradeMemberActivationCode({ code: selectedActivationCode });
+      notify({
+        title: result.moneyMode === 'sandbox' ? 'Shadow account activated' : 'Activation check passed',
+        description: result.detail ?? result.reason,
+        tone: result.moneyMode === 'sandbox' ? 'success' : 'warning'
+      });
+      setIsActivationModalOpen(false);
+      setSelectedActivationCode('');
+      onUpgradeSuccess?.();
+    } catch (cause) {
+      notify({
+        title: 'Activation failed',
+        description: cause instanceof Error ? cause.message : 'Please try again.',
+        tone: 'destructive'
+      });
+    } finally {
+      setIsActivating(false);
+    }
+  }
   const [scale, setScale] = useState(DEFAULT_SCALE);
   const [offset, setOffset] = useState(DEFAULT_OFFSET);
   const [isActive, setIsActive] = useState(false);
@@ -227,6 +280,10 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
   const pinchDistanceRef = useRef<number | null>(null);
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const scaleRef = useRef(scale);
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
   const [connections, setConnections] = useState<Array<{ id: string; x1: number; y1: number; x2: number; y2: number }>>([]);
 
   const depthOptions = useMemo(() => {
@@ -566,7 +623,28 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
 
       event.preventDefault();
       event.stopPropagation();
-      updateScale(event.deltaY > 0 ? -0.06 : 0.06);
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const currentScale = scaleRef.current;
+      const delta = event.deltaY > 0 ? -0.06 : 0.06;
+      const nextScale = clampScale(currentScale + delta);
+      if (nextScale === currentScale) return;
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const offsetX = event.clientX - canvasRect.left;
+      const offsetY = event.clientY - canvasRect.top;
+
+      const scaleRatio = nextScale / currentScale;
+      const deltaX = offsetX * (1 - scaleRatio);
+      const deltaY = offsetY * (1 - scaleRatio);
+
+      setScale(nextScale);
+      setOffset((current) => ({
+        x: current.x + deltaX,
+        y: current.y + deltaY
+      }));
     };
 
     viewport.addEventListener('wheel', handleNativeWheel, { passive: false });
@@ -583,7 +661,28 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
 
     event.preventDefault();
     event.stopPropagation();
-    updateScale(event.deltaY > 0 ? -0.06 : 0.06);
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const currentScale = scale;
+    const delta = event.deltaY > 0 ? -0.06 : 0.06;
+    const nextScale = clampScale(currentScale + delta);
+    if (nextScale === currentScale) return;
+
+    const canvasRect = canvas.getBoundingClientRect();
+    const offsetX = event.clientX - canvasRect.left;
+    const offsetY = event.clientY - canvasRect.top;
+
+    const scaleRatio = nextScale / currentScale;
+    const deltaX = offsetX * (1 - scaleRatio);
+    const deltaY = offsetY * (1 - scaleRatio);
+
+    setScale(nextScale);
+    setOffset((current) => ({
+      x: current.x + deltaX,
+      y: current.y + deltaY
+    }));
   }
 
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
@@ -926,16 +1025,8 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
               registerNodeRef={registerNodeRef}
               availableActivationCodes={availableActivationCodes}
               onActivateShadow={async (label) => {
-                const confirmed = await confirmAction({
-                  title: 'Activate/Upgrade Shadow Account',
-                  description: `Would you like to upgrade your shadow account ${label} using an activation code? Select a code from your inventory on the Activation Codes page.`,
-                  confirmLabel: 'Go to Activation Codes',
-                  cancelLabel: 'Cancel'
-                });
-
-                if (confirmed) {
-                  navigate('/member/activation-codes');
-                }
+                setActiveShadowNodeLabel(label);
+                setIsActivationModalOpen(true);
               }}
             />
           </div>
@@ -959,6 +1050,86 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
           <p>{selectedCanvasNode.isShadowNode ? 'No wallet, DR, unilevel, or binary-cycle rights while shadow state is inactive.' : 'Server revalidates slot availability before final registration.'}</p>
         </div>
       </div>
+
+      {isActivationModalOpen && (
+        <div 
+          className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/65 backdrop-blur-sm"
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div className="w-full max-w-md border border-[rgba(245,200,66,0.3)] bg-[#100d0c]/98 p-6 rounded-2xl shadow-[0_32px_64px_rgba(0,0,0,0.6)] animate-in fade-in zoom-in-95 duration-200 text-left">
+            <h3 className="text-lg font-bold text-[#f5c842] mb-2 font-serif">Activate Shadow Account</h3>
+            <p className="text-sm text-gray-400 mb-5">
+              Activate your shadow account <strong className="text-white">{activeShadowNodeLabel}</strong> to begin tracking placement volume.
+            </p>
+
+            {availableActivationCodes.length > 0 ? (
+              <div className="space-y-4">
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Select Activation Code</label>
+                  <select
+                    value={selectedActivationCode}
+                    onChange={(e) => setSelectedActivationCode(e.target.value)}
+                    className="w-full bg-[#1c1715] border border-[rgba(245,200,66,0.2)] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#f5c842]"
+                  >
+                    {availableActivationCodes.map((item) => (
+                      <option key={item.code} value={item.code}>
+                        {item.code} ({item.packageTier})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-[rgba(245,200,66,0.1)]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActivationModalOpen(false);
+                      setSelectedActivationCode('');
+                    }}
+                    className="px-4 py-2 border border-gray-700 hover:bg-white/5 text-gray-300 rounded-xl text-sm transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmActivation}
+                    disabled={isActivating}
+                    className="px-4 py-2 bg-gradient-to-r from-[#c8703a] to-[#f5c842] hover:opacity-90 text-[#2c1607] font-bold rounded-xl text-sm border-0 transition-opacity disabled:opacity-50 cursor-pointer"
+                  >
+                    {isActivating ? 'Activating...' : 'Activate Account'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm text-red-400 mb-6 bg-red-950/20 border border-red-500/20 p-3 rounded-xl">
+                  No activation codes available. Please purchase a code under the Activation Codes tab to activate this shadow slot.
+                </p>
+                <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-red-500/10">
+                  <button
+                    type="button"
+                    onClick={() => setIsActivationModalOpen(false)}
+                    className="px-4 py-2 border border-gray-700 hover:bg-white/5 text-gray-300 rounded-xl text-sm transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActivationModalOpen(false);
+                      navigate('/member/activation-codes');
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-[#c8703a] to-[#f5c842] hover:opacity-90 text-[#2c1607] font-bold rounded-xl text-sm border-0 transition-opacity cursor-pointer"
+                  >
+                    Go to Activation Codes
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -984,14 +1155,14 @@ function toCanvasNode(
 
     if (leftChild) {
       children.push(toCanvasNode(leftChild, level + 1, 'left', maxDepth, node.shadowSlots, node.username, node.referralCode));
-    } else {
-      children.push(toOpenSlot(openSlotParentUsername, openSlotParentReferralCode, level + 1, 'left', maxDepth, node.nodeId, 'left', false));
+    } else if (node.openSlots?.left) {
+      children.push(toOpenSlot(openSlotParentUsername, openSlotParentReferralCode, level + 1, 'left', node.nodeId, 'left'));
     }
 
     if (rightChild) {
       children.push(toCanvasNode(rightChild, level + 1, 'right', maxDepth, node.shadowSlots, node.username, node.referralCode));
-    } else {
-      children.push(toOpenSlot(openSlotParentUsername, openSlotParentReferralCode, level + 1, 'right', maxDepth, node.nodeId, 'right', false));
+    } else if (node.openSlots?.right) {
+      children.push(toOpenSlot(openSlotParentUsername, openSlotParentReferralCode, level + 1, 'right', node.nodeId, 'right'));
     }
   }
 
@@ -1016,29 +1187,20 @@ function toOpenSlot(
   parentReferralCode: string,
   level: number,
   side: 'left' | 'right',
-  maxDepth: number,
   parentKey: string,
-  placementSide: 'left' | 'right',
-  parentIsOpenSlot = false
+  placementSide: 'left' | 'right'
 ): CanvasNode {
-  const key = `${parentKey}-${side}-open-${level}`;
-  const children: CanvasNode[] = [];
-  if (level < maxDepth - 1) {
-    children.push(toOpenSlot(parentUsername, parentReferralCode, level + 1, 'left', maxDepth, key, placementSide, true));
-    children.push(toOpenSlot(parentUsername, parentReferralCode, level + 1, 'right', maxDepth, key, placementSide, true));
-  }
-
   return {
-    key,
+    key: `${parentKey}-${side}-open-${level}`,
     side,
     level,
     isOpenSlot: true,
-    isDisableOpenSlot: parentIsOpenSlot,
+    isDisableOpenSlot: false,
     parentUsername,
     parentReferralCode,
     placementParentUsername: parentUsername,
     placementSide,
-    children
+    children: []
   };
 }
 
@@ -1137,7 +1299,10 @@ function BinaryBranch({
   };
 
   return (
-    <div className="genealogy-canvas-branch">
+    <div 
+      className="genealogy-canvas-branch"
+      style={{ gap: `${getVerticalGap(node.level)}px` }}
+    >
       <div
         role="button"
         tabIndex={0}
@@ -1251,6 +1416,19 @@ function BinaryBranch({
               </div>
             </div>
           </>
+        ) : node.isOpenSlot ? (
+          <>
+            <div className="genealogy-canvas-node-orb genealogy-slot-orb-pulse">
+              <Plus className="size-5" />
+            </div>
+            <div className="genealogy-canvas-node-main">
+              <div className="genealogy-canvas-node-title">
+                <strong>Open Slot</strong>
+                <p>{node.side.toUpperCase()} LEG · L{node.level}</p>
+              </div>
+            </div>
+            <span className="genealogy-canvas-slot-badge">Encode Here</span>
+          </>
         ) : (
           <>
             <div className="genealogy-canvas-node-orb">
@@ -1258,8 +1436,8 @@ function BinaryBranch({
             </div>
             <div className="genealogy-canvas-node-main">
               <div className="genealogy-canvas-node-title">
-                <strong>{node.shadowSlot?.label ?? 'Open Slot'}</strong>
-                <p>{node.isShadowNode ? 'Shadow Slot' : 'Available'}</p>
+                <strong>{node.shadowSlot?.label ?? 'Shadow'}</strong>
+                <p>Shadow Slot</p>
               </div>
             </div>
 
