@@ -48,6 +48,11 @@ import { Input } from '@/components/ui/input';
 import { searchMemberTransferTargets } from '@/lib/api';
 import { createMemberPlacementReservation } from '@/lib/api';
 import { BinaryCyclePanel } from '@/features/earnings/components/BinaryCyclePanel';
+import { DirectReferralPanel } from '@/features/earnings/components/DirectReferralPanel';
+import { GlobalBonusPanel } from '@/features/earnings/components/GlobalBonusPanel';
+import { LifestylePanel } from '@/features/earnings/components/LifestylePanel';
+import { SalesmatchPanel } from '@/features/earnings/components/SalesmatchPanel';
+import { UnilevelPanel } from '@/features/earnings/components/UnilevelPanel';
 import { GetYorFiveInFrame } from './GetYorFivePage';
 import type {
   DashboardSummary,
@@ -318,7 +323,6 @@ export function MemberDashboardPage() {
   const [codeStatusFilter, setCodeStatusFilter] = useState('all');
   const [codeInventoryPage, setCodeInventoryPage] = useState(1);
   const [transactionPage, setTransactionPage] = useState(1);
-  const [directReferralPage, setDirectReferralPage] = useState(1);
   const [payoutMethodDraft, setPayoutMethodDraft] = useState('');
   const [payoutDetailsDraft, setPayoutDetailsDraft] = useState('');
   const [isPayoutSaving, setIsPayoutSaving] = useState(false);
@@ -1717,214 +1721,35 @@ export function MemberDashboardPage() {
 
         {/* ── LIFESTYLE REWARDS ── */}
         {moduleId === 'lifestyle-rewards' && activeModule ? (
-          <section className="grid gap-4 xl:grid-cols-2">
-            <Card className="border-[var(--border)] bg-[var(--card)]">
-              <CardHeader className="pb-3"><CardTitle className="text-base">Lifestyle Reward Monitor</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                {[['Package', String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '-')], ['Repeat Purchase Target', String(activeModule.table.rows[0]?.repeatPurchaseTarget ?? '-')], ['Current Repeat Purchase', String(activeModule.table.rows[0]?.currentRepeatPurchase ?? '-')], ['Progress', String(activeModule.table.rows[0]?.progressPercent ?? '-')], ['Projected Reward', String(activeModule.table.rows[0]?.projectedReward ?? '-')], ['Threshold Status', String(activeModule.table.rows[0]?.thresholdStatus ?? '-')]].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm odd:bg-[var(--accent)]/40">
-                    <span className="text-[var(--muted-foreground)]">{label}</span>
-                    <strong className="font-medium text-[var(--foreground)]">{value}</strong>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-            <Card className="border-[var(--border)] bg-[var(--card)]">
-              <CardHeader className="pb-3"><CardTitle className="text-base">Reward Status</CardTitle></CardHeader>
-              <CardContent><ReportTableView table={activeModule.table} /></CardContent>
-            </Card>
-          </section>
+          <LifestylePanel activeModule={activeModule} office={office} />
         ) : null}
 
         {/* ── UNILEVEL / RANKING PROGRESS ── */}
         {moduleId === 'unilevel-rank-progress' && activeModule ? (
-          <section className="grid gap-4">
-            {/* Stat strip */}
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <NogaStatCard icon={<BarChart3 className="size-4" />} color="amber" label="Gross Rankable Points" value={String(activeModule.table.rows[0]?.requiredPV ?? '—')} sub="self + full downline repurchases" />
-              <NogaStatCard icon={<Medal className="size-4" />} color="blue" label="Current Rank" value="Unranked" sub="upgrade required to begin ranking" />
-              <NogaStatCard icon={<TrendingUp className="size-4" />} color="emerald" label="Remaining Race Points" value="—" sub="fresh points for next rank" />
-              <NogaStatCard icon={<Clock className="size-4" />} color="violet" label="Pending Claims" value="0" sub="cash release stays manual" />
-            </div>
-            <Card className="border-[var(--border)] bg-[var(--card)]">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Potential Income Ladder</CardTitle>
-                <CardDescription className="text-xs">The Yor compensation plan presents potential income scaling across the ten-level ladder.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {activeModule.table.rows.map((row, index) => (
-                  <div key={`${String(row.level)}-${index}`} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Level {String(row.level)}</p>
-                      <Badge variant="outline" className="text-[10px]">{String(row.percent)}</Badge>
-                    </div>
-                    <p className="mt-2 text-lg font-semibold text-[var(--foreground)]">{String(row.potential)}</p>
-                    <p className="mt-1 text-xs text-[var(--muted-foreground)]">{String(row.requiredPV)}</p>
-                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--muted)]">
-                      <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300" style={{ width: `${Math.min(100, 18 + index * 12)}%` }} />
-                    </div>
-                    <p className="mt-2 text-[10px] uppercase tracking-widest text-[var(--muted-foreground)]">{String(row.status)}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </section>
+          <UnilevelPanel activeModule={activeModule} />
         ) : null}
 
         {/* ── GLOBAL BONUS ── */}
         {moduleId === 'global-bonus-eligibility' && activeModule ? (
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            <Card className="border-[var(--border)] bg-[var(--card)]">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-xl bg-violet-500/15">
-                    <Globe className="size-5 text-violet-400" />
-                  </span>
-                  <div>
-                    <CardTitle className="text-base">Global Bonus Gate</CardTitle>
-                    <CardDescription className="text-xs">VIP-exclusive yearly global pool program.</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {[['Package', String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '-')], ['Qualification', String(activeModule.table.rows[0]?.qualification ?? '-')], ['Pool', String(activeModule.table.rows[0]?.pool ?? '-')], ['Status', String(activeModule.table.rows[0]?.status ?? '-')]].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm odd:bg-[var(--accent)]/40">
-                    <span className="text-[var(--muted-foreground)]">{label}</span>
-                    <strong className="font-medium text-[var(--foreground)]">{value}</strong>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-            <Card className="border-[var(--border)] bg-[var(--card)]">
-              <CardHeader className="pb-3"><CardTitle className="text-base">Maintenance Window</CardTitle></CardHeader>
-              <CardContent><ReportTableView table={activeModule.table} /></CardContent>
-            </Card>
-          </section>
+          <GlobalBonusPanel activeModule={activeModule} office={office} />
         ) : null}
 
         {/* ── DIRECT REFERRALS ── */}
-        {moduleId === 'direct-referrals' && activeModule ? (() => {
-          const rows = activeModule.table.rows;
-          const DR_PAGE_SIZE = 10;
-          const drTotalPages = Math.max(1, Math.ceil(rows.length / DR_PAGE_SIZE));
-          const drPage = Math.min(directReferralPage, drTotalPages);
-          const visibleRows = rows.slice((drPage - 1) * DR_PAGE_SIZE, drPage * DR_PAGE_SIZE);
-          return (
-            <section className="space-y-4">
-              {/* Count header */}
-              <div className="flex items-center gap-4">
-                <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl border border-blue-500/25 bg-blue-500/10 shadow-md shadow-blue-500/20">
-                  <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{rows.length}</span>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Direct Referrals</p>
-                  <p className="text-lg font-bold text-[var(--foreground)]">Direct sponsorship list</p>
-                  <p className="text-xs text-[var(--muted-foreground)]">Kept separate from the binary placement tree</p>
-                </div>
-              </div>
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
-                  <div>
-                    <CardTitle className="text-base">Direct Referrals</CardTitle>
-                    <CardDescription className="text-xs">Direct sponsorship list kept separate from the binary placement tree.</CardDescription>
-                  </div>
-                  <Badge variant="outline">Direct Referrals: {rows.length}</Badge>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-0">
-                  <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-                    <table className="w-full min-w-[540px] text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--border)] bg-[var(--accent)]/40 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
-                          {activeModule.table.columns.map((col) => (
-                            <th key={col.key} className="px-4 py-3">{col.label}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {visibleRows.length ? visibleRows.map((row, i) => (
-                          <tr key={i} className="border-b border-[var(--border)] transition last:border-0 hover:bg-[var(--accent)]/30">
-                            {activeModule.table.columns.map((col) => (
-                              <td key={col.key} className="px-4 py-3 text-[var(--foreground)]">
-                                {col.key === 'accountStatus' || col.key === 'status' ? (
-                                  <Badge variant={String(row[col.key]) === 'active' ? 'success' : 'outline'} className="text-[10px]">{String(row[col.key] ?? '—')}</Badge>
-                                ) : (
-                                  <span className={col.key === 'username' ? 'font-mono text-[var(--muted-foreground)]' : ''}>{String(row[col.key] ?? '—')}</span>
-                                )}
-                              </td>
-                            ))}
-                          </tr>
-                        )) : (
-                          <tr><td colSpan={activeModule.table.columns.length} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">No direct referrals yet.</td></tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  {rows.length > DR_PAGE_SIZE && (
-                    <div className="flex items-center justify-between gap-3 text-sm text-[var(--muted-foreground)]">
-                      <span>Page {drPage} of {drTotalPages} · {rows.length} referral(s)</span>
-                      <div className="flex gap-2">
-                        <Button type="button" variant="outline" size="sm" disabled={drPage <= 1} onClick={() => setDirectReferralPage((p) => Math.max(1, p - 1))}>Prev</Button>
-                        <Button type="button" variant="outline" size="sm" disabled={drPage >= drTotalPages} onClick={() => setDirectReferralPage((p) => Math.min(drTotalPages, p + 1))}>Next</Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </section>
-          );
-        })() : null}
+        {moduleId === 'direct-referrals' && activeModule ? (
+          <DirectReferralPanel activeModule={activeModule} />
+        ) : null}
 
         {/* ── SALESMATCH BONUS ── */}
         {moduleId === 'salesmatch-bonus' && activeModule ? (
-          <section className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <NogaStatCard icon={<BarChart3 className="size-4" />} color="amber" label="Left Remaining" value={String(leftRemaining)} sub="left leg carry forward" />
-              <NogaStatCard icon={<BarChart3 className="size-4" />} color="blue" label="Right Remaining" value={String(rightRemaining)} sub="right leg carry forward" />
-              <NogaStatCard icon={<TrendingUp className="size-4" />} color="emerald" label="Matched Points" value={String(matchedPoints)} sub="paired volume this cycle" />
-              <NogaStatCard icon={<Trophy className="size-4" />} color="violet" label="Strong Leg Carry" value={String(strongLegCarry)} sub="carry forward to next cycle" />
-            </div>
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-amber-500/15">
-                      <BarChart3 className="size-5 text-amber-600 dark:text-amber-400" />
-                    </span>
-                    <div>
-                      <CardTitle className="text-base">Sales Match Pairing</CardTitle>
-                      <CardDescription className="text-xs">Binary placement pairs left and right leg volume each cycle.</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <InfoRow label="Salesmatch Total" value={String(activeModule.table.rows[0]?.salesmatch ?? '—')} highlight />
-                  <InfoRow label="Gross Left Points" value={String(binaryTree?.root.leftPoints ?? '—')} />
-                  <InfoRow label="Gross Right Points" value={String(binaryTree?.root.rightPoints ?? '—')} />
-                  <InfoRow label="Matched (Paired)" value={String(matchedPoints)} highlight />
-                  <InfoRow label="Left Remaining" value={String(leftRemaining)} />
-                  <InfoRow label="Right Remaining" value={String(rightRemaining)} />
-                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-[var(--muted-foreground)]">
-                    Salesmatch pairs your weaker leg against your stronger leg. Unmatched volume carries forward to the next cycle.
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-[var(--border)] bg-[var(--card)]">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Pairing Traceability</CardTitle>
-                  <CardDescription className="text-xs">Auto Accredited — no manual submission required.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-3 text-xs text-emerald-600 dark:text-emerald-400">
-                    Salesmatch bonuses are automatically credited when a left-right pair is detected. Check transaction history for timestamped entries.
-                  </div>
-                  <InfoRow label="Package" value={String(activeModule.table.rows[0]?.package ?? office?.profile.packageTier ?? '—')} />
-                  <InfoRow label="Account Type" value={String(activeModule.table.rows[0]?.accountType ?? 'PD')} />
-                  <InfoRow label="Status" value={String(activeModule.table.rows[0]?.status ?? 'Active')} />
-                  <ReportTableView table={activeModule.table} />
-                </CardContent>
-              </Card>
-            </div>
-          </section>
+          <SalesmatchPanel
+            activeModule={activeModule}
+            office={office}
+            binaryTree={binaryTree}
+            matchedPoints={matchedPoints}
+            leftRemaining={leftRemaining}
+            rightRemaining={rightRemaining}
+            strongLegCarry={strongLegCarry}
+          />
         ) : null}
 
         {/* ── GENERIC MODULE TABLE ── */}
