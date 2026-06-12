@@ -1,4 +1,4 @@
-# Business Rule & Logic Change Log
+﻿# Business Rule & Logic Change Log
 
 This file is the canonical record of every business rule, compensation logic, or
 financial calculation change made to the Yor International platform.
@@ -11,9 +11,9 @@ Simple UI tweaks, CSS, copy, and config changes are not recorded.
 
 ---
 
-## 2026-06-12 — GATE-BIN-PV-FS-2026-06-12: FS Paid Accounts Now Eligible for Binary Pairing
+## 2026-06-12 â€” GATE-BIN-PV-FS-2026-06-12: FS Paid Accounts Now Eligible for Binary Pairing
 
-**Rule area:** Binary PV gate — eligible account types for salesmatch/pairing propagation  
+**Rule area:** Binary PV gate â€” eligible account types for salesmatch/pairing propagation  
 **Gate ID:** `GATE-BIN-PV-FS-2026-06-12`
 
 ### What changed
@@ -34,22 +34,22 @@ const eligibleForBinaryPV = matchingCode.paymentStatus !== 'unpaid';
 
 | Left leg | Right leg | Pairs? |
 |---|---|---|
-| PD Paid | PD Paid | ✅ |
-| FS Paid / Ext-Paid | FS Paid / Ext-Paid | ✅ |
-| CD Paid | FS Paid / Ext-Paid | ✅ |
-| CD Paid | CD Paid | ✅ |
-| PD Paid | FS Paid / Ext-Paid | ✅ |
-| Any | CD Unpaid | ❌ |
-| Any | Any Unpaid | ❌ |
+| PD Paid | PD Paid | âœ… |
+| FS Paid / Ext-Paid | FS Paid / Ext-Paid | âœ… |
+| CD Paid | FS Paid / Ext-Paid | âœ… |
+| CD Paid | CD Paid | âœ… |
+| PD Paid | FS Paid / Ext-Paid | âœ… |
+| Any | CD Unpaid | âŒ |
+| Any | Any Unpaid | âŒ |
 
 ### What did NOT change
 
-Binary cycle logic is unchanged. The salesmatch/binary cycle still fires based on delta — the only gate is whether the registering account's code is paid.
+Binary cycle logic is unchanged. The salesmatch/binary cycle still fires based on delta â€” the only gate is whether the registering account's code is paid.
 
 ### Files affected
 
-- `yor_backend/src/modules/production/encoding-service.ts` — line ~1274, gate condition + detail message
-- `yor_backend/src/modules/sandbox/dev-sandbox-store.ts` — added missing gate before `settleSandboxPlacementCompensation` (sandbox previously had NO gate — unpaid codes were incorrectly generating PV in sandbox)
+- `yor_backend/src/modules/production/encoding-service.ts` â€” line ~1274, gate condition + detail message
+- `yor_backend/src/modules/sandbox/dev-sandbox-store.ts` â€” added missing gate before `settleSandboxPlacementCompensation` (sandbox previously had NO gate â€” unpaid codes were incorrectly generating PV in sandbox)
 
 ### Reason / Authority
 
@@ -57,14 +57,14 @@ User instruction 2026-06-12: "activate binary pairing for eligible accounts, cd 
 
 ---
 
-## 2026-06-11 — BIN-CYCLE-ROOT-CAUSE-2026-06-11: Binary Cycle Root Cause Identified and Fixed via PV Gate
+## 2026-06-11 â€” BIN-CYCLE-ROOT-CAUSE-2026-06-11: Binary Cycle Root Cause Identified and Fixed via PV Gate
 
-**Rule area:** Binary Cycle Bonus (Way 4) — root cause fix
+**Rule area:** Binary Cycle Bonus (Way 4) â€” root cause fix
 **Gate ID:** N/A (root cause was the binary PV gate; binary cycle logic is correct)
 
 ### What was reported
 User report: "binary cycle naten tuloy tuloy yung palo kahit wala pa syang katapat
-na leaders sa kabila at hindi pa nagpapairing" — cycle was apparently firing even
+na leaders sa kabila at hindi pa nagpapairing" â€” cycle was apparently firing even
 without qualifying paired leaders.
 
 ### Root cause
@@ -82,11 +82,11 @@ those registrations, and therefore binary cycle is never triggered from them.
 **Binary cycle logic itself remains unchanged and correct.**
 
 ### Files affected (via BIN-PV-GATE-2026-06-11)
-- `yor_backend/src/modules/production/encoding-service.ts` — `submitRegistration()` eligibility gate
+- `yor_backend/src/modules/production/encoding-service.ts` â€” `submitRegistration()` eligibility gate
 
 ---
 
-## 2026-06-11 — BIN-PV-GATE-2026-06-11: Binary PV Eligibility Gate
+## 2026-06-11 â€” BIN-PV-GATE-2026-06-11: Binary PV Eligibility Gate
 
 **Rule area:** Binary PV / Salesmatch propagation
 **Gate ID:** `BIN-PV-GATE-2026-06-11`
@@ -106,7 +106,7 @@ const eligibleForBinaryPV =
 ```
 
 ### Files affected
-- `yor_backend/src/modules/production/encoding-service.ts` — `submitRegistration()` ~L(gate added before queue creation)
+- `yor_backend/src/modules/production/encoding-service.ts` â€” `submitRegistration()` ~L(gate added before queue creation)
 
 ### Reason
 Business rule BIN-01: "Only PD (paid) and CD Paid accounts generate binary PV
@@ -118,9 +118,9 @@ BUSINESSRULE.md BIN-01 + direct user instruction 2026-06-11.
 
 ---
 
-## 2026-06-11 — CD-DEDUCTION-2026-06-11: CD Deduction Changed to 100%
+## 2026-06-11 â€” CD-DEDUCTION-2026-06-11: CD Deduction Changed to 100%
 
-**Rule area:** Encashment deduction stack — CD recovery
+**Rule area:** Encashment deduction stack â€” CD recovery
 **Gate ID:** `CD-DEDUCTION-2026-06-11`
 
 ### What changed
@@ -132,9 +132,9 @@ per encashment to 100% of the encashment amount (up to the outstanding CD balanc
 | `Math.min(cdBalance, amount * 0.05)` | `Math.min(cdBalance, amount)` |
 
 ### Files affected
-- `yor_backend/src/modules/production/encoding-service.ts` — `buildMemberWalletData()`
-- `yor_backend/src/modules/operations/legacy-parity-service.ts` — encashment preview ~L519
-- `yor_backend/src/modules/sandbox/dev-sandbox-store.ts` — `submitSandboxEncashment()` and `getSandboxWalletSummary()` preview
+- `yor_backend/src/modules/production/encoding-service.ts` â€” `buildMemberWalletData()`
+- `yor_backend/src/modules/operations/legacy-parity-service.ts` â€” encashment preview ~L519
+- `yor_backend/src/modules/sandbox/dev-sandbox-store.ts` â€” `submitSandboxEncashment()` and `getSandboxWalletSummary()` preview
 
 ### Reason
 User instruction: "make the cd deduction 100% on all encashment"
@@ -146,7 +146,7 @@ BUSINESSRULE.md ENC-01 + direct user instruction 2026-06-11.
 
 ---
 
-## 2026-06-11 — CASHIER-AUTH-FIX-2026-06-11: Cashier Login Auth Fallback Added
+## 2026-06-11 â€” CASHIER-AUTH-FIX-2026-06-11: Cashier Login Auth Fallback Added
 
 **Rule area:** Authentication / Staff account lookup
 **Gate ID:** N/A (bug fix, not a rule change)
@@ -159,7 +159,7 @@ The existing 3rd fallback only matched `username@*` (prefix match), which missed
 accounts like `yorcashier` stored directly as the email value.
 
 ### Files affected
-- `yor_backend/src/modules/auth/app-users.ts` — `findAppUserByUsername()` fallback #4
+- `yor_backend/src/modules/auth/app-users.ts` â€” `findAppUserByUsername()` fallback #4
 
 ### Reason
 Cashier account `yorcashier` (stored as email='yorcashier' with no domain) was
@@ -167,4 +167,138 @@ returning 401 because none of the 3 existing lookup paths matched it.
 
 ---
 
-*Last updated: 2026-06-11*
+## 2026-06-12 — GATE-BIN-PV-PDCD-20260612: PD/Paid-CD-Only DR and Binary PV (Reverts GATE-BIN-PV-FS-2026-06-12)
+
+**Rule area:** Direct Referral and binary PV source eligibility
+**Gate ID:** `GATE-BIN-PV-PDCD-20260612`
+
+### What changed
+
+Owner ruling (2026-06-12): **FS stays FS forever** and never generates Direct
+Referral or binary PV, even when its package payment is settled. Only PD
+(settled payment) and fully-settled CD accounts are eligible sources. This
+reverts the 2026-06-12 widening that allowed paid FS entries.
+
+- Eligibility now flows through the shared Nogatu-parity module
+  `src/modules/compensation/account-state.ts` (`countsForPairingSource`,
+  `countsForDirectReferralSource`), mirroring
+  `NogatuMLM/Nogatu_Backend/services/accountState.js`.
+- Unpaid (PD or CD) entries defer DR and PV to the settlement trigger instead
+  of dropping them.
+- CD registrations now record the Commission Deduction obligation on the
+  network account (`cd_amount` = package price, `cd_status` outstanding).
+- Get Yor Five counting now includes only eligibility-qualified directs, and
+  its process key now carries a per-group index (previously the 10th, 15th, …
+  payouts would have been silently blocked by the key of the 5th).
+
+**Files:** `yor_backend/src/modules/compensation/account-state.ts`,
+`yor_backend/src/modules/production/encoding-service.ts`
+
+**Authority:** Owner chat ruling 2026-06-12; Nogatu reference logic.
+
+---
+
+## 2026-06-12 — GATE-CD-SETTLE-20260612: Code Settlement Fires Deferred DR + Binary PV
+
+**Rule area:** CD/unpaid entry settlement
+**Gate ID:** `GATE-CD-SETTLE-20260612`
+
+### What changed
+
+New settlement trigger (`settleActivationCode`, admin/BOD/superadmin only —
+not cashier). When a consumed, non-FS code is marked `paid` /
+`externally-paid`, or when a CD obligation is cleared through encashment
+recovery, the deferred Direct Referral posts to the sponsor and binary PV is
+queued bottom-up from the settled account — using the same deterministic
+process keys as registration, so each posting happens at most once.
+
+**Files:** `yor_backend/src/modules/production/encoding-service.ts`,
+`yor_backend/src/routes/admin.ts` (`POST /api/admin/activation-codes/settle`)
+
+**Authority:** Owner chat ruling 2026-06-12 ("when that cd account became paid
+it will generate PV binary points to its upline"); Nogatu effective-state logic.
+
+---
+
+## 2026-06-12 — GATE-BIN-PAIR-20260612: Pairing Recipient Eligibility + Qualified-Direct Unlock
+
+**Rule area:** Salesmatch pairing payout eligibility (recipient side)
+**Gate ID:** `GATE-BIN-PAIR-20260612`
+
+### What changed
+
+1. Leg volume always accumulates (strong-leg carry preserved), but a match is
+   executed and paid only when the recipient is an eligible account (PD /
+   fully-settled CD). FS and unpaid-CD recipients hold volume until eligible.
+2. Nogatu parity: the first pairing payout unlocks only after the recipient
+   has personally sponsored at least one qualified direct placed inside their
+   own binary subtree. Spillover alone never unlocks pairing.
+
+**Deviation recorded for company confirmation:** Nogatu lets an unpaid-CD
+*owner* receive pairing from eligible downlines; the owner ruling ("only PD
+and Paid CD accounts should pair") is implemented instead. Volume is held, not
+forfeited, so a later policy change loses nothing.
+
+**Files:** `yor_backend/src/modules/production/encoding-service.ts`
+(`processCompensationQueue`)
+
+**Authority:** Owner chat ruling 2026-06-12;
+`NogatuMLM/Nogatu_Backend/services/binaryEligibility.js`, `income/pairing.js`.
+
+---
+
+## 2026-06-12 — GATE-SMB-CAP-20260612: Weekly/Monthly Salesmatch Caps with Forfeiture
+
+**Rule area:** Salesmatch Bonus caps (BIN-01)
+**Gate ID:** `GATE-SMB-CAP-20260612`
+
+### What changed
+
+Package weekly and monthly SMB caps (BUSINESSRULE.md package catalog) are now
+enforced at payout time in the production pairing engine. Matched volume above
+the cap is **forfeited** (legs still consumed) per owner ruling. Binary Cycle
+percent is computed on the capped (paid) salesmatch amount, not the raw match.
+Weeks run Monday 00:00 Asia/Manila; months are Manila calendar months (window
+definition pending company confirmation). Per-day pairing snapshots record
+matched, paid, and forfeited amounts.
+
+**Files:** `yor_backend/src/modules/compensation/cap-windows.ts`,
+`yor_backend/src/modules/production/encoding-service.ts`,
+`yor_backend/supabase/migrations/0002_encashments_and_settlement.sql`
+
+**Authority:** BUSINESSRULE.md package catalog caps; owner ruling 2026-06-12
+(forfeiture option).
+
+---
+
+## 2026-06-12 — ENC-01 Production Encashment Workflow (Ledger-Backed)
+
+**Rule area:** Encashment request/review workflow
+**Gate ID:** `GATE-ENC-PROD-20260612`
+
+### What changed
+
+Production mode now has a real encashment workflow (previously the submit
+route silently fell through to the sandbox engine):
+
+- `POST /api/member/wallet/encash` writes an `encashments` row plus an
+  idempotent gross ledger debit (`encashment-submit:<user>:<request>:debit`).
+- Deduction stack unchanged: PHP 50 fee, 10% tax, 5% System Retainer, then CD
+  recovery at 100% of the remaining net until the obligation clears.
+- CD recovery that clears the obligation triggers the settlement path
+  (deferred DR + PV).
+- Admin review: approve → mark-paid; reject posts a compensating ledger credit
+  restoring the gross (append-only corrections, AUD-01).
+- Production routes no longer fall back to sandbox/demo data on error; they
+  return real errors (preview-encash, encashments list, approve/review).
+
+**Files:** `yor_backend/src/modules/production/encoding-service.ts`,
+`yor_backend/src/routes/member.ts`, `yor_backend/src/routes/admin.ts`,
+`yor_backend/supabase/migrations/0002_encashments_and_settlement.sql`
+
+**Authority:** ENC-01 (BUSINESSRULE.md); owner ruling 2026-06-12 (CD = 100%
+recovery per encashment).
+
+---
+
+*Last updated: 2026-06-12*
