@@ -302,3 +302,39 @@ recovery per encashment).
 ---
 
 *Last updated: 2026-06-12*
+
+## 2026-06-12 — Review-Gate Fixes: CD Recovery Timing + Money-Path Atomicity
+
+**Rule area:** Encashment workflow, settlement timing, pairing queue
+**Gate ID:** `GATE-ENC-PAID-RECOVERY-20260612`
+
+### What changed (cross-model adversarial review findings, all fixed)
+
+1. **CD recovery and its settlement side effects now fire at `mark-paid`,
+   not at submit.** Previously a rejected encashment refunded the gross while
+   leaving the CD obligation cleared and the deferred DR/PV permanently fired —
+   a money-creation path. Now submit only reserves funds; reject leaves zero
+   side effects; over-withheld recovery (obligation settled by other means
+   between submit and payout) is refunded by compensating credit.
+2. **One open encashment request per member** (pending/queued/approved blocks
+   a new submit) — prevents double-reserving the CD obligation and shrinks the
+   balance-check race surface.
+3. **Per-key money locks** serialize submit, review, settle, and queue
+   processing in the single-process deployment (TOCTOU double-spend guard).
+   Multi-node deployment requires a DB-level lock — recorded in the decision log.
+4. **Compensation queue is at-most-once**: items are marked processed before
+   application; a mid-walk crash logs `COMPENSATION_ITEM_FAILED` for manual
+   replay instead of silently double-crediting legs on the next run.
+5. **Idempotent replays no longer throw**: unique-violation (23505) on
+   wallet-ledger/encashment inserts is treated as a no-op replay.
+6. Preview now computes CD recovery against the post-fee net, matching submit.
+
+**Files:** `yor_backend/src/modules/production/encoding-service.ts`,
+`supabase-encoding-repository.ts`, `src/routes/member.ts`, `src/routes/admin.ts`
+
+**Authority:** gstack /review verification gate (security specialist + adversarial
+cross-check), 2026-06-12. ENC-01 deduction values unchanged.
+
+---
+
+*Last updated: 2026-06-12*
