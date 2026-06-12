@@ -32,6 +32,7 @@ import { ProtectedOfficeFrame } from '@/components/layout/ProtectedOfficeFrame';
 import { RegistrationPageView } from '@/components/pages/RegistrationPageView';
 import { GenealogyTree } from '../components/ops/GenealogyTree';
 import { clearAllOfficeCache, readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
+import { formatAccountTypeLabel } from '@/lib/utils';
 import {
   DataListCard,
   GatedActionsCard,
@@ -232,6 +233,36 @@ const GYF_SYNTHETIC_MODULE: OperationalModule = {
   gatedActions: []
 };
 
+const BINARY_CYCLE_SYNTHETIC_MODULE: OperationalModule = {
+  id: 'binary-cycle-bonus',
+  label: 'Binary Cycle Bonus',
+  path: '/member/binary-cycle-bonus',
+  group: 'Compensation',
+  description: 'Cycle percentage simulations tied to salesmatch movement.',
+  status: 'read-only' as const,
+  legacyReference: 'Yor MVP compensation prototype',
+  permissions: ['member'],
+  metrics: [],
+  table: {
+    title: 'Binary Cycle Bonus',
+    columns: [
+      { key: 'area', label: 'Area' },
+      { key: 'status', label: 'Status' },
+      { key: 'moneyMode', label: 'Money Mode' },
+      { key: 'evidence', label: 'Evidence' }
+    ],
+    rows: [
+      {
+        area: 'Binary Cycle Bonus',
+        status: 'read-only',
+        moneyMode: 'catalog fallback',
+        evidence: 'Rule sign-off, process key, append-only ledger, duplicate-prevention tests'
+      }
+    ]
+  },
+  gatedActions: []
+};
+
 export function MemberDashboardPage() {
   const {
     getMemberActivationCodes,
@@ -341,9 +372,12 @@ export function MemberDashboardPage() {
 
   const buildMemberBundle = useCallback(
     async (targetModuleId: string, rootUsername: string): Promise<MemberModuleBundle> => {
-      const modulePromise = targetModuleId === 'get-yor-five'
-        ? Promise.resolve(GYF_SYNTHETIC_MODULE)
-        : getMemberModule(targetModuleId);
+      const modulePromise =
+        targetModuleId === 'get-yor-five'
+          ? Promise.resolve(GYF_SYNTHETIC_MODULE)
+          : targetModuleId === 'binary-cycle-bonus'
+            ? getMemberModule(targetModuleId).catch(() => BINARY_CYCLE_SYNTHETIC_MODULE)
+            : getMemberModule(targetModuleId);
 
       const [nextSummary, nextOffice, nextMvpDashboard, nextModule] = await Promise.all([
         getMemberSummary(),
@@ -386,6 +420,10 @@ export function MemberDashboardPage() {
           getMemberBinaryTree(rootUsername.trim() || undefined),
           getMemberActivationCodes()
         ]);
+      }
+
+      if (targetModuleId === 'binary-cycle-bonus' || targetModuleId === 'salesmatch-bonus') {
+        binaryTree = await getMemberBinaryTree(rootUsername.trim() || undefined);
       }
 
       if (targetModuleId === 'account-shadow-management') {
@@ -863,22 +901,27 @@ export function MemberDashboardPage() {
   const rightRemaining = binaryTree ? Math.max(0, binaryTree.root.rightPoints - binaryTree.root.leftPoints) : 0;
   const matchedSalesmatch = activeModule?.table.rows[0]?.salesmatch ?? 'PHP 0.00';
   const branchNotes = activeModule?.gatedActions.length ? activeModule.gatedActions : office?.gatedActions ?? [];
-  const modulePathById = useMemo(
-    () => new Map((office?.modules ?? []).map((module) => [module.id, module.path])),
-    [office?.modules]
-  );
-
-  // Inject get-yor-five into the sidebar regardless of what the backend returns,
-  // so the tab is always visible even before VPS backend is redeployed.
+  // Keep newly added module tabs visible even before every backend environment
+  // has the refreshed operational catalog.
   const sidebarModules = useMemo(() => {
     const mods = office?.modules ?? [];
-    if (mods.find((m) => m.id === 'get-yor-five')) return mods;
-    const afterIdx = mods.findIndex((m) => m.id === 'get-five-bonus');
-    const insertAt = afterIdx >= 0 ? afterIdx + 1 : mods.findIndex((m) => m.id === 'salesmatch-bonus') + 1;
     const result = [...mods];
-    result.splice(insertAt >= 0 ? insertAt : mods.length, 0, GYF_SYNTHETIC_MODULE);
+    if (!result.find((m) => m.id === 'binary-cycle-bonus')) {
+      const afterSalesmatchIdx = result.findIndex((m) => m.id === 'salesmatch-bonus');
+      result.splice(afterSalesmatchIdx >= 0 ? afterSalesmatchIdx + 1 : result.length, 0, BINARY_CYCLE_SYNTHETIC_MODULE);
+    }
+    if (!result.find((m) => m.id === 'get-yor-five')) {
+      const afterIdx = result.findIndex((m) => m.id === 'get-five-bonus');
+      const salesmatchIdx = result.findIndex((m) => m.id === 'salesmatch-bonus');
+      const insertAt = afterIdx >= 0 ? afterIdx + 1 : salesmatchIdx + 1;
+      result.splice(insertAt >= 0 ? insertAt : result.length, 0, GYF_SYNTHETIC_MODULE);
+    }
     return result;
   }, [office?.modules]);
+  const modulePathById = useMemo(
+    () => new Map(sidebarModules.map((module) => [module.id, module.path])),
+    [sidebarModules]
+  );
   const quickLinks = useMemo(() => {
     return [
       {
@@ -1343,7 +1386,7 @@ export function MemberDashboardPage() {
                   <FieldSelect label="Family" value={codeFamilyFilter} onChange={setCodeFamilyFilter} options={[{ label: 'All families', value: 'all' }, { label: 'YOR CODES', value: 'YOR CODES' }, { label: 'YOR MAINTENANCE', value: 'YOR MAINTENANCE' }, { label: 'YOR PERFUME', value: 'YOR PERFUME' }, { label: 'YOR VISION', value: 'YOR VISION' }]} />
                   <FieldSelect label="Status" value={codeStatusFilter} onChange={setCodeStatusFilter} options={[{ label: 'All statuses', value: 'all' }, { label: 'Available', value: 'available' }, { label: 'Used', value: 'used' }, { label: 'Transferred', value: 'transferred' }, { label: 'Expired', value: 'expired' }, { label: 'Generated', value: 'generated' }]} />
                 </div>
-                <ReportTableView table={{ title: `Inventory (${memberCodeRows.length})`, columns: [{ key: 'code', label: 'Code' }, { key: 'family', label: 'Family' }, { key: 'type', label: 'Type' }, { key: 'status', label: 'Status' }, { key: 'assignedTo', label: 'Assigned' }, { key: 'copyReady', label: 'Copy Ready' }], rows: visibleMemberCodeRows.map((item) => ({ code: item.code, family: item.codeFamily, type: item.accountType, status: item.status, assignedTo: item.assignedTo, copyReady: item.copyEnabled ? 'Yes' : 'No' })) }} />
+                <ReportTableView table={{ title: `Inventory (${memberCodeRows.length})`, columns: [{ key: 'code', label: 'Code' }, { key: 'family', label: 'Family' }, { key: 'type', label: 'Type' }, { key: 'status', label: 'Status' }, { key: 'assignedTo', label: 'Assigned' }, { key: 'copyReady', label: 'Copy Ready' }], rows: visibleMemberCodeRows.map((item) => ({ code: item.code, family: item.codeFamily, type: formatAccountTypeLabel(item.accountType, item.paymentStatus), status: item.status, assignedTo: item.assignedTo, copyReady: item.copyEnabled ? 'Yes' : 'No' })) }} />
                 <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--muted-foreground)]">
                   <span>Page {Math.min(codeInventoryPage, codeInventoryTotalPages)} of {codeInventoryTotalPages} · {memberCodeRows.length} code(s)</span>
                   <div className="flex gap-2">

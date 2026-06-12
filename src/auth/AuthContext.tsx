@@ -161,6 +161,8 @@ type AuthContextValue = AuthState & {
       payoutDetails?: string;
       address?: string;
       contactNumber?: string;
+      email?: string;
+      newUsername?: string;
     }
   ) => Promise<GatedActionResponse>;
   updateMemberStatus: (

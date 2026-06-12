@@ -3,6 +3,7 @@ import { CreditCard, Eye, EyeOff, KeyRound, Lock, Mail, Phone, User, X } from 'l
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFeedback } from '../feedback/FeedbackProvider';
 import { fetchMemberActivationCodes, fetchRegistrationPreview, submitRegistration } from '../../lib/api';
+import { formatAccountTypeLabel } from '../../lib/utils';
 import type { PageContent } from '../../types/content';
 import type { MemberActivationCodeCenter } from '../../types/auth';
 import type { RegistrationPreview, RegistrationSubmitResponse } from '../../types/registration';
@@ -476,7 +477,7 @@ export function RegistrationPageView({
                         </option>
                         {availableCodes.map((item) => (
                           <option key={item.code} value={item.code}>
-                            {`${item.code} - ${item.accountType} - ${item.packageTier}`}
+                            {`${item.code} - ${formatAccountTypeLabel(item.accountType, item.paymentStatus)} - ${item.packageTier}`}
                           </option>
                         ))}
                       </select>

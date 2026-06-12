@@ -53,6 +53,56 @@ function readCookie(name: string): string | null {
   return null;
 }
 
+function isTechnicalErrorMessage(message: string): boolean {
+  return [
+    /\/api\//i,
+    /supabase/i,
+    /postgres|postgrest|sql/i,
+    /constraint|violates|duplicate key/i,
+    /json|syntaxerror|typeerror/i,
+    /undefined|null/i,
+    /failed to fetch|networkerror/i,
+    /request failed/i,
+    /stack trace/i
+  ].some((pattern) => pattern.test(message));
+}
+
+function friendlyApiErrorMessage(status: number, path: string, rawMessage: string): string {
+  const trimmed = rawMessage.trim();
+
+  if (trimmed && !isTechnicalErrorMessage(trimmed)) {
+    return trimmed;
+  }
+
+  if (status === 401) {
+    return 'Please sign in again to continue.';
+  }
+
+  if (status === 403) {
+    return 'This account does not have permission to do that.';
+  }
+
+  if (status === 404) {
+    return path.includes('/members/')
+      ? 'We could not find that member. Please check the username and try again.'
+      : 'We could not find the record you are looking for.';
+  }
+
+  if (status === 409) {
+    return 'That change conflicts with an existing record. Please review the details and try again.';
+  }
+
+  if (status === 423) {
+    return 'This action is not available for this account right now.';
+  }
+
+  if (status >= 500) {
+    return 'Something went wrong while saving. Please try again in a moment.';
+  }
+
+  return 'The request could not be completed. Please check the details and try again.';
+}
+
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers ?? {});
   const method = (init?.method ?? 'GET').toUpperCase();
@@ -91,7 +141,8 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
     }
 
     const rawMsg = payload?.message ?? payload?.reason ?? payload?.detail ?? payload?.error ?? `Request failed for ${path}`;
-    throw new Error(typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg));
+    const rawMessage = typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg);
+    throw new Error(friendlyApiErrorMessage(response.status, path, rawMessage));
   }
 
   return (await response.json()) as T;

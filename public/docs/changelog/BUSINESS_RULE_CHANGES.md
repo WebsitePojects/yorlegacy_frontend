@@ -1,0 +1,170 @@
+# Business Rule & Logic Change Log
+
+This file is the canonical record of every business rule, compensation logic, or
+financial calculation change made to the Yor International platform.
+
+**Format per entry:**
+- Date, Gate ID, Rule area, What changed, Files affected, Reason / authority
+
+Only business-rule-level changes are logged here.
+Simple UI tweaks, CSS, copy, and config changes are not recorded.
+
+---
+
+## 2026-06-12 — GATE-BIN-PV-FS-2026-06-12: FS Paid Accounts Now Eligible for Binary Pairing
+
+**Rule area:** Binary PV gate — eligible account types for salesmatch/pairing propagation  
+**Gate ID:** `GATE-BIN-PV-FS-2026-06-12`
+
+### What changed
+
+The binary PV eligibility gate was widened. Previously, FS accounts (Business/VIP free-slot or stockist-settled) were unconditionally excluded from generating binary PV to uplines, regardless of payment status.
+
+**Before (wrong):**
+```typescript
+const eligibleForBinaryPV = matchingCode.accountType !== 'FS' && matchingCode.paymentStatus !== 'unpaid';
+```
+
+**After (correct):**
+```typescript
+const eligibleForBinaryPV = matchingCode.paymentStatus !== 'unpaid';
+```
+
+### Eligible pairings now active
+
+| Left leg | Right leg | Pairs? |
+|---|---|---|
+| PD Paid | PD Paid | ✅ |
+| FS Paid / Ext-Paid | FS Paid / Ext-Paid | ✅ |
+| CD Paid | FS Paid / Ext-Paid | ✅ |
+| CD Paid | CD Paid | ✅ |
+| PD Paid | FS Paid / Ext-Paid | ✅ |
+| Any | CD Unpaid | ❌ |
+| Any | Any Unpaid | ❌ |
+
+### What did NOT change
+
+Binary cycle logic is unchanged. The salesmatch/binary cycle still fires based on delta — the only gate is whether the registering account's code is paid.
+
+### Files affected
+
+- `yor_backend/src/modules/production/encoding-service.ts` — line ~1274, gate condition + detail message
+- `yor_backend/src/modules/sandbox/dev-sandbox-store.ts` — added missing gate before `settleSandboxPlacementCompensation` (sandbox previously had NO gate — unpaid codes were incorrectly generating PV in sandbox)
+
+### Reason / Authority
+
+User instruction 2026-06-12: "activate binary pairing for eligible accounts, cd and fs, fs and fs, cd and cd all unpaid wont pair and generate income activate it if it is closed"
+
+---
+
+## 2026-06-11 — BIN-CYCLE-ROOT-CAUSE-2026-06-11: Binary Cycle Root Cause Identified and Fixed via PV Gate
+
+**Rule area:** Binary Cycle Bonus (Way 4) — root cause fix
+**Gate ID:** N/A (root cause was the binary PV gate; binary cycle logic is correct)
+
+### What was reported
+User report: "binary cycle naten tuloy tuloy yung palo kahit wala pa syang katapat
+na leaders sa kabila at hindi pa nagpapairing" — cycle was apparently firing even
+without qualifying paired leaders.
+
+### Root cause
+FS accounts (Business/VIP free-slot) and CD Unpaid accounts were generating binary
+PV to uplines on every registration, causing the salesmatch delta to accumulate.
+The binary cycle is computed from the salesmatch delta, so it was being triggered
+by PV from ineligible accounts.
+
+### Fix applied
+The upstream binary PV eligibility gate (BIN-PV-GATE-2026-06-11, see below)
+prevents FS and CD Unpaid accounts from ever entering the compensation queue.
+Since no PV flows up from ineligible accounts, no salesmatch delta is produced for
+those registrations, and therefore binary cycle is never triggered from them.
+
+**Binary cycle logic itself remains unchanged and correct.**
+
+### Files affected (via BIN-PV-GATE-2026-06-11)
+- `yor_backend/src/modules/production/encoding-service.ts` — `submitRegistration()` eligibility gate
+
+---
+
+## 2026-06-11 — BIN-PV-GATE-2026-06-11: Binary PV Eligibility Gate
+
+**Rule area:** Binary PV / Salesmatch propagation
+**Gate ID:** `BIN-PV-GATE-2026-06-11`
+
+### What changed
+FS accounts (Business/VIP on free-slot/credit) and unpaid-code accounts
+(activation code with `paymentStatus: 'unpaid'`) no longer propagate binary
+PV to any upline node up to root.
+
+Previously, every registration unconditionally enqueued a `placement-sales`
+compensation item regardless of account type or code payment status.
+
+### Condition
+```typescript
+const eligibleForBinaryPV =
+  matchingCode.accountType !== 'FS' && matchingCode.paymentStatus !== 'unpaid';
+```
+
+### Files affected
+- `yor_backend/src/modules/production/encoding-service.ts` — `submitRegistration()` ~L(gate added before queue creation)
+
+### Reason
+Business rule BIN-01: "Only PD (paid) and CD Paid accounts generate binary PV
+to uplines. FS and Unpaid-CD do NOT propagate binary points."
+User instruction: "only eligible to pair is Paid and Paid CD accounts"
+
+### Authority
+BUSINESSRULE.md BIN-01 + direct user instruction 2026-06-11.
+
+---
+
+## 2026-06-11 — CD-DEDUCTION-2026-06-11: CD Deduction Changed to 100%
+
+**Rule area:** Encashment deduction stack — CD recovery
+**Gate ID:** `CD-DEDUCTION-2026-06-11`
+
+### What changed
+CD (Credit-Deferred) balance deduction on encashment changed from a 5% cap
+per encashment to 100% of the encashment amount (up to the outstanding CD balance).
+
+| Before | After |
+|---|---|
+| `Math.min(cdBalance, amount * 0.05)` | `Math.min(cdBalance, amount)` |
+
+### Files affected
+- `yor_backend/src/modules/production/encoding-service.ts` — `buildMemberWalletData()`
+- `yor_backend/src/modules/operations/legacy-parity-service.ts` — encashment preview ~L519
+- `yor_backend/src/modules/sandbox/dev-sandbox-store.ts` — `submitSandboxEncashment()` and `getSandboxWalletSummary()` preview
+
+### Reason
+User instruction: "make the cd deduction 100% on all encashment"
+The outstanding CD balance must be recovered from the member's encashment
+at 100% of the encashment amount until the debt is cleared.
+
+### Authority
+BUSINESSRULE.md ENC-01 + direct user instruction 2026-06-11.
+
+---
+
+## 2026-06-11 — CASHIER-AUTH-FIX-2026-06-11: Cashier Login Auth Fallback Added
+
+**Rule area:** Authentication / Staff account lookup
+**Gate ID:** N/A (bug fix, not a rule change)
+
+### What changed
+Added a 4th fallback lookup path in `findAppUserByUsername` to match staff
+accounts stored with a plain username string in the `email` column (no domain).
+
+The existing 3rd fallback only matched `username@*` (prefix match), which missed
+accounts like `yorcashier` stored directly as the email value.
+
+### Files affected
+- `yor_backend/src/modules/auth/app-users.ts` — `findAppUserByUsername()` fallback #4
+
+### Reason
+Cashier account `yorcashier` (stored as email='yorcashier' with no domain) was
+returning 401 because none of the 3 existing lookup paths matched it.
+
+---
+
+*Last updated: 2026-06-11*

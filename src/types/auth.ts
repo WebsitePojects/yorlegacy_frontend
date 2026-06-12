@@ -410,7 +410,7 @@ export type GenealogyTreeNode = {
       note: string;
     };
   };
-  accountStateLabel: 'PD' | 'FS' | 'CD - Paid';
+  accountStateLabel: 'PD' | 'FS' | 'CD - Paid' | 'CD - Unpaid';
   children: GenealogyTreeNode[];
 };
 

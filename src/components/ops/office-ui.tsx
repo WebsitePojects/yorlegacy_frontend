@@ -100,10 +100,11 @@ export function OfficeSidebar({
                 <div className="space-y-1">
                   {groupModules.map((module) => {
                     const active = module.id === currentModuleId;
+                    const moduleHref = getModuleHref(basePath, module);
                     return (
                       <NavLink
                         key={module.id}
-                        to={module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`}
+                        to={moduleHref}
                         title={module.label}
                         aria-label={module.label}
                         className={cn(
@@ -253,7 +254,7 @@ export function MobileOfficeNav({
                     {groupModules.map((module) => (
                       <NavLink
                         key={module.id}
-                        to={module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`}
+                        to={getModuleHref(basePath, module)}
                         className={cn('ops-mobile-drawer-link', currentModuleId === module.id && 'is-active')}
                         onClick={() => setOpen(false)}
                         onMouseEnter={() => onPrefetchModule?.(module.id)}
@@ -484,6 +485,14 @@ function groupModules(modules: OperationalModule[]) {
   }
 
   return Array.from(map.entries());
+}
+
+function getModuleHref(basePath: OfficeSidebarProps['basePath'], module: OperationalModule) {
+  if (module.path?.startsWith(basePath)) {
+    return module.path;
+  }
+
+  return module.id === 'dashboard' ? basePath : `${basePath}/${module.id}`;
 }
 
 function renderIcon(Icon: ComponentType<{ className?: string }>, className = 'size-4') {

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
-import { MobileOfficeNav } from './office-ui';
+import { MobileOfficeNav, OfficeSidebar } from './office-ui';
 import { ThemeProvider } from '@/components/theme-provider';
 import type { OperationalModule } from '@/types/auth';
 
@@ -76,5 +76,43 @@ describe('MobileOfficeNav', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: /admin office navigation/i })).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('OfficeSidebar', () => {
+  it('uses module catalog paths for sidebar links', () => {
+    render(
+      <ThemeProvider>
+        <MemoryRouter>
+          <OfficeSidebar
+            basePath="/member"
+            currentModuleId="dashboard"
+            heading="yor01"
+            subheading="Member Office"
+            expanded
+            modules={[
+              {
+                id: 'binary-cycle-bonus',
+                label: 'Binary Cycle Bonus',
+                path: '/member/binary-cycle-bonus',
+                group: 'Compensation',
+                description: 'Cycle page',
+                status: 'read-only',
+                legacyReference: 'cycle.php',
+                permissions: ['member'],
+                metrics: [],
+                table: { title: 'Cycle', columns: [], rows: [] },
+                gatedActions: []
+              }
+            ]}
+          />
+        </MemoryRouter>
+      </ThemeProvider>
+    );
+
+    expect(screen.getByRole('link', { name: /binary cycle bonus/i })).toHaveAttribute(
+      'href',
+      '/member/binary-cycle-bonus'
+    );
   });
 });

@@ -29,7 +29,7 @@ import {
 } from '@/components/layout/ProtectedOfficeFrame';
 import { GenealogyTree } from '../components/ops/GenealogyTree';
 import { clearOfficeCache, readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
-import { cn } from '@/lib/utils';
+import { cn, formatAccountTypeLabel } from '@/lib/utils';
 import {
   GatedActionsCard,
   MetricGrid,
@@ -1352,7 +1352,7 @@ export function AdminDashboardPage() {
                                   />
                                 </td>
                                 <td className="px-4 py-3 font-mono text-[var(--yor-copper-soft)]">{item.code}</td>
-                                <td className="px-4 py-3">{item.accountType}</td>
+                                <td className="px-4 py-3">{formatAccountTypeLabel(item.accountType, item.paymentStatus)}</td>
                                 <td className="px-4 py-3">{item.packageTier}</td>
                                 <td className="px-4 py-3">{item.assignedTo}</td>
                                 <td className="px-4 py-3">
