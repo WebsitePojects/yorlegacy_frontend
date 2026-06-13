@@ -599,3 +599,43 @@ export function submitRegistration(payload: {
     })
   });
 }
+
+export type SupportMessageCategory = 'general' | 'account' | 'technical' | 'encashment';
+export type SupportMessageStatus = 'unread' | 'read' | 'done' | 'blocked';
+
+export type ContactMessage = {
+  id: string;
+  username: string;
+  displayName: string;
+  email: string;
+  category: SupportMessageCategory;
+  subject: string;
+  message: string;
+  status: SupportMessageStatus;
+  createdAt: string;
+};
+
+export function submitSupportMessage(payload: {
+  category: SupportMessageCategory;
+  subject: string;
+  message: string;
+}): Promise<{ status: string; id: string }> {
+  return fetchJson('/api/member/support/message', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function fetchAdminContactMessages(): Promise<{ messages: ContactMessage[] }> {
+  return fetchJson('/api/admin/contact-messages', { method: 'GET' });
+}
+
+export function updateAdminContactMessageStatus(
+  id: string,
+  status: SupportMessageStatus
+): Promise<{ status: string }> {
+  return fetchJson(`/api/admin/contact-messages/${encodeURIComponent(id)}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status })
+  });
+}

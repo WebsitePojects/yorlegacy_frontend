@@ -53,6 +53,7 @@ import { LifestylePanel } from '@/features/earnings/components/LifestylePanel';
 import { SalesmatchPanel } from '@/features/earnings/components/SalesmatchPanel';
 import { UnilevelPanel } from '@/features/earnings/components/UnilevelPanel';
 import { GetYorFiveInFrame } from './GetYorFivePage';
+import { SupportView } from '@/features/support/components/SupportView';
 import type {
   DashboardSummary,
   GenealogyCenter,
@@ -170,7 +171,8 @@ const customMemberModuleIds = new Set([
   'global-bonus-eligibility',
   'binary-cycle-bonus',
   'direct-referrals',
-  'salesmatch-bonus'
+  'salesmatch-bonus',
+  'support'
 ]);
 
 const getYorFivePackageClaimMap: Record<string, string> = {
@@ -1980,6 +1982,9 @@ export function MemberDashboardPage() {
             strongLegCarry={strongLegCarry}
           />
         ) : null}
+
+        {/* ── SUPPORT ── */}
+        {moduleId === 'support' ? <SupportView /> : null}
 
         {/* ── GENERIC MODULE TABLE ── */}
         {showModuleTable && activeModule ? <ModuleTableCard module={activeModule} /> : null}

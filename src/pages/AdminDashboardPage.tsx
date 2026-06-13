@@ -41,7 +41,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { searchAdminTransferTargets } from '@/lib/api';
+import {
+  fetchAdminContactMessages,
+  updateAdminContactMessageStatus,
+  searchAdminTransferTargets,
+  type ContactMessage,
+  type SupportMessageStatus
+} from '@/lib/api';
 import type {
   AdminActivationCodeCenter,
   AdminEncashmentCenter,
@@ -3281,34 +3287,104 @@ function resolveContactStatusClass(status: string): string {
 }
 
 function ContactMessagesView({ activeModule }: ModuleViewProps) {
+  const { notify } = useFeedback();
   const [activeTab, setActiveTab] = useState<ContactTab>('all');
-  const rows = activeModule?.table?.rows ?? [];
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetchAdminContactMessages()
+      .then((data) => { if (!cancelled) setMessages(data.messages); })
+      .catch(() => { if (!cancelled) setMessages([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  async function handleStatusUpdate(id: string, status: SupportMessageStatus) {
+    setUpdatingId(id);
+    try {
+      await updateAdminContactMessageStatus(id, status);
+      setMessages((prev) => prev.map((m) => m.id === id ? { ...m, status } : m));
+      if (selectedMessage?.id === id) setSelectedMessage((prev) => prev ? { ...prev, status } : prev);
+      notify({ title: 'Status updated', tone: 'success' });
+    } catch {
+      notify({ title: 'Unable to update status', tone: 'destructive' });
+    } finally {
+      setUpdatingId(null);
+    }
+  }
 
   const countForTab = (key: ContactTab) => {
-    if (key === 'all') return rows.length;
-    return rows.filter((row) =>
-      String(row['status'] ?? row['Status'] ?? '').toLowerCase().includes(key)
-    ).length;
+    if (key === 'all') return messages.length;
+    return messages.filter((m) => m.status === key).length;
   };
 
-  const filteredRows = rows.filter((row) => {
-    if (activeTab === 'all') return true;
-    return String(row['status'] ?? row['Status'] ?? '').toLowerCase().includes(activeTab);
-  });
+  const filteredMessages = messages.filter((m) => activeTab === 'all' || m.status === activeTab);
 
   return (
     <section className="space-y-5">
-      {/* Page Header */}
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Admin</p>
         <h2 className="mt-0.5 text-xl font-semibold text-[var(--foreground)]">Contact Messages</h2>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          {activeModule?.description ?? 'Review and manage inbound contact form submissions from site visitors.'}
+          {activeModule?.description ?? 'Review and manage inbound member support inquiries.'}
         </p>
       </div>
 
+      {selectedMessage ? (
+        <Card className="border-[var(--border)] bg-[var(--card)]">
+          <CardContent className="pt-5 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Message Detail</p>
+                <h3 className="text-base font-semibold text-[var(--foreground)]">{selectedMessage.subject}</h3>
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  From <span className="font-medium text-[var(--foreground)]">{selectedMessage.displayName}</span>
+                  {' '}({selectedMessage.username}) · {selectedMessage.email} · {new Date(selectedMessage.createdAt).toLocaleString('en-PH')}
+                </p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => setSelectedMessage(null)}>Close</Button>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+              <p className="whitespace-pre-wrap text-sm leading-6 text-[var(--foreground)]">{selectedMessage.message}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="text-xs capitalize">{selectedMessage.category}</Badge>
+              <Badge variant="outline" className={cn('text-xs', resolveContactStatusClass(selectedMessage.status))}>
+                {selectedMessage.status}
+              </Badge>
+              <div className="ml-auto flex gap-2">
+                {selectedMessage.status !== 'read' && (
+                  <Button type="button" size="sm" variant="outline" disabled={updatingId === selectedMessage.id}
+                    onClick={() => void handleStatusUpdate(selectedMessage.id, 'read')}>
+                    Mark Read
+                  </Button>
+                )}
+                {selectedMessage.status !== 'done' && (
+                  <Button type="button" size="sm" variant="outline" disabled={updatingId === selectedMessage.id}
+                    onClick={() => void handleStatusUpdate(selectedMessage.id, 'done')}>
+                    Mark Done
+                  </Button>
+                )}
+                {selectedMessage.status !== 'blocked' && (
+                  <Button type="button" size="sm" variant="outline"
+                    className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                    disabled={updatingId === selectedMessage.id}
+                    onClick={() => void handleStatusUpdate(selectedMessage.id, 'blocked')}>
+                    Block
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card className="border-[var(--border)] bg-[var(--card)]">
-        {/* Tab row */}
         <div className="flex flex-wrap gap-1 border-b border-[var(--border)] px-5 pt-4">
           {CONTACT_TABS.map((tab) => {
             const count = countForTab(tab.key);
@@ -3332,7 +3408,11 @@ function ContactMessagesView({ activeModule }: ModuleViewProps) {
         </div>
 
         <CardContent className="pt-5">
-          {filteredRows.length === 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <p className="text-sm text-[var(--muted-foreground)]">Loading messages…</p>
+            </div>
+          ) : filteredMessages.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] py-12 text-center">
               <span className="flex size-12 items-center justify-center rounded-full bg-[var(--muted)]">
                 <MessageSquare className="size-5 text-[var(--muted-foreground)]" />
@@ -3344,8 +3424,8 @@ function ContactMessagesView({ activeModule }: ModuleViewProps) {
               <table className="w-full min-w-[860px] text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3">Member</th>
+                    <th className="px-4 py-3">Category</th>
                     <th className="px-4 py-3">Subject</th>
                     <th className="px-4 py-3">Date</th>
                     <th className="px-4 py-3">Status</th>
@@ -3353,28 +3433,36 @@ function ContactMessagesView({ activeModule }: ModuleViewProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRows.map((row, i) => {
-                    const status = String(row['status'] ?? row['Status'] ?? '');
-                    return (
-                      <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
-                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">{String(row['name'] ?? row['Name'] ?? '—')}</td>
-                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['email'] ?? row['Email'] ?? '—')}</td>
-                        <td className="max-w-[220px] px-4 py-3 truncate text-[var(--foreground)]">{String(row['subject'] ?? row['Subject'] ?? '—')}</td>
-                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['date'] ?? row['Date'] ?? row['createdAt'] ?? '—')}</td>
-                        <td className="px-4 py-3">
-                          <Badge variant="outline" className={resolveContactStatusClass(status)}>
-                            {status || '—'}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <Button type="button" size="sm" variant="outline">View</Button>
-                            <Button type="button" size="sm" variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10">Block</Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {filteredMessages.map((msg) => (
+                    <tr key={msg.id} className="border-b border-[var(--border)] transition last:border-0 hover:bg-[var(--muted)]/30">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-[var(--foreground)]">{msg.displayName}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">{msg.username}</p>
+                      </td>
+                      <td className="px-4 py-3 capitalize text-[var(--muted-foreground)]">{msg.category}</td>
+                      <td className="max-w-[220px] px-4 py-3 truncate text-[var(--foreground)]">{msg.subject}</td>
+                      <td className="px-4 py-3 text-[var(--muted-foreground)]">{new Date(msg.createdAt).toLocaleDateString('en-PH')}</td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className={resolveContactStatusClass(msg.status)}>
+                          {msg.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          <Button type="button" size="sm" variant="outline"
+                            onClick={() => setSelectedMessage(msg)}>
+                            View
+                          </Button>
+                          <Button type="button" size="sm" variant="outline"
+                            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                            disabled={updatingId === msg.id || msg.status === 'blocked'}
+                            onClick={() => void handleStatusUpdate(msg.id, 'blocked')}>
+                            Block
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
