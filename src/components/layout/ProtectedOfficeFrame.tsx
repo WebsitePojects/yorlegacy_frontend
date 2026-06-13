@@ -85,11 +85,7 @@ function workspaceLinksForRole(role: AppRole | undefined): WorkspaceLink[] {
   }
 
   if (role === 'cashier') {
-    return [
-      { href: '/admin', label: 'Cashier Office' },
-      { href: '/member', label: 'Member View' },
-      { href: '/', label: 'Public Site' }
-    ];
+    return [];
   }
 
   if (role === 'bod') {
@@ -194,6 +190,22 @@ export function ProtectedOfficeFrame({
 
   return (
     <section className="ops-shell bg-[var(--background)] text-[var(--foreground)]">
+      {isContentLoading ? (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[var(--background)]/80 backdrop-blur-sm">
+          <div className="ops-content-loader-body">
+            <Badge variant="outline">Loading</Badge>
+            <div className="ops-content-loader-copy">
+              <h2>{loadingLabel}</h2>
+              <p>The content area is refreshing with the latest workspace data.</p>
+            </div>
+            <div className="ops-content-loader-pulse" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
+        </div>
+      ) : null}
       <header className={cn('ops-shell-header', scrollElevated ? 'is-scrolled' : '')}>
         <div className="ops-shell-header-main flex min-w-0 items-center gap-3">
           <Link to={basePath} className="protected-brand-link">
@@ -334,24 +346,8 @@ export function ProtectedOfficeFrame({
             </div>
           </section>
 
-          <div className={cn('ops-content-shell', isContentLoading && 'is-loading')} aria-busy={isContentLoading}>
+          <div className="ops-content-shell" aria-busy={isContentLoading}>
             <div className="ops-content-shell-stage">{children}</div>
-            {isContentLoading ? (
-              <div className="ops-content-loader-card">
-                <div className="ops-content-loader-body">
-                  <Badge variant="outline">Loading</Badge>
-                  <div className="ops-content-loader-copy">
-                    <h2>{loadingLabel}</h2>
-                    <p>The content area is refreshing with the latest workspace data.</p>
-                  </div>
-                  <div className="ops-content-loader-pulse" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </div>
         </main>
       </div>

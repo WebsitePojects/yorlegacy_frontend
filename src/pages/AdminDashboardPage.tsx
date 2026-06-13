@@ -1025,7 +1025,7 @@ export function AdminDashboardPage() {
   const currentOpsRole = office?.profile.accessScope ?? user?.role ?? 'admin';
   const effectiveAdminRole = currentOpsRole === 'platform' ? 'admin' : currentOpsRole;
   const isCashierRole = effectiveAdminRole === 'cashier' || user?.role === 'cashier';
-  const canGenerateCodes = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin';
+  const canGenerateCodes = isCashierRole || effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin';
   const canApproveEncashment = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin';
   const canChangeMemberStatus = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin';
   const canEditFullMemberProfile = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin' || effectiveAdminRole === 'bod';
@@ -1201,9 +1201,6 @@ export function AdminDashboardPage() {
                           <Button className="ops-admin-primary-action" type="button" onClick={handleGenerateCodes}>
                             Generate General Codes
                           </Button>
-                          <p className="text-sm text-[var(--muted-foreground)]">
-                            Admin and superadmin can generate. Cashier stays on release, transfer, and correction workflows only.
-                          </p>
                         </div>
                       </>
                     ) : (
