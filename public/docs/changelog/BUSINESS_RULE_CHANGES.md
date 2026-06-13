@@ -11,6 +11,48 @@ Simple UI tweaks, CSS, copy, and config changes are not recorded.
 
 ---
 
+## 2026-06-13 — GATE-UNI-20260613: Unilevel Bonus Production Engine (10-level sponsor bloodline)
+
+**Rule area:** Unilevel Bonus — production crediting engine
+**Gate ID:** `GATE-UNI-20260613`
+
+### What changed
+
+Implemented the production Unilevel Bonus engine. A member's product repurchase
+credits their SPONSOR bloodline up to 10 levels, amplified per level by
+10 / 8 / 5 / 5 / 3 / 3 / 2 / 1 / 1 / 1 percent (L1→L10). Sponsor tree only
+(`network.sponsor_user_id`), never binary placement. Base = the product's
+`repurchasePv` (Perfume/Vision 500, Refill 150). Each level posts at most once per
+repurchase event via a deterministic process key (`<ref>:unilevel:L<n>:<recipient>`).
+
+**Before:** unilevel was simulation-only policy text; no production posting.
+
+**After:** `applyRepurchaseUnilevel` + `creditUnilevelForRepurchase` (catalog SKU →
+PV) post `unilevel` ledger credits; `getMemberUnilevelData` exposes total + per-level
+breakdown; `GET /api/member/unilevel`.
+
+### Decisions / scope
+
+- Per owner sign-off item 8, EVERY sponsor in the bloodline is credited — recipient
+  account-type eligibility is intentionally NOT gated (unlike binary pairing).
+- Ranking is NOT driven by unilevel points (scrapped) — rank is total income only.
+- **Pending (NOT enforced):** the 200-PV monthly maintenance requirement
+  (`unilevelMonthlyMaintenanceRequirement`) is recorded but not gated; and the
+  production repurchase TRIGGER (the event that calls `creditUnilevelForRepurchase`)
+  is shared with the Lifestyle Rewards workstream and not yet wired to a member
+  purchase flow.
+
+### Files affected
+
+- `yor_backend/src/modules/production/encoding-service.ts` — `applyRepurchaseUnilevel`, `creditUnilevelForRepurchase`, `getMemberUnilevelData`
+- `yor_backend/src/routes/member.ts` — `GET /api/member/unilevel`
+
+### Reason / authority
+
+Owner sign-off **item 8** (2026-06-13).
+
+---
+
 ## 2026-06-13 — GATE-BIN-CYCLE-NOCAP-20260613: Binary Cycle Bonus Has No Cap
 
 **Rule area:** Binary Cycle Bonus — cap treatment and calculation base
