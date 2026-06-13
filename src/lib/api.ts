@@ -10,8 +10,10 @@ import type {
   DashboardSummary,
   GatedActionResponse,
   GenealogyCenter,
+  LeaderboardData,
   MemberActivationCodeCenter,
   MemberGetYorFiveData,
+  MemberRankData,
   MemberOfficeData,
   MemberMvpDashboardData,
   ShadowAccountCenter,
@@ -279,6 +281,14 @@ export function fetchMemberWalletDetail(): Promise<MemberWalletDetail> {
 
 export function fetchMemberGetYorFive(): Promise<MemberGetYorFiveData> {
   return fetchJson('/api/member/get-yor-five', { method: 'GET' });
+}
+
+export function fetchMemberRank(): Promise<MemberRankData> {
+  return fetchJson('/api/member/rank', { method: 'GET' });
+}
+
+export function fetchLeaderboard(): Promise<LeaderboardData> {
+  return fetchJson('/api/member/leaderboard', { method: 'GET' });
 }
 
 export function previewMemberEncashment(amount: number): Promise<{

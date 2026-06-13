@@ -22,6 +22,8 @@ import {
   fetchMemberActivationCodes,
   fetchMemberBinaryTree,
   fetchMemberGetYorFive,
+  fetchMemberRank,
+  fetchLeaderboard,
   fetchMemberModule,
   fetchMemberMvpDashboard,
   fetchMemberOffice,
@@ -63,8 +65,10 @@ import type {
   DashboardSummary,
   GatedActionResponse,
   GenealogyCenter,
+  LeaderboardData,
   MemberActivationCodeCenter,
   MemberGetYorFiveData,
+  MemberRankData,
   MemberOfficeData,
   MemberMvpDashboardData,
   ShadowAccountCenter,
@@ -101,6 +105,8 @@ type AuthContextValue = AuthState & {
   useMaintenanceCode: (payload: { code: string; transType: number }) => Promise<GatedActionResponse>;
   getMemberWalletDetail: () => Promise<MemberWalletDetail>;
   getMemberGetYorFive: () => Promise<MemberGetYorFiveData>;
+  getMemberRank: () => Promise<MemberRankData>;
+  getLeaderboard: () => Promise<LeaderboardData>;
   previewEncashment: (amount: number) => Promise<{
     moneyMode: 'playground' | 'sandbox';
     preview: MemberWalletDetail['preview'];
@@ -257,6 +263,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     useMaintenanceCode,
     getMemberWalletDetail: fetchMemberWalletDetail,
     getMemberGetYorFive: fetchMemberGetYorFive,
+    getMemberRank: fetchMemberRank,
+    getLeaderboard: fetchLeaderboard,
     previewEncashment: previewMemberEncashment,
     submitEncashment: submitMemberEncashment,
     updateMemberCredentials,

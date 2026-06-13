@@ -337,6 +337,31 @@ export type MemberGetYorFiveData = {
   completedGroupsTotal: number;
 };
 
+export type MemberRankData = {
+  moneyMode: MoneyMode;
+  level: number;
+  rankName: string;
+  totalIncome: number;
+  currentThreshold: number;
+  nextRankName: string | null;
+  nextThreshold: number | null;
+  remainingToNext: number | null;
+};
+
+export type LeaderboardData = {
+  moneyMode: MoneyMode;
+  entries: Array<{
+    position: number;
+    userId: string;
+    username: string;
+    fullName: string;
+    packageTier: string;
+    totalIncome: number;
+    rankName: string;
+    rankLevel: number;
+  }>;
+};
+
 export type RegistrationReadiness = {
   moneyMode: MoneyMode;
   sponsor: {

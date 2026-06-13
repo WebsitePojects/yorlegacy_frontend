@@ -54,6 +54,7 @@ import { LifestylePanel } from '@/features/earnings/components/LifestylePanel';
 import { SalesmatchPanel } from '@/features/earnings/components/SalesmatchPanel';
 import { UnilevelPanel } from '@/features/earnings/components/UnilevelPanel';
 import { GetYorFiveInFrame } from './GetYorFivePage';
+import { LeaderboardInFrame } from './LeaderboardPage';
 import type {
   DashboardSummary,
   GenealogyCenter,
@@ -145,7 +146,8 @@ const customMemberModuleIds = new Set([
   'global-bonus-eligibility',
   'binary-cycle-bonus',
   'direct-referrals',
-  'salesmatch-bonus'
+  'salesmatch-bonus',
+  'leaderboard'
 ]);
 
 const getYorFivePackageClaimMap: Record<string, string> = {
@@ -1658,6 +1660,25 @@ export function MemberDashboardPage() {
               </div>
             </div>
             <GetYorFiveInFrame />
+          </section>
+        ) : null}
+
+        {/* ── RANK & LEADERBOARD ── */}
+        {moduleId === 'leaderboard' ? (
+          <section>
+            <div className="mb-5 flex items-start gap-4">
+              <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-amber-500/25 bg-amber-500/10 shadow-md shadow-amber-500/20">
+                <Trophy className="size-7 text-amber-600 dark:text-amber-400" />
+              </span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Recognition</p>
+                <h2 className="text-2xl font-bold tracking-tight text-[var(--foreground)]">Rank &amp; Leaderboard</h2>
+                <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                  Your unilevel rank by lifetime total income, and where you stand among all members.
+                </p>
+              </div>
+            </div>
+            <LeaderboardInFrame />
           </section>
         ) : null}
 
