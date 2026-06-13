@@ -120,22 +120,6 @@ export const routes = [
         )
       },
       {
-        path: 'cashier',
-        element: (
-          <ProtectedRoute allowedRoles={['cashier', 'admin', 'superadmin']}>
-            <AdminDashboardPage />
-          </ProtectedRoute>
-        )
-      },
-      {
-        path: 'cashier/:moduleId',
-        element: (
-          <ProtectedRoute allowedRoles={['cashier', 'admin', 'superadmin']}>
-            <AdminDashboardPage />
-          </ProtectedRoute>
-        )
-      },
-      {
         path: 'bod',
         element: (
           <ProtectedRoute allowedRoles={['bod', 'admin', 'superadmin']}>

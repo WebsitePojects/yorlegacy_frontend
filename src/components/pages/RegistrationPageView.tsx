@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CreditCard, Eye, EyeOff, KeyRound, Lock, Mail, Phone, User, X } from 'lucide-react';
+import { CheckCircle2, CreditCard, Eye, EyeOff, KeyRound, Lock, Mail, Phone, User, X } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFeedback } from '../feedback/FeedbackProvider';
 import { fetchMemberActivationCodes, fetchRegistrationPreview, submitRegistration } from '../../lib/api';
@@ -55,6 +55,7 @@ export function RegistrationPageView({
   const [availableCodes, setAvailableCodes] = useState<MemberActivationCodeCenter['inventory']>([]);
   const [codeLoading, setCodeLoading] = useState(false);
   const [isHiddenForFeedback, setIsHiddenForFeedback] = useState(false);
+  const [successResult, setSuccessResult] = useState<import('../../types/registration').RegistrationSubmitResponse | null>(null);
   const isModal = variant === 'modal';
   const origin = isModal ? 'genealogy-slot' : 'referral-link';
   const referralCode = initialContext?.referralCode ?? searchParams.get('ref') ?? '';
@@ -121,6 +122,8 @@ export function RegistrationPageView({
           bundle.inventory.filter(
             (item) =>
               item.status === 'available' &&
+              item.codeFamily === 'YOR CODES' &&
+              item.registrationEligible !== false &&
               (!bundle.member || item.assignedTo === bundle.member.username) &&
               REGISTRATION_PACKAGES.has(item.packageTier.toUpperCase())
           )
@@ -294,20 +297,16 @@ export function RegistrationPageView({
         payoutDetails: form.payoutDetails || undefined
       });
 
-      await presentNotice({
-        title: result.createdMember ? 'Account created' : 'Registration committed',
-        description: result.createdMember
-          ? [
-              `Username: ${result.createdMember.username}`,
-              `Package: ${result.createdMember.packageTier}`,
-              `Account type: ${result.createdMember.accountType}`,
-              `Sponsor: ${result.createdMember.sponsorUsername}`
-            ].join('\n')
-          : result.detail ?? result.reason,
-        tone: 'success'
-      });
-
-      onSubmitted?.(result);
+      if (result.createdMember) {
+        setSuccessResult(result);
+      } else {
+        await presentNotice({
+          title: 'Registration committed',
+          description: result.detail ?? result.reason,
+          tone: 'success'
+        });
+        onSubmitted?.(result);
+      }
     } catch (cause) {
       await presentNotice({
         title: 'Unable to submit registration',
@@ -318,6 +317,69 @@ export function RegistrationPageView({
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (successResult?.createdMember) {
+    const m = successResult.createdMember;
+    function handleDone() {
+      onSubmitted?.(successResult!);
+      if (!isModal) navigate('/');
+    }
+    return (
+      <section className={`registration-page registration-page--clean ${isModal ? 'registration-page--modal-shell' : ''}`} role={isModal ? 'dialog' : undefined} aria-modal={isModal ? 'true' : undefined}>
+        {isModal ? <div className="registration-modal-backdrop" onClick={handleDone} /> : null}
+        <div className={`page-container registration-shell registration-shell--single ${isModal ? 'registration-shell--modal' : ''}`}>
+          <div className={`registration-card registration-card--clean ${isModal ? 'registration-card--modal registration-card--encode' : ''}`}>
+            <div className="flex flex-col items-center gap-6 py-8 text-center">
+              <div className="relative flex size-24 items-center justify-center rounded-full border-2 border-[var(--yor-gold,#c9a227)] bg-[var(--yor-gold,#c9a227)]/10 shadow-lg shadow-[var(--yor-gold,#c9a227)]/20">
+                <CheckCircle2 size={52} className="text-[var(--yor-gold,#c9a227)]" strokeWidth={1.5} />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--yor-copper-soft,#c06030)]">Account Created</p>
+                <h2 className="text-2xl font-bold text-[var(--foreground)]">Welcome to Yor International</h2>
+                <p className="text-sm text-[var(--muted-foreground)]">{m.fullName}</p>
+              </div>
+              <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 text-left shadow-sm">
+                <div className="mb-3 border-b border-[var(--border)] pb-3 text-center">
+                  <p className="font-mono text-xl font-bold tracking-wider text-[var(--yor-gold,#c9a227)]">{m.username}</p>
+                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Member Username</p>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Package</p>
+                    <p className="mt-0.5 font-semibold text-[var(--foreground)]">{m.packageTier}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Account Type</p>
+                    <p className="mt-0.5 font-semibold text-[var(--foreground)]">{formatAccountTypeLabel(m.accountType, undefined)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Sponsor</p>
+                    <p className="mt-0.5 font-mono font-semibold text-[var(--foreground)]">{m.sponsorUsername}</p>
+                  </div>
+                  {m.referralCode ? (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Referral Code</p>
+                      <p className="mt-0.5 font-mono font-semibold text-[var(--foreground)]">{m.referralCode}</p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              <p className="max-w-xs text-xs text-[var(--muted-foreground)]">
+                The account is now active in the binary network. Share the referral code above to start building a downline.
+              </p>
+              <button
+                type="button"
+                className="site-cta registration-primary-action w-full max-w-xs"
+                onClick={handleDone}
+              >
+                {isModal ? 'Close' : 'Go to Home'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (

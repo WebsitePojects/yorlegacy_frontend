@@ -11,6 +11,113 @@ Simple UI tweaks, CSS, copy, and config changes are not recorded.
 
 ---
 
+## 2026-06-13 — GATE-BIN-PV-20260613: Pairing BP locks to Salesmatch ÷ 250 for every registration package
+
+**Rule area:** Salesmatch / binary pairing PV  
+**Gate ID:** `GATE-BIN-PV-20260613`
+
+### What changed
+
+Generated registration codes now lock binary pairing BP from the approved Salesmatch Bonus value using **1 BP/PV = PHP 250 SMB**. This keeps Basic, Classic, Standard, Business, and VIP aligned to the owner-supplied pairing image:
+
+| Package | SMB value | Locked pairing BP |
+| --- | ---: | ---: |
+| Basic | PHP 250 | 1 |
+| Classic | PHP 500 | 2 |
+| Standard | PHP 2,500 | 10 |
+| Business | PHP 5,000 | 20 |
+| VIP | PHP 15,000 | 60 |
+
+Basic is included in pairing propagation when the encoded source account is eligible under BIN-01 (`PD` paid / settled `CD`). Basic still has no Binary Cycle percentage layer.
+
+### Files affected
+
+- `yor_backend/src/modules/production/encoding-service.ts`
+- `yor_backend/src/modules/sandbox/dev-sandbox-store.ts`
+- `yor_frontend/src/components/pages/RegistrationPageView.tsx`
+- `yor_frontend/src/components/ops/GenealogyTree.tsx`
+- `yor_frontend/src/pages/MemberDashboardPage.tsx`
+- `BUSINESSRULE.md`
+
+### Reason / authority
+
+Direct owner instruction and supplied package-pairing image on 2026-06-13. This preserves BIN-01 and removes drift between package catalog PV language and executable pairing BP.
+
+## 2026-06-13 — GATE-LFR-20260613: Lifestyle Repurchase Trigger — production posting engine wired
+
+**Rule area:** Lifestyle Rewards — production posting engine  
+**Gate ID:** `GATE-LFR-20260613`
+
+### What changed
+
+Lifestyle production posting engine is now wired to the member maintenance/refill code-use flow.
+
+**Before:** `runMemberMaintenanceCode` returned a `buildGatedParityAction` stub in production mode — no lifestyle credits or unilevel credits were posted when a member consumed a maintenance or refill code.
+
+**After:** `runMemberMaintenanceCode` in production mode calls `svc.consumeMaintenanceCode` → `submitProductRepurchase`, which fires both:
+- `applyRepurchaseLifestyle` (credits **1%** of product repurchase price to the BUYER's lifestyle wallet, subject to daily/monthly package caps)
+- `creditUnilevelForRepurchase` (credits the sponsor bloodline up to 10 levels)
+
+### Key parameters
+
+| Item | Value |
+| --- | --- |
+| Backend payable rate | **1%** (3% is the public marketing rate shown to members) |
+| Perfume (YOR MAINTENANCE) lifestyle credit | PHP 5.00 per purchase |
+| Refill (YOR REFILL) lifestyle credit | PHP 1.50 per purchase |
+| Classic daily / monthly cap | PHP 1,000 / PHP 30,000 |
+| Standard daily / monthly cap | PHP 2,000 / PHP 60,000 |
+| Business daily / monthly cap | PHP 3,000 / PHP 90,000 |
+| VIP daily / monthly cap | PHP 5,000 / PHP 150,000 |
+| Basic package | **Not eligible** — no lifestyle credit |
+| Idempotency | Process key `LFR:<memberUserId>:<repurchaseRef>` |
+
+### Files affected
+
+- `yor_backend/src/modules/production/encoding-service.ts` — `applyRepurchaseLifestyle`, `submitProductRepurchase`, `consumeMaintenanceCode`, `findOwnedMaintenanceCode`; `CodeFamily` union extended with `'YOR REFILL'`
+- `yor_backend/src/modules/operations/legacy-parity-service.ts` — `runMemberMaintenanceCode` production path
+- `yor_backend/src/modules/production/supabase-encoding-repository.ts` — `insertRepurchase`, `sumLifestyleCreditsForUserToday`, `sumLifestyleCreditsForUserThisMonth`
+- `yor_backend/src/modules/compensation/repurchase-product-catalog.ts` — `lifestyleDailyCapByPackage`, `lifestyleMonthlyCapByPackage`, `findProductByCodeFamily`
+- `yor_backend/src/modules/production/lifestyle-repurchase.test.ts` — 6 new tests (193 total, all green)
+
+### Reason / authority
+
+Owner sign-off (2026-06-13): lifestyle production posting engine approved. Backend rate is 1% (not 3% public-facing). Daily + monthly caps per package.
+
+---
+
+## 2026-06-13 — GATE-GYF-TIER-20260613: Get Yor Five — Groups keyed by direct's tier, not sponsor's tier
+
+**Rule area:** Get Yor Five — group qualification scope
+**Gate ID:** `GATE-GYF-TIER-20260613`
+
+### What changed
+
+Owner clarification: Get Yor Five groups are keyed by the **DIRECT's package tier**, not the sponsor's own package tier. A sponsor of any tier earns the corresponding bonus for every 5 eligible directs of a given tier.
+
+**Before (description only — code was already correct):** UI said "same package tier as you" implying the sponsor must share the same tier.
+
+**After:** Any sponsor earns a Classic bonus for 5 eligible Classic directs, Standard for 5 Standard, etc., regardless of their own package.
+
+### Eligibility rule (confirmed, already in code)
+
+- FS (Free Slot) accounts do NOT count toward any group
+- Unpaid/outstanding CD accounts do NOT count (only fully-settled CD counts)
+- PD accounts with settled payment count
+- Grouping is 5 per tier across all ELIGIBLE_TIERS: Classic, Standard, Business, VIP
+- Basic does not participate (getFiveAmount = 0)
+
+### Files affected
+
+- `yor_frontend/src/pages/GetYorFivePage.tsx` — updated "How Get Yor Five Works" descriptions
+- `BUSINESSRULE.md` — GYF-01 Eligibility and clarification section updated
+
+### Authority
+
+Owner directive 2026-06-13
+
+---
+
 ## 2026-06-13 — GATE-UNI-20260613: Unilevel Bonus Production Engine (10-level sponsor bloodline)
 
 **Rule area:** Unilevel Bonus — production crediting engine
@@ -402,9 +509,29 @@ route silently fell through to the sandbox engine):
 **Authority:** ENC-01 (BUSINESSRULE.md); owner ruling 2026-06-12 (CD = 100%
 recovery per encashment).
 
+## 2026-06-13 — PD Codes Are Paid; Only CD Uses Paid/Unpaid State
+
+**Rule area:** Activation code lifecycle, registration eligibility, pairing/direct-referral qualification
+**Gate ID:** `GATE-PD-PAID-20260613`
+
+### What changed
+
+1. **PD activation codes are now treated as paid by rule**, even if older data still carried an `unpaid` flag.
+2. **Only CD keeps paid/unpaid settlement behavior.** CD still defers direct-referral and pairing eligibility until the obligation is fully settled.
+3. **Production code generation now creates PD codes with `payment_status = 'paid'`** while CD remains `unpaid` until settlement.
+4. **Dev database parity was repaired** so activation-code inventory can store `unreleased` status and existing PD rows are normalized to `paid`.
+
+**Files:** `yor_backend/src/modules/compensation/account-state.ts`,
+`yor_backend/src/modules/production/encoding-service.ts`,
+`yor_backend/src/modules/sandbox/dev-sandbox-store.ts`,
+`yor_backend/supabase/schema.sql`,
+`yor_backend/supabase/migrations/20260613075106_dev_pd_paid_and_activation_status_parity.sql`
+
+**Reason:** Owner clarification on 2026-06-13 that PD literally means paid code; only CD can remain unpaid and require later settlement.
+
 ---
 
-*Last updated: 2026-06-12*
+*Last updated: 2026-06-13*
 
 ## 2026-06-12 — Review-Gate Fixes: CD Recovery Timing + Money-Path Atomicity
 

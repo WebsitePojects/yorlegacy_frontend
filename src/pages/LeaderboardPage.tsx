@@ -98,12 +98,16 @@ export function LeaderboardContent({
   rank,
   leaderboard,
   isLoading,
-  currentUserId
+  currentUserId,
+  showStanding = true,
+  showTableHeader = true
 }: {
   rank: MemberRankData | null;
   leaderboard: LeaderboardData | null;
   isLoading: boolean;
   currentUserId?: string;
+  showStanding?: boolean;
+  showTableHeader?: boolean;
 }) {
   const entries = leaderboard?.entries ?? [];
   const myPosition = currentUserId
@@ -112,18 +116,20 @@ export function LeaderboardContent({
 
   return (
     <div className="space-y-6">
-      <StandingBanner rank={rank} position={myPosition} isLoading={isLoading} />
+      {showStanding ? <StandingBanner rank={rank} position={myPosition} isLoading={isLoading} /> : null}
 
       <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)]">
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4 sm:px-6">
-          <div>
-            <h3 className="text-base font-semibold text-[var(--foreground)]" style={{ fontFamily: PLAYFAIR }}>Top Earners</h3>
-            <p className="text-xs text-[var(--muted-foreground)]">Ranked by lifetime total income · company accounts excluded</p>
+        {showTableHeader ? (
+          <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4 sm:px-6">
+            <div>
+              <h3 className="text-base font-semibold text-[var(--foreground)]" style={{ fontFamily: PLAYFAIR }}>Top Earners</h3>
+              <p className="text-xs text-[var(--muted-foreground)]">Ranked by lifetime total income · company accounts excluded</p>
+            </div>
+            <span className="hidden shrink-0 rounded-full border border-[var(--border)] px-3 py-1 text-[11px] text-[var(--muted-foreground)] sm:inline">
+              {isLoading ? '—' : `${entries.length} members`}
+            </span>
           </div>
-          <span className="hidden shrink-0 rounded-full border border-[var(--border)] px-3 py-1 text-[11px] text-[var(--muted-foreground)] sm:inline">
-            {isLoading ? '—' : `${entries.length} members`}
-          </span>
-        </div>
+        ) : null}
 
         {isLoading ? (
           <ul className="divide-y divide-[var(--border)]">
@@ -201,7 +207,7 @@ export function LeaderboardContent({
 }
 
 // ── In-frame version (rendered inside the member office) ──
-export function LeaderboardInFrame() {
+export function LeaderboardInFrame({ showStanding = true, showTableHeader = true }: { showStanding?: boolean; showTableHeader?: boolean } = {}) {
   const { getMemberRank, getLeaderboard, user } = useAuth();
   const [rank, setRank] = useState<MemberRankData | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardData | null>(null);
@@ -245,6 +251,8 @@ export function LeaderboardInFrame() {
       leaderboard={leaderboard}
       isLoading={isLoading}
       currentUserId={user?.id}
+      showStanding={showStanding}
+      showTableHeader={showTableHeader}
     />
   );
 }

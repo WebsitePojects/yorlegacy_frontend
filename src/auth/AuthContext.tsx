@@ -13,6 +13,7 @@ import {
   fetchAdminEncashments,
   fetchAdminMemberManagement,
   fetchAdminSummary,
+  fetchAdminShadowAccounts,
   fetchAdminOffice,
   fetchAdminMvpDashboard,
   fetchAdminModule,
@@ -101,7 +102,7 @@ type AuthContextValue = AuthState & {
   getAdminModule: (moduleId: string) => Promise<OperationalModule>;
   getMemberActivationCodes: () => Promise<MemberActivationCodeCenter>;
   transferActivationCodes: (payload: { targetUsername: string; codes: string[] }) => Promise<GatedActionResponse>;
-  upgradeActivationCode: (payload: { code: string }) => Promise<GatedActionResponse>;
+  upgradeActivationCode: (payload: { code: string; shadowCode?: string }) => Promise<GatedActionResponse>;
   useMaintenanceCode: (payload: { code: string; transType: number }) => Promise<GatedActionResponse>;
   getMemberWalletDetail: () => Promise<MemberWalletDetail>;
   getMemberGetYorFive: () => Promise<MemberGetYorFiveData>;
@@ -120,6 +121,7 @@ type AuthContextValue = AuthState & {
   getMemberRegistrationReadiness: () => Promise<RegistrationReadiness>;
   getMemberBinaryTree: (rootUsername?: string) => Promise<GenealogyCenter>;
   getMemberShadowAccounts: (ownerUsername?: string) => Promise<ShadowAccountCenter>;
+  getAdminShadowAccounts: (ownerUsername: string) => Promise<ShadowAccountCenter>;
   getAdminActivationCodes: () => Promise<AdminActivationCodeCenter>;
   generateActivationCodes: (payload: {
     quantity: number;
@@ -274,6 +276,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     getMemberRegistrationReadiness: fetchMemberRegistrationReadiness,
     getMemberBinaryTree: fetchMemberBinaryTree,
     getMemberShadowAccounts: fetchMemberShadowAccounts,
+    getAdminShadowAccounts: fetchAdminShadowAccounts,
     getAdminActivationCodes: fetchAdminActivationCodes,
     generateActivationCodes: ({ quantity, packageTier, codeFamily, assignedTo, accountType, remarks }) =>
       generateAdminActivationCodes(quantity, packageTier, codeFamily, assignedTo, accountType, remarks),

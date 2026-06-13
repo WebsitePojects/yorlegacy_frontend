@@ -414,6 +414,7 @@ export type GenealogyTreeNode = {
       owner: string;
       placement: 'left';
       state: 'reserved_shadow' | 'activated_shadow';
+      shadowCode: string;
       label: string;
       activationStatus: 'inactive' | 'activated';
       registrationEnabled: boolean;
@@ -421,12 +422,20 @@ export type GenealogyTreeNode = {
       unilevelEnabled: boolean;
       binaryCycleEnabled: boolean;
       note: string;
+      packageTier: string | null;
+      accountType: string | null;
+      activationCode: string | null;
+      pvValue: number;
+      salesmatchValue: number;
+      activatedAt: string | null;
+      lastUpgradedAt: string | null;
     };
     right: {
       id: string;
       owner: string;
       placement: 'right';
       state: 'reserved_shadow' | 'activated_shadow';
+      shadowCode: string;
       label: string;
       activationStatus: 'inactive' | 'activated';
       registrationEnabled: boolean;
@@ -434,6 +443,13 @@ export type GenealogyTreeNode = {
       unilevelEnabled: boolean;
       binaryCycleEnabled: boolean;
       note: string;
+      packageTier: string | null;
+      accountType: string | null;
+      activationCode: string | null;
+      pvValue: number;
+      salesmatchValue: number;
+      activatedAt: string | null;
+      lastUpgradedAt: string | null;
     };
   };
   accountStateLabel: 'PD' | 'FS' | 'CD - Paid' | 'CD - Unpaid';
@@ -518,11 +534,25 @@ export type ShadowAccountCenter = {
   accounts: Array<{
     id: string;
     owner: string;
+    shadowCode: string;
+    label: string;
     state: string;
+    activationStatus: 'inactive' | 'activated';
     placement: 'left' | 'right';
     walletEnabled: boolean;
     unilevelEnabled: boolean;
     binaryCycleEnabled: boolean;
+    packageTier: string | null;
+    accountType: string | null;
+    activationCode: string | null;
+    pvValue: number;
+    salesmatchValue: number;
+    activatedAt: string | null;
+    lastUpgradedAt: string | null;
     note: string;
+    canActivate: boolean;
+    canUpgrade: boolean;
   }>;
+  availableCodes: MemberActivationCodeCenter['inventory'];
+  notes: string[];
 };

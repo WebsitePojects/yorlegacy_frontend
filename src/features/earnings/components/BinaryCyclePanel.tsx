@@ -1,4 +1,4 @@
-import { BarChart3, Medal, TrendingUp, Trophy } from 'lucide-react';
+import { BarChart3, TrendingUp, Trophy } from 'lucide-react';
 import { ReportTableView } from '@/components/ops/office-ui';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { InfoRow, NogaStatCard } from '@/features/office/components/stat-cards';
@@ -44,7 +44,7 @@ export function BinaryCyclePanel({
 
   return (
     <section className="grid gap-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <NogaStatCard
           icon={<BarChart3 className="size-4" />}
           color="amber"
@@ -58,13 +58,6 @@ export function BinaryCyclePanel({
           label="Your Cycle Rate"
           value={String(firstRow?.cycleRate ?? packageCycleRate(office?.profile.packageTier))}
           sub="package-based percentage"
-        />
-        <NogaStatCard
-          icon={<Medal className="size-4" />}
-          color="emerald"
-          label="Weekly Cap"
-          value={String(firstRow?.weeklyCap ?? '—')}
-          sub="maximum per cycle week"
         />
         <NogaStatCard
           icon={<Trophy className="size-4" />}
@@ -89,7 +82,7 @@ export function BinaryCyclePanel({
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-xs text-[var(--muted-foreground)]">
-              Classic, Standard, Business, and VIP members earn a package-based cycle bonus on each Salesmatch movement. Weekly cap applies.
+              Classic, Standard, Business, and VIP members earn a package-based cycle bonus on each Salesmatch movement.
             </p>
             {CYCLE_RATES.map(({ tier, rate }) => {
               const active = office?.profile.packageTier === tier;

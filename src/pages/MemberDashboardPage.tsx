@@ -22,7 +22,6 @@ import {
   ShieldCheck,
   Star,
   TrendingUp,
-  Trophy,
   Users,
   Wallet
 } from 'lucide-react';
@@ -54,7 +53,6 @@ import { LifestylePanel } from '@/features/earnings/components/LifestylePanel';
 import { SalesmatchPanel } from '@/features/earnings/components/SalesmatchPanel';
 import { UnilevelPanel } from '@/features/earnings/components/UnilevelPanel';
 import { GetYorFiveInFrame } from './GetYorFivePage';
-import { LeaderboardInFrame } from './LeaderboardPage';
 import type {
   DashboardSummary,
   GenealogyCenter,
@@ -76,6 +74,32 @@ const formatCurrency = (value: number): string =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })}`;
+
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) {
+    return 'Not yet recorded';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString('en-PH', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+function formatShadowStateLabel(value: string): string {
+  return value
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
 
 function normalizeEncashmentInput(value: string): string {
   let normalized = '';
@@ -146,8 +170,7 @@ const customMemberModuleIds = new Set([
   'global-bonus-eligibility',
   'binary-cycle-bonus',
   'direct-referrals',
-  'salesmatch-bonus',
-  'leaderboard'
+  'salesmatch-bonus'
 ]);
 
 const getYorFivePackageClaimMap: Record<string, string> = {
@@ -334,6 +357,8 @@ export function MemberDashboardPage() {
   const [isCredentialsSaving, setIsCredentialsSaving] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [copiedCodeCount, setCopiedCodeCount] = useState<Record<string, number>>({});
+  const [shadowCodeSelections, setShadowCodeSelections] = useState<Record<string, string>>({});
+  const [shadowActionCode, setShadowActionCode] = useState<string | null>(null);
   const [isShareLinkLoading, setIsShareLinkLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isContentLoading, setIsContentLoading] = useState(true);
@@ -433,6 +458,10 @@ export function MemberDashboardPage() {
         binaryTree = await getMemberBinaryTree(rootUsername.trim() || undefined);
       }
 
+      if (targetModuleId === 'dashboard') {
+        binaryTree = await getMemberBinaryTree(rootUsername.trim() || undefined).catch(() => null);
+      }
+
       if (targetModuleId === 'account-shadow-management') {
         shadowAccounts = await getMemberShadowAccounts();
       }
@@ -513,6 +542,31 @@ export function MemberDashboardPage() {
   useEffect(() => {
     setCodeInventoryPage(1);
   }, [codeFamilyFilter, codeInventorySearch, codeStatusFilter]);
+
+  useEffect(() => {
+    if (!shadowAccounts?.availableCodes.length) {
+      return;
+    }
+
+    const fallbackCode = shadowAccounts.availableCodes[0]?.code ?? '';
+    if (!fallbackCode) {
+      return;
+    }
+
+    setShadowCodeSelections((current) => {
+      const next = { ...current };
+      let changed = false;
+
+      for (const account of shadowAccounts.accounts) {
+        if (!next[account.shadowCode]) {
+          next[account.shadowCode] = fallbackCode;
+          changed = true;
+        }
+      }
+
+      return changed ? next : current;
+    });
+  }, [shadowAccounts]);
 
   useEffect(() => {
     let cancelled = false;
@@ -731,6 +785,51 @@ export function MemberDashboardPage() {
         description: cause instanceof Error ? cause.message : 'Please try again.',
         tone: 'destructive'
       });
+    }
+  }
+
+  async function handleShadowAccountAction(account: ShadowAccountCenter['accounts'][number]) {
+    const selectedShadowCode = shadowCodeSelections[account.shadowCode] ?? shadowAccounts?.availableCodes[0]?.code ?? '';
+    if (!selectedShadowCode) {
+      notify({
+        title: 'No activation code available',
+        description: 'A paid registration code must be transferred to this member before the shadow slot can be activated or upgraded.',
+        tone: 'warning'
+      });
+      return;
+    }
+
+    const confirmed = await confirmAction({
+      title: account.canActivate ? 'Activate shadow account?' : 'Upgrade shadow account?',
+      description: `${account.canActivate ? 'Apply' : 'Upgrade with'} ${selectedShadowCode} on ${account.label}. This should add PV and Salesmatch eligibility only.`,
+      confirmLabel: account.canActivate ? 'Activate Shadow' : 'Upgrade Shadow',
+      tone: 'warning'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    setShadowActionCode(account.shadowCode);
+    try {
+      const result = await upgradeActivationCode({
+        code: selectedShadowCode,
+        shadowCode: account.shadowCode
+      });
+      notify({
+        title: account.canActivate ? 'Shadow account activated' : 'Shadow account upgraded',
+        description: result.detail ?? result.reason,
+        tone: result.moneyMode === 'sandbox' ? 'success' : 'warning'
+      });
+      setReloadNonce((value) => value + 1);
+    } catch (cause) {
+      notify({
+        title: 'Unable to update shadow account',
+        description: cause instanceof Error ? cause.message : 'Please try again.',
+        tone: 'destructive'
+      });
+    } finally {
+      setShadowActionCode(null);
     }
   }
 
@@ -1026,6 +1125,7 @@ export function MemberDashboardPage() {
             office={office}
             mvpDashboard={mvpDashboard}
             modulePathById={modulePathById}
+            binaryTree={binaryTree}
           />
         ) : null}
 
@@ -1047,39 +1147,61 @@ export function MemberDashboardPage() {
 
         {/* ── TRANSACTIONS ── */}
         {moduleId === 'transactions' ? (
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+          <section className="space-y-4">
             <Card className="border-[var(--border)] bg-[var(--card)]">
               <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <div>
                   <CardTitle className="text-base">Transaction History</CardTitle>
-                  <CardDescription className="text-xs">Wallet movements and encashment rows.</CardDescription>
+                  <CardDescription className="text-xs">Wallet movements and encashment rows — click View Details for the full breakdown.</CardDescription>
                 </div>
                 <Badge variant="outline">{transactions.length} records</Badge>
               </CardHeader>
-              <CardContent className="space-y-2">
-                {transactions.slice((transactionPage - 1) * 10, transactionPage * 10).map((transaction) => (
-                  <button key={transaction.id} type="button"
-                    className="group flex w-full items-center justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-left transition hover:border-[var(--yor-copper)]/30 hover:bg-[var(--accent)]/60"
-                    onClick={() => handleSelectTransaction(transaction.id)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={['flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold', transaction.category?.toLowerCase().includes('encash') ? 'bg-amber-500/15 text-amber-400' : 'bg-emerald-500/15 text-emerald-400'].join(' ')}>
-                        {transaction.category?.toLowerCase().includes('encash') ? 'E' : 'I'}
-                      </span>
-                      <div>
-                        <p className="text-sm font-medium text-[var(--foreground)]">{transaction.source}</p>
-                        <p className="text-xs text-[var(--muted-foreground)]">{transaction.date}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-[var(--foreground)]">{transaction.net}</p>
-                      <Badge variant="outline" className="mt-1 text-[10px]">{transaction.status}</Badge>
-                    </div>
-                  </button>
-                ))}
+              <CardContent className="space-y-4 pt-0">
+                <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+                  <table className="w-full min-w-[680px] text-sm">
+                    <thead>
+                      <tr className="border-b border-[var(--border)] bg-[var(--accent)]/40 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+                        <th className="px-4 py-3">Type</th>
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Amount</th>
+                        <th className="px-4 py-3">Net Receivable</th>
+                        <th className="px-4 py-3">Details</th>
+                        <th className="px-4 py-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {transactions.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--muted-foreground)]">No transactions recorded yet.</td>
+                        </tr>
+                      ) : transactions.slice((transactionPage - 1) * 10, transactionPage * 10).map((transaction) => {
+                        const isEncash = transaction.category?.toLowerCase().includes('encash') || transaction.type === 'encashment';
+                        return (
+                          <tr key={transaction.id} className="border-b border-[var(--border)] transition last:border-0 hover:bg-[var(--accent)]/30">
+                            <td className="px-4 py-3">
+                              <Badge variant={isEncash ? 'outline' : 'success'} className="whitespace-nowrap text-[10px]">
+                                {transaction.category || (isEncash ? 'Encashment' : 'Income')}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">{transaction.date}</td>
+                            <td className="px-4 py-3 font-semibold text-[var(--foreground)]">{transaction.gross}</td>
+                            <td className={['px-4 py-3 font-semibold', isEncash ? 'text-amber-400' : 'text-emerald-400'].join(' ')}>{transaction.net}</td>
+                            <td className="max-w-[180px] truncate px-4 py-3 text-xs text-[var(--muted-foreground)]" title={transaction.source}>{transaction.source}</td>
+                            <td className="px-4 py-3 text-right">
+                              <Button type="button" size="sm" variant="outline" className="h-7 px-3 text-xs"
+                                onClick={() => handleSelectTransaction(transaction.id)}>
+                                View Details
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
                 {transactions.length > 10 ? (
-                  <div className="flex items-center justify-between gap-3 pt-2 text-sm text-[var(--muted-foreground)]">
-                    <span>Page {transactionPage} of {Math.ceil(transactions.length / 10)}</span>
+                  <div className="flex items-center justify-between gap-3 text-sm text-[var(--muted-foreground)]">
+                    <span>Page {transactionPage} of {Math.ceil(transactions.length / 10)} · {transactions.length} records</span>
                     <div className="flex gap-2">
                       <Button type="button" variant="outline" size="sm" disabled={transactionPage <= 1} onClick={() => setTransactionPage((p) => Math.max(1, p - 1))}>Prev</Button>
                       <Button type="button" variant="outline" size="sm" disabled={transactionPage >= Math.ceil(transactions.length / 10)} onClick={() => setTransactionPage((p) => p + 1)}>Next</Button>
@@ -1092,12 +1214,24 @@ export function MemberDashboardPage() {
               <Card className="border-[var(--border)] bg-[var(--card)]">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Transaction Detail</CardTitle>
+                  <CardDescription className="text-xs font-mono">{transactionDetail.transaction.id}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <InfoRow label="Source" value={transactionDetail.transaction.source} />
-                  <InfoRow label="Category" value={transactionDetail.transaction.category} />
-                  <InfoRow label="Gross" value={transactionDetail.transaction.gross} highlight />
-                  <InfoRow label="Net" value={transactionDetail.transaction.net} highlight />
+                <CardContent>
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {[
+                      { label: 'Type', value: transactionDetail.transaction.category },
+                      { label: 'Date', value: transactionDetail.transaction.date },
+                      { label: 'Amount (Gross)', value: transactionDetail.transaction.gross, highlight: true },
+                      { label: 'Net Receivable', value: transactionDetail.transaction.net, highlight: true },
+                      { label: 'Status', value: transactionDetail.transaction.status },
+                      { label: 'Details', value: transactionDetail.transaction.source }
+                    ].map(({ label, value, highlight }) => (
+                      <div key={label} className="flex flex-col gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 py-3">
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">{label}</span>
+                        <span className={['text-sm font-semibold', highlight ? 'text-emerald-400' : 'text-[var(--foreground)]'].join(' ')}>{value}</span>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             ) : null}
@@ -1359,23 +1493,26 @@ export function MemberDashboardPage() {
                 {activationCodes.inventory.filter(i => i.status === 'available').length ? (
                   <div>
                     <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">
-                      Available Activation Codes — {activationCodes.inventory.filter(i => i.status === 'available').length} available
+                      Available Codes — {activationCodes.inventory.filter(i => i.status === 'available').length} ready to use
                     </p>
-                    <div className="space-y-2">
-                      {activationCodes.inventory.filter(i => i.status === 'available').slice(0, 5).map((item) => (
-                        <div key={item.code} className={['flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition', selectedCode === item.code ? 'border-amber-500/40 bg-amber-500/8' : 'border-[var(--border)] bg-[var(--background)] hover:bg-[var(--accent)]/40'].join(' ')}>
-                          <div>
-                            <p className="font-mono text-sm font-semibold text-[var(--foreground)]">{item.code}</p>
-                            <p className="text-xs text-[var(--muted-foreground)]">{item.codeFamily} · {item.packageTier}</p>
+                    <div className="space-y-1.5">
+                      {activationCodes.inventory.filter(i => i.status === 'available').map((item) => (
+                        <div key={item.code} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 transition hover:bg-[var(--accent)]/40">
+                          <p className="font-mono text-sm font-semibold text-[var(--foreground)]">{item.code}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-[var(--muted-foreground)]">{item.packageTier}</span>
+                            <Button type="button" size="sm" variant="outline" className="h-7 px-3 text-xs"
+                              onClick={() => { setSelectedCode(item.code); void navigator.clipboard.writeText(item.code); }}>
+                              Copy
+                            </Button>
                           </div>
-                          <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setSelectedCode(item.code); void handleCopyCode(); }}>
-                            Copy Code
-                          </Button>
                         </div>
                       ))}
                     </div>
                   </div>
-                ) : null}
+                ) : (
+                  <p className="text-xs text-[var(--muted-foreground)]">No available codes. Generate or transfer a YOR CODE to use here.</p>
+                )}
               </CardContent>
             </Card>
 
@@ -1537,8 +1674,14 @@ export function MemberDashboardPage() {
                   onNavigateToNode={setTreeRootUsername}
                   onOpenSlot={setPendingRegistrationSlot}
                   availableActivationCodes={(activationCodes?.inventory ?? [])
-                    .filter((i) => i.status === 'available' && i.codeFamily === 'YOR CODES')
-                    .map((i) => ({ code: i.code, packageTier: i.packageTier, codeFamily: i.codeFamily }))
+                    .filter((i) => i.status === 'available' && i.codeFamily === 'YOR CODES' && i.registrationEligible !== false)
+                    .map((i) => ({
+                      code: i.code,
+                      packageTier: i.packageTier,
+                      codeFamily: i.codeFamily,
+                      accountType: i.accountType,
+                      paymentStatus: i.paymentStatus
+                    }))
                   }
                   onUpgradeSuccess={() => setReloadNonce((value) => value + 1)}
                 />
@@ -1663,24 +1806,6 @@ export function MemberDashboardPage() {
           </section>
         ) : null}
 
-        {/* ── RANK & LEADERBOARD ── */}
-        {moduleId === 'leaderboard' ? (
-          <section>
-            <div className="mb-5 flex items-start gap-4">
-              <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-amber-500/25 bg-amber-500/10 shadow-md shadow-amber-500/20">
-                <Trophy className="size-7 text-amber-600 dark:text-amber-400" />
-              </span>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Recognition</p>
-                <h2 className="text-2xl font-bold tracking-tight text-[var(--foreground)]">Rank &amp; Leaderboard</h2>
-                <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                  Your unilevel rank by lifetime total income, and where you stand among all members.
-                </p>
-              </div>
-            </div>
-            <LeaderboardInFrame />
-          </section>
-        ) : null}
 
         {/* ── BINARY CYCLE BONUS ── */}
         {moduleId === 'binary-cycle-bonus' && activeModule ? (
@@ -1698,13 +1823,26 @@ export function MemberDashboardPage() {
         {/* ── SHADOW ACCOUNTS ── */}
         {moduleId === 'account-shadow-management' && activeModule && shadowAccounts ? (
           <section className="grid gap-4">
-            {/* Header stat strip */}
             <div className="grid gap-3 sm:grid-cols-3">
               <NogaStatCard icon={<ShieldCheck className="size-4" />} color="amber" label="Owner" value={shadowAccounts.owner} sub="shadow account holder" />
               <NogaStatCard icon={<Users className="size-4" />} color="blue" label="Shadow Slots" value={String(shadowAccounts.accounts.length)} sub="reserved binary positions" />
-              <NogaStatCard icon={<Globe className="size-4" />} color="violet" label="Active Shadow Path" value={shadowAccounts.accounts.some((a) => a.walletEnabled) ? 'Visible' : 'Reserved only'} sub="salesmatch PV support only" />
+              <NogaStatCard icon={<Globe className="size-4" />} color="violet" label="Activation Codes" value={String(shadowAccounts.availableCodes.length)} sub="paid codes ready for shadow activation" />
             </div>
-            {/* Shadow slot cards */}
+            {shadowAccounts.notes.length ? (
+              <Card className="border-[var(--border)] bg-[var(--card)]">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Shadow Rules</CardTitle>
+                  <CardDescription className="text-xs">These slots follow the approved Binary Function Only policy.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-2">
+                  {shadowAccounts.notes.map((note) => (
+                    <div key={note} className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--muted-foreground)]">
+                      {note}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
               {shadowAccounts.accounts.map((account) => (
                 <div key={account.id} className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
@@ -1712,21 +1850,90 @@ export function MemberDashboardPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">Shadow Slot</p>
-                      <p className="mt-1 text-lg font-bold tracking-tight text-[var(--foreground)]">{account.id}</p>
+                      <p className="mt-1 text-lg font-bold tracking-tight text-[var(--foreground)]">{account.label}</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">{account.shadowCode}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
                       <Badge variant={account.placement === 'left' ? 'outline' : 'secondary'} className="text-[10px] uppercase tracking-widest">{account.placement}</Badge>
-                      <Badge variant={account.state.includes('reserved') ? 'warning' : 'success'} className="text-[10px]">{account.state.replace('_', ' ')}</Badge>
+                      <Badge variant={account.state.includes('reserved') ? 'warning' : 'success'} className="text-[10px]">{formatShadowStateLabel(account.state)}</Badge>
                     </div>
                   </div>
                   <p className="mt-3 text-xs leading-5 text-[var(--muted-foreground)]">{account.note}</p>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Package / Account</p>
+                      <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">
+                        {account.packageTier ?? 'Not activated'} / {account.accountType ? formatAccountTypeLabel(account.accountType) : 'Pending'}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">PV / Salesmatch</p>
+                      <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">
+                        {account.pvValue} PV / {formatCurrency(account.salesmatchValue)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Activation Code</p>
+                      <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">{account.activationCode ?? 'Not yet assigned'}</p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Timeline</p>
+                      <p className="mt-1 text-xs text-[var(--foreground)]">Activated: {formatDateTime(account.activatedAt)}</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">Last upgrade: {formatDateTime(account.lastUpgradedAt)}</p>
+                    </div>
+                  </div>
                   <div className="mt-4 grid grid-cols-3 gap-2">
-                    {[['Wallet', account.walletEnabled, 'emerald'], ['Unilevel', account.unilevelEnabled, 'blue'], ['Binary Cycle', account.binaryCycleEnabled, 'violet']].map(([label, enabled, clr]) => (
-                      <div key={String(label)} className={['rounded-xl border p-2.5 text-center', enabled ? `border-${String(clr)}-500/30 bg-${String(clr)}-500/8` : 'border-[var(--border)] bg-[var(--background)]'].join(' ')}>
-                        <p className={['text-[10px] font-semibold uppercase tracking-widest', enabled ? `text-${String(clr)}-400` : 'text-[var(--muted-foreground)]'].join(' ')}>{String(label)}</p>
-                        <p className={['mt-1 text-xs font-bold', enabled ? `text-${String(clr)}-400` : 'text-[var(--muted-foreground)]'].join(' ')}>{enabled ? 'On' : 'Off'}</p>
+                    {[
+                      ['Wallet', account.walletEnabled],
+                      ['Unilevel', account.unilevelEnabled],
+                      ['Binary Cycle', account.binaryCycleEnabled]
+                    ].map(([label, enabled]) => (
+                      <div key={String(label)} className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-2.5 text-center">
+                        <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">{String(label)}</p>
+                        <p className="mt-1 text-xs font-bold text-[var(--foreground)]">{enabled ? 'On' : 'Off'}</p>
                       </div>
                     ))}
+                  </div>
+                  <div className="mt-4 grid gap-3 border-t border-[var(--border)] pt-4">
+                    <div className="grid gap-2">
+                      <label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+                        Activation Code
+                      </label>
+                      <select
+                        value={shadowCodeSelections[account.shadowCode] ?? shadowAccounts.availableCodes[0]?.code ?? ''}
+                        onChange={(event) =>
+                          setShadowCodeSelections((current) => ({
+                            ...current,
+                            [account.shadowCode]: event.target.value
+                          }))
+                        }
+                        className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)]"
+                        disabled={!shadowAccounts.availableCodes.length || shadowActionCode === account.shadowCode}
+                      >
+                        {shadowAccounts.availableCodes.length ? (
+                          shadowAccounts.availableCodes.map((code) => (
+                            <option key={`${account.shadowCode}-${code.code}`} value={code.code}>
+                              {`${code.code} - ${formatAccountTypeLabel(code.accountType, code.paymentStatus)} - ${code.packageTier}`}
+                            </option>
+                          ))
+                        ) : (
+                          <option value="">No paid activation code available</option>
+                        )}
+                      </select>
+                    </div>
+                    <Button
+                      type="button"
+                      disabled={!shadowAccounts.availableCodes.length || shadowActionCode === account.shadowCode}
+                      onClick={() => void handleShadowAccountAction(account)}
+                    >
+                      {shadowActionCode === account.shadowCode
+                        ? account.canActivate
+                          ? 'Activating...'
+                          : 'Upgrading...'
+                        : account.canActivate
+                          ? 'Activate Shadow Account'
+                          : 'Upgrade Shadow Account'}
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -1942,10 +2149,12 @@ function DashboardIncomeGrid({
   office,
   mvpDashboard,
   modulePathById,
+  binaryTree,
 }: {
   office: MemberOfficeData | null;
   mvpDashboard: MemberMvpDashboardData | null;
   modulePathById: Map<string, string>;
+  binaryTree: GenealogyCenter | null;
 }) {
   const streamValueMap: Record<string, string> = {};
   if (mvpDashboard) {
@@ -1982,6 +2191,22 @@ function DashboardIncomeGrid({
       icon: <Users className="size-5" />,
       color: 'blue',
       href: modulePathById.get('direct-referrals') ?? '/earn/direct-referral',
+    },
+    {
+      label: 'Binary Left Points',
+      value: binaryTree ? String(binaryTree.root.leftPoints.toLocaleString('en-PH')) : '—',
+      sub: 'View salesmatch balance',
+      icon: <BarChart3 className="size-5" />,
+      color: 'blue',
+      href: modulePathById.get('salesmatch-bonus') ?? '/earn/salesmatch-bonus',
+    },
+    {
+      label: 'Binary Right Points',
+      value: binaryTree ? String(binaryTree.root.rightPoints.toLocaleString('en-PH')) : '—',
+      sub: 'View salesmatch balance',
+      icon: <BarChart3 className="size-5" />,
+      color: 'blue',
+      href: modulePathById.get('salesmatch-bonus') ?? '/earn/salesmatch-bonus',
     },
     {
       label: 'Sales Matched Bonus',
