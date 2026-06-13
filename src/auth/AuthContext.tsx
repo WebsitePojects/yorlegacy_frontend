@@ -13,6 +13,7 @@ import {
   fetchAdminEncashments,
   fetchAdminMemberManagement,
   fetchAdminSummary,
+  fetchAdminShadowAccounts,
   fetchAdminOffice,
   fetchAdminMvpDashboard,
   fetchAdminModule,
@@ -22,6 +23,8 @@ import {
   fetchMemberActivationCodes,
   fetchMemberBinaryTree,
   fetchMemberGetYorFive,
+  fetchMemberRank,
+  fetchLeaderboard,
   fetchMemberModule,
   fetchMemberMvpDashboard,
   fetchMemberOffice,
@@ -63,8 +66,10 @@ import type {
   DashboardSummary,
   GatedActionResponse,
   GenealogyCenter,
+  LeaderboardData,
   MemberActivationCodeCenter,
   MemberGetYorFiveData,
+  MemberRankData,
   MemberOfficeData,
   MemberMvpDashboardData,
   ShadowAccountCenter,
@@ -97,10 +102,12 @@ type AuthContextValue = AuthState & {
   getAdminModule: (moduleId: string) => Promise<OperationalModule>;
   getMemberActivationCodes: () => Promise<MemberActivationCodeCenter>;
   transferActivationCodes: (payload: { targetUsername: string; codes: string[] }) => Promise<GatedActionResponse>;
-  upgradeActivationCode: (payload: { code: string }) => Promise<GatedActionResponse>;
+  upgradeActivationCode: (payload: { code: string; shadowCode?: string }) => Promise<GatedActionResponse>;
   useMaintenanceCode: (payload: { code: string; transType: number }) => Promise<GatedActionResponse>;
   getMemberWalletDetail: () => Promise<MemberWalletDetail>;
   getMemberGetYorFive: () => Promise<MemberGetYorFiveData>;
+  getMemberRank: () => Promise<MemberRankData>;
+  getLeaderboard: () => Promise<LeaderboardData>;
   previewEncashment: (amount: number) => Promise<{
     moneyMode: 'playground' | 'sandbox';
     preview: MemberWalletDetail['preview'];
@@ -114,6 +121,7 @@ type AuthContextValue = AuthState & {
   getMemberRegistrationReadiness: () => Promise<RegistrationReadiness>;
   getMemberBinaryTree: (rootUsername?: string) => Promise<GenealogyCenter>;
   getMemberShadowAccounts: (ownerUsername?: string) => Promise<ShadowAccountCenter>;
+  getAdminShadowAccounts: (ownerUsername: string) => Promise<ShadowAccountCenter>;
   getAdminActivationCodes: () => Promise<AdminActivationCodeCenter>;
   generateActivationCodes: (payload: {
     quantity: number;
@@ -257,6 +265,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     useMaintenanceCode,
     getMemberWalletDetail: fetchMemberWalletDetail,
     getMemberGetYorFive: fetchMemberGetYorFive,
+    getMemberRank: fetchMemberRank,
+    getLeaderboard: fetchLeaderboard,
     previewEncashment: previewMemberEncashment,
     submitEncashment: submitMemberEncashment,
     updateMemberCredentials,
@@ -266,6 +276,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     getMemberRegistrationReadiness: fetchMemberRegistrationReadiness,
     getMemberBinaryTree: fetchMemberBinaryTree,
     getMemberShadowAccounts: fetchMemberShadowAccounts,
+    getAdminShadowAccounts: fetchAdminShadowAccounts,
     getAdminActivationCodes: fetchAdminActivationCodes,
     generateActivationCodes: ({ quantity, packageTier, codeFamily, assignedTo, accountType, remarks }) =>
       generateAdminActivationCodes(quantity, packageTier, codeFamily, assignedTo, accountType, remarks),

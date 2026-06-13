@@ -1,9 +1,24 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FeedbackProvider } from '@/components/feedback/FeedbackProvider';
 import { GenealogyTree } from './GenealogyTree';
 import type { GenealogyTreeNode } from '@/types/auth';
+
+const upgradeMemberActivationCodeMock = vi.fn().mockResolvedValue({
+  moneyMode: 'production',
+  action: 'member-shadow-account-activate',
+  status: 'completed',
+  reason: 'ok'
+});
+
+vi.mock('@/lib/api', () => ({
+  upgradeMemberActivationCode: (payload: unknown) => upgradeMemberActivationCodeMock(payload)
+}));
+
+beforeEach(() => {
+  upgradeMemberActivationCodeMock.mockClear();
+});
 
 function makeNode(overrides: Partial<GenealogyTreeNode> = {}): GenealogyTreeNode {
   return {
@@ -27,26 +42,42 @@ function makeNode(overrides: Partial<GenealogyTreeNode> = {}): GenealogyTreeNode
         owner: 'YOU1',
         placement: 'left',
         state: 'reserved_shadow',
+        shadowCode: 'shadow-left',
         label: 'YOU 2',
         activationStatus: 'inactive',
         registrationEnabled: false,
         walletEnabled: false,
         unilevelEnabled: false,
         binaryCycleEnabled: false,
-        note: 'Binary Function Only'
+        note: 'Binary Function Only',
+        packageTier: null,
+        accountType: null,
+        activationCode: null,
+        pvValue: 0,
+        salesmatchValue: 0,
+        activatedAt: null,
+        lastUpgradedAt: null
       },
       right: {
         id: 'shadow-right',
         owner: 'YOU1',
         placement: 'right',
         state: 'reserved_shadow',
+        shadowCode: 'shadow-right',
         label: 'YOU 3',
         activationStatus: 'inactive',
         registrationEnabled: false,
         walletEnabled: false,
         unilevelEnabled: false,
         binaryCycleEnabled: false,
-        note: 'Binary Function Only'
+        note: 'Binary Function Only',
+        packageTier: null,
+        accountType: null,
+        activationCode: null,
+        pvValue: 0,
+        salesmatchValue: 0,
+        activatedAt: null,
+        lastUpgradedAt: null
       }
     },
     accountStateLabel: overrides.accountStateLabel ?? 'PD',
@@ -106,15 +137,28 @@ function buildTree() {
 
 function renderTree({
   onSelect = vi.fn(),
-  onOpenSlot
+  onOpenSlot,
+  availableActivationCodes = []
 }: {
   onSelect?: (nodeId: string) => void;
   onOpenSlot?: (slot: { parentUsername: string; parentReferralCode?: string; side: 'left' | 'right' }) => void;
+  availableActivationCodes?: Array<{
+    code: string;
+    packageTier: string;
+    codeFamily: string;
+    accountType?: string;
+    paymentStatus?: string;
+  }>;
 } = {}) {
   return render(
     <MemoryRouter>
       <FeedbackProvider>
-        <GenealogyTree root={buildTree()} onSelect={onSelect} onOpenSlot={onOpenSlot} />
+        <GenealogyTree
+          root={buildTree()}
+          onSelect={onSelect}
+          onOpenSlot={onOpenSlot}
+          availableActivationCodes={availableActivationCodes}
+        />
       </FeedbackProvider>
     </MemoryRouter>
   );
@@ -192,4 +236,29 @@ describe('GenealogyTree', () => {
 
     expect(disabledSlot).toBeUndefined();
   }, 10000);
+
+  it('sends the specific shadow code when activating a shadow slot', async () => {
+    renderTree({
+      availableActivationCodes: [
+        {
+          code: 'YOR-TEST-001',
+          packageTier: 'Basic',
+          codeFamily: 'YOR CODES',
+          accountType: 'PD',
+          paymentStatus: 'paid'
+        }
+      ]
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /shadow account you 2/i }));
+    expect(await screen.findByText(/Activate Shadow Account/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Activate Account/i }));
+
+    expect(upgradeMemberActivationCodeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shadowCode: 'shadow-left'
+      })
+    );
+  });
 });

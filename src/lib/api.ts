@@ -10,8 +10,10 @@ import type {
   DashboardSummary,
   GatedActionResponse,
   GenealogyCenter,
+  LeaderboardData,
   MemberActivationCodeCenter,
   MemberGetYorFiveData,
+  MemberRankData,
   MemberOfficeData,
   MemberMvpDashboardData,
   ShadowAccountCenter,
@@ -259,7 +261,7 @@ export function transferMemberActivationCodes(payload: {
   });
 }
 
-export function upgradeMemberActivationCode(payload: { code: string }): Promise<GatedActionResponse> {
+export function upgradeMemberActivationCode(payload: { code: string; shadowCode?: string }): Promise<GatedActionResponse> {
   return fetchJson('/api/member/activation-codes/upgrade', {
     method: 'POST',
     body: JSON.stringify(payload)
@@ -279,6 +281,14 @@ export function fetchMemberWalletDetail(): Promise<MemberWalletDetail> {
 
 export function fetchMemberGetYorFive(): Promise<MemberGetYorFiveData> {
   return fetchJson('/api/member/get-yor-five', { method: 'GET' });
+}
+
+export function fetchMemberRank(): Promise<MemberRankData> {
+  return fetchJson('/api/member/rank', { method: 'GET' });
+}
+
+export function fetchLeaderboard(): Promise<LeaderboardData> {
+  return fetchJson('/api/member/leaderboard', { method: 'GET' });
 }
 
 export function previewMemberEncashment(amount: number): Promise<{
@@ -363,9 +373,18 @@ export function fetchMemberBinaryTree(rootUsername?: string): Promise<GenealogyC
   return fetchJson(`/api/member/genealogy/binary-tree${suffix}`, { method: 'GET' });
 }
 
+export function fetchMemberDirectReferrals(): Promise<{ rows: Array<{ username: string; name: string; package: string; status: string; placement: string }> }> {
+  return fetchJson('/api/member/direct-referrals', { method: 'GET' });
+}
+
 export function fetchMemberShadowAccounts(ownerUsername?: string): Promise<ShadowAccountCenter> {
   const suffix = ownerUsername ? `?ownerUsername=${encodeURIComponent(ownerUsername)}` : '';
   return fetchJson(`/api/member/shadow-accounts${suffix}`, { method: 'GET' });
+}
+
+export function fetchAdminShadowAccounts(ownerUsername: string): Promise<ShadowAccountCenter> {
+  const suffix = `?ownerUsername=${encodeURIComponent(ownerUsername)}`;
+  return fetchJson(`/api/admin/shadow-accounts${suffix}`, { method: 'GET' });
 }
 
 export function fetchAdminActivationCodes(): Promise<AdminActivationCodeCenter> {

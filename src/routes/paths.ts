@@ -17,11 +17,6 @@ export const PATHS = {
     MODULE: (moduleId: string) => `/admin/${moduleId}`
   },
 
-  CASHIER: {
-    ROOT: '/cashier',
-    MODULE: (moduleId: string) => `/cashier/${moduleId}`
-  },
-
   BOD: {
     ROOT: '/bod',
     MODULE: (moduleId: string) => `/bod/${moduleId}`

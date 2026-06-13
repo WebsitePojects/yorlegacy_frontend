@@ -80,10 +80,11 @@ export function GetYorFiveContent({ data, isLoading }: {
         </CardHeader>
         <CardContent className="space-y-2">
           {[
-            ['Requirement', 'Directly refer 5 members who purchase the same package tier as you'],
-            ['Bonus Amount', 'One-time cash equal to your package price (company-funded)'],
-            ['Stacking', 'Groups of 5 — every 5th, 10th, 15th referral triggers a new bonus'],
-            ['Package Scope', 'Classic, Standard, Business, and VIP each have their own counter'],
+            ['Requirement', 'Directly refer 5 eligible members of the same package tier (Classic, Standard, Business, or VIP) — regardless of your own package'],
+            ['Eligibility', 'PD accounts and fully-settled CD accounts count. FS accounts and unsettled CD accounts do not count.'],
+            ['Bonus Amount', 'One-time cash equal to that package tier\'s price (company-funded) — Classic: PHP 5,998 · Standard: PHP 25,998 · Business: PHP 50,998 · VIP: PHP 159,998'],
+            ['Stacking', 'Groups of 5 — every 5th, 10th, 15th eligible referral per tier triggers a new bonus'],
+            ['Package Scope', 'Classic, Standard, Business, and VIP each have their own independent counter'],
             ['Tracking', 'Wallet ledger entries with entry type get_five confirm each credit'],
           ].map(([label, desc]) => (
             <div key={label} className="flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm odd:bg-[var(--accent)]/40">

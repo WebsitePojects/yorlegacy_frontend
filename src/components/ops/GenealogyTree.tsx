@@ -1,5 +1,5 @@
 import { useFeedback } from '@/components/feedback/FeedbackProvider';
-import { cn } from '@/lib/utils';
+import { cn, formatAccountTypeLabel } from '@/lib/utils';
 import {
   Copy,
   Download,
@@ -24,6 +24,8 @@ type ActivationCodeOption = {
   code: string;
   packageTier: string;
   codeFamily: string;
+  accountType?: string;
+  paymentStatus?: string;
 };
 
 type GenealogyTreeProps = {
@@ -226,7 +228,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
   const { confirmAction, presentNotice, notify } = useFeedback();
   const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
   const [selectedActivationCode, setSelectedActivationCode] = useState('');
-  const [activeShadowNodeLabel, setActiveShadowNodeLabel] = useState<string | null>(null);
+  const [activeShadowNode, setActiveShadowNode] = useState<{ label: string; shadowCode: string } | null>(null);
   const [isActivating, setIsActivating] = useState(false);
 
   useEffect(() => {
@@ -236,10 +238,13 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
   }, [isActivationModalOpen, availableActivationCodes]);
 
   async function handleConfirmActivation() {
-    if (!selectedActivationCode) return;
+    if (!selectedActivationCode || !activeShadowNode?.shadowCode) return;
     setIsActivating(true);
     try {
-      const result = await upgradeMemberActivationCode({ code: selectedActivationCode });
+      const result = await upgradeMemberActivationCode({
+        code: selectedActivationCode,
+        shadowCode: activeShadowNode.shadowCode
+      });
       notify({
         title: result.moneyMode === 'sandbox' ? 'Shadow account activated' : 'Activation check passed',
         description: result.detail ?? result.reason,
@@ -247,6 +252,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
       });
       setIsActivationModalOpen(false);
       setSelectedActivationCode('');
+      setActiveShadowNode(null);
       onUpgradeSuccess?.();
     } catch (cause) {
       notify({
@@ -1040,8 +1046,8 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
               }}
               registerNodeRef={registerNodeRef}
               availableActivationCodes={availableActivationCodes}
-              onActivateShadow={async (label) => {
-                setActiveShadowNodeLabel(label);
+              onActivateShadow={async (shadowNode) => {
+                setActiveShadowNode(shadowNode);
                 setIsActivationModalOpen(true);
               }}
             />
@@ -1076,7 +1082,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
           <div className="w-full max-w-md border border-[rgba(245,200,66,0.3)] bg-[#100d0c]/98 p-6 rounded-2xl shadow-[0_32px_64px_rgba(0,0,0,0.6)] animate-in fade-in zoom-in-95 duration-200 text-left">
             <h3 className="text-lg font-bold text-[#f5c842] mb-2 font-serif">Activate Shadow Account</h3>
             <p className="text-sm text-gray-400 mb-5">
-              Activate your shadow account <strong className="text-white">{activeShadowNodeLabel}</strong> to begin tracking placement volume.
+              Activate your shadow account <strong className="text-white">{activeShadowNode?.label ?? 'Shadow Slot'}</strong> to begin tracking placement volume.
             </p>
 
             {availableActivationCodes.length > 0 ? (
@@ -1090,7 +1096,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
                   >
                     {availableActivationCodes.map((item) => (
                       <option key={item.code} value={item.code}>
-                        {item.code} ({item.packageTier})
+                        {`${item.code} - ${item.accountType ? formatAccountTypeLabel(item.accountType, item.paymentStatus) : 'Registration'} - ${item.packageTier}`}
                       </option>
                     ))}
                   </select>
@@ -1102,6 +1108,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
                     onClick={() => {
                       setIsActivationModalOpen(false);
                       setSelectedActivationCode('');
+                      setActiveShadowNode(null);
                     }}
                     className="px-4 py-2 border border-gray-700 hover:bg-white/5 text-gray-300 rounded-xl text-sm transition-colors cursor-pointer"
                   >
@@ -1125,7 +1132,11 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
                 <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-red-500/10">
                   <button
                     type="button"
-                    onClick={() => setIsActivationModalOpen(false)}
+                    onClick={() => {
+                      setIsActivationModalOpen(false);
+                      setSelectedActivationCode('');
+                      setActiveShadowNode(null);
+                    }}
                     className="px-4 py-2 border border-gray-700 hover:bg-white/5 text-gray-300 rounded-xl text-sm transition-colors cursor-pointer"
                   >
                     Cancel
@@ -1134,6 +1145,8 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
                     type="button"
                     onClick={() => {
                       setIsActivationModalOpen(false);
+                      setSelectedActivationCode('');
+                      setActiveShadowNode(null);
                       navigate('/member/activation-codes');
                     }}
                     className="px-4 py-2 bg-gradient-to-r from-[#c8703a] to-[#f5c842] hover:opacity-90 text-[#2c1607] font-bold rounded-xl text-sm border-0 transition-opacity cursor-pointer"
@@ -1269,7 +1282,7 @@ function BinaryBranch({
   onNavigateToNode?: (username: string) => void;
   onOpenSlot?: (slot: { parentUsername: string; parentReferralCode?: string; side: 'left' | 'right' }) => void;
   registerNodeRef?: (key: string, element: HTMLDivElement | null) => void;
-  onActivateShadow: (label: string) => Promise<void>;
+  onActivateShadow: (shadowNode: { label: string; shadowCode: string }) => Promise<void>;
   availableActivationCodes?: ActivationCodeOption[];
   adminMode?: boolean;
 }) {
@@ -1285,7 +1298,13 @@ function BinaryBranch({
     }
 
     if (node.isShadowNode) {
-      await onActivateShadow(node.shadowSlot?.label ?? node.key);
+      if (node.shadowSlot?.activationStatus === 'activated') {
+        return;
+      }
+      await onActivateShadow({
+        label: node.shadowSlot?.label ?? node.key,
+        shadowCode: node.shadowSlot?.shadowCode ?? node.shadowSlot?.id ?? node.key
+      });
       return;
     }
 

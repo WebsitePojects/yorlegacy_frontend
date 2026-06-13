@@ -28,6 +28,7 @@ import {
   resolveOfficeBasePath
 } from '@/components/layout/ProtectedOfficeFrame';
 import { GenealogyTree } from '../components/ops/GenealogyTree';
+import { LeaderboardInFrame } from './LeaderboardPage';
 import { clearOfficeCache, readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
 import { cn, formatAccountTypeLabel } from '@/lib/utils';
 import {
@@ -53,7 +54,8 @@ import type {
   GenealogyCenter,
   MemberAccountStatus,
   OperationalModule,
-  ReportRow
+  ReportRow,
+  ShadowAccountCenter
 } from '../types/auth';
 
 const formatCurrency = (value: number): string =>
@@ -61,6 +63,32 @@ const formatCurrency = (value: number): string =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })}`;
+
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) {
+    return 'Not yet recorded';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString('en-PH', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+function formatShadowStateLabel(value: string): string {
+  return value
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
 
 function formatAuditActionLabel(action: string) {
   if (action === 'sandbox_runtime_enabled') {
@@ -82,7 +110,7 @@ type CodeGenerationOption = {
   value: string;
   label: string;
   packageTier: string;
-  codeFamily: 'YOR CODES' | 'YOR MAINTENANCE';
+  codeFamily: 'YOR CODES' | 'YOR PERFUME' | 'YOR REFILL' | 'YOR VISION';
   kind: 'package' | 'product';
 };
 
@@ -96,49 +124,49 @@ const CODE_GENERATION_OPTIONS: CodeGenerationOption[] = [
     value: 'product-yor-perfume-hugo-boss',
     label: 'Yor Perfume - Hugo Boss',
     packageTier: 'Yor Perfume - Hugo Boss',
-    codeFamily: 'YOR MAINTENANCE',
+    codeFamily: 'YOR PERFUME',
     kind: 'product'
   },
   {
     value: 'product-yor-perfume-swiss-army',
     label: 'Yor Perfume - Swiss Army',
     packageTier: 'Yor Perfume - Swiss Army',
-    codeFamily: 'YOR MAINTENANCE',
+    codeFamily: 'YOR PERFUME',
     kind: 'product'
   },
   {
     value: 'product-yor-perfume-chanel-bleu',
     label: 'Yor Perfume - Chanel Bleu',
     packageTier: 'Yor Perfume - Chanel Bleu',
-    codeFamily: 'YOR MAINTENANCE',
+    codeFamily: 'YOR PERFUME',
     kind: 'product'
   },
   {
     value: 'product-yor-perfume-paris-hilton',
     label: 'Yor Perfume - Paris Hilton',
     packageTier: 'Yor Perfume - Paris Hilton',
-    codeFamily: 'YOR MAINTENANCE',
+    codeFamily: 'YOR PERFUME',
     kind: 'product'
   },
   {
     value: 'product-yor-perfume-bvlgari-amethyste',
     label: 'Yor Perfume - Bvlgari Amethyste',
     packageTier: 'Yor Perfume - Bvlgari Amethyste',
-    codeFamily: 'YOR MAINTENANCE',
+    codeFamily: 'YOR PERFUME',
     kind: 'product'
   },
   {
     value: 'product-yor-perfume-vs-bombshell',
     label: 'Yor Perfume - VS Bombshell',
     packageTier: 'Yor Perfume - VS Bombshell',
-    codeFamily: 'YOR MAINTENANCE',
+    codeFamily: 'YOR PERFUME',
     kind: 'product'
   },
   {
     value: 'product-yor-vision-mineral-drops',
     label: 'Yor Vision Mineral Drops 15ml',
     packageTier: 'Yor Vision Mineral Drops 15ml',
-    codeFamily: 'YOR MAINTENANCE',
+    codeFamily: 'YOR VISION',
     kind: 'product'
   }
 ];
@@ -188,6 +216,7 @@ type AdminModuleBundle = {
   encashments: AdminEncashmentCenter | null;
   memberCenter: AdminMemberManagementCenter | null;
   genealogyTree: GenealogyCenter | null;
+  shadowAccounts: ShadowAccountCenter | null;
 };
 
 type MemberProfileDraft = {
@@ -307,6 +336,7 @@ export function AdminDashboardPage() {
     getAdminModule,
     getAdminMvpDashboard,
     getAdminOffice,
+    getAdminShadowAccounts,
     getAdminSummary,
     releaseActivationCodes,
     reviewEncashment,
@@ -329,6 +359,7 @@ export function AdminDashboardPage() {
   const [encashments, setEncashments] = useState<AdminEncashmentCenter | null>(null);
   const [memberCenter, setMemberCenter] = useState<AdminMemberManagementCenter | null>(null);
   const [genealogyTree, setGenealogyTree] = useState<GenealogyCenter | null>(null);
+  const [shadowAccounts, setShadowAccounts] = useState<ShadowAccountCenter | null>(null);
   const [selectedTreeNodeId, setSelectedTreeNodeId] = useState<string | null>(null);
   const [treeRootUsername, setTreeRootUsername] = useState('');
   const [treeSearchInput, setTreeSearchInput] = useState('');
@@ -337,8 +368,8 @@ export function AdminDashboardPage() {
   const [memberPage, setMemberPage] = useState(1);
   const [memberDetailUsername, setMemberDetailUsername] = useState('');
   const [memberProfileDraft, setMemberProfileDraft] = useState<MemberProfileDraft>(EMPTY_MEMBER_PROFILE_DRAFT);
-  const [codeBatchQuantity, setCodeBatchQuantity] = useState(5);
-  const [codeBatchSelection, setCodeBatchSelection] = useState('pkg-standard');
+  const [codeBatchQuantity, setCodeBatchQuantity] = useState<string>('');
+  const [codeBatchSelection, setCodeBatchSelection] = useState<string>('');
   const [codeBatchAccountType, setCodeBatchAccountType] = useState('PD');
   const [codeBatchAssignedTo, setCodeBatchAssignedTo] = useState('');
   const [codeBatchRemarks, setCodeBatchRemarks] = useState('');
@@ -367,6 +398,7 @@ export function AdminDashboardPage() {
     setEncashments(bundle.encashments);
     setMemberCenter(bundle.memberCenter);
     setGenealogyTree(bundle.genealogyTree);
+    setShadowAccounts(bundle.shadowAccounts);
     setSelectedTreeNodeId(bundle.genealogyTree?.root.nodeId ?? null);
 
     if (bundle.activationCodes) {
@@ -420,6 +452,7 @@ export function AdminDashboardPage() {
       let encashments: AdminEncashmentCenter | null = null;
       let memberCenter: AdminMemberManagementCenter | null = null;
       let genealogyTree: GenealogyCenter | null = null;
+      let shadowAccounts: ShadowAccountCenter | null = null;
 
       if (targetModuleId === 'activation-codes') {
         activationCodes = await getAdminActivationCodes();
@@ -439,7 +472,10 @@ export function AdminDashboardPage() {
       }
 
       if (targetModuleId === 'account-genealogy' && options.rootUsername.trim()) {
-        genealogyTree = await getAdminBinaryTree(options.rootUsername.trim());
+        [genealogyTree, shadowAccounts] = await Promise.all([
+          getAdminBinaryTree(options.rootUsername.trim()),
+          getAdminShadowAccounts(options.rootUsername.trim())
+        ]);
       }
 
       return {
@@ -450,7 +486,8 @@ export function AdminDashboardPage() {
         activationCodes,
         encashments,
         memberCenter,
-        genealogyTree
+        genealogyTree,
+        shadowAccounts
       };
     },
     [
@@ -461,6 +498,7 @@ export function AdminDashboardPage() {
       getAdminModule,
       getAdminMvpDashboard,
       getAdminOffice,
+      getAdminShadowAccounts,
       getAdminSummary
     ]
   );
@@ -501,14 +539,15 @@ export function AdminDashboardPage() {
   );
 
   useEffect(() => {
-    if (user?.role !== 'cashier' || officeBasePath !== '/cashier') {
+    if (user?.role !== 'cashier') {
       return;
     }
 
-    if (moduleId !== 'activation-codes' && moduleId !== 'account-details') {
-      navigate('/cashier/activation-codes', { replace: true });
+    const cashierAllowedModules = new Set(['activation-codes', 'account-details', 'account-genealogy', 'voucher-management']);
+    if (!cashierAllowedModules.has(moduleId ?? '')) {
+      navigate('/admin/activation-codes', { replace: true });
     }
-  }, [moduleId, navigate, officeBasePath, user?.role]);
+  }, [moduleId, navigate, user?.role]);
 
   useEffect(() => {
     let cancelled = false;
@@ -565,11 +604,20 @@ export function AdminDashboardPage() {
   ]);
 
   async function handleGenerateCodes() {
+    const qty = parseInt(codeBatchQuantity, 10);
+    if (!selectedCodeBatchOption) {
+      notify({ title: 'Select a package / product first', tone: 'destructive' });
+      return;
+    }
+    if (!qty || qty < 1) {
+      notify({ title: 'Enter a valid quantity (1 or more)', tone: 'destructive' });
+      return;
+    }
     const confirmed = await confirmAction({
       title: 'Generate activation code batch?',
       description: codeBatchAssignedTo.trim()
-        ? `Generate ${codeBatchQuantity} ${codeBatchAccountType} ${selectedCodeBatchOption.label} code(s) for ${codeBatchAssignedTo}.`
-        : `Generate ${codeBatchQuantity} ${codeBatchAccountType} ${selectedCodeBatchOption.label} code(s) into the unassigned code pool.`,
+        ? `Generate ${qty} ${codeBatchAccountType} ${selectedCodeBatchOption.label} code(s) for ${codeBatchAssignedTo}.`
+        : `Generate ${qty} ${codeBatchAccountType} ${selectedCodeBatchOption.label} code(s) into the unassigned code pool.`,
       confirmLabel: 'Generate Batch',
       tone: 'warning'
     });
@@ -580,7 +628,7 @@ export function AdminDashboardPage() {
 
     try {
       const result = await generateActivationCodes({
-        quantity: codeBatchQuantity,
+        quantity: qty,
         packageTier: selectedCodeBatchOption.packageTier,
         codeFamily: selectedCodeBatchOption.codeFamily,
         assignedTo: codeBatchAssignedTo.trim() || undefined,
@@ -984,7 +1032,7 @@ export function AdminDashboardPage() {
   const showDashboardActions = moduleId === 'dashboard' && (mvpDashboard?.moneyMode ?? 'playground') !== 'sandbox' && branchNotes.length > 0;
   const visibleMetrics = office ? getVisibleAdminMetrics(moduleId, office.metrics) : [];
   const selectedCodeBatchOption =
-    CODE_GENERATION_OPTIONS.find((option) => option.value === codeBatchSelection) ?? CODE_GENERATION_OPTIONS[2];
+    CODE_GENERATION_OPTIONS.find((option) => option.value === codeBatchSelection) ?? null;
   const currentAdminBundleCacheKey = adminCacheKey(moduleId, {
     rootUsername: treeRootUsername,
     memberQuery: memberSearchQuery,
@@ -1097,8 +1145,9 @@ export function AdminDashboardPage() {
                             <Input
                               type="number"
                               min={1}
+                              placeholder="e.g. 10"
                               value={codeBatchQuantity}
-                              onChange={(event) => setCodeBatchQuantity(Number(event.target.value))}
+                              onChange={(event) => setCodeBatchQuantity(event.target.value)}
                             />
                           </label>
                           <label className="grid gap-2 text-sm">
@@ -1108,17 +1157,13 @@ export function AdminDashboardPage() {
                               value={codeBatchSelection}
                               onChange={(event) => setCodeBatchSelection(event.target.value)}
                             >
+                              <option value="" disabled>Select package / product…</option>
                               {CODE_GENERATION_OPTIONS.map((option) => (
                                 <option key={option.value} value={option.value}>
                                   {option.label}
                                 </option>
                               ))}
                             </select>
-                            <span className="text-xs text-[var(--muted-foreground)]">
-                              {selectedCodeBatchOption.kind === 'product'
-                                ? 'Product repeat-purchase code routed through maintenance-code handling for phase-1 testing.'
-                                : 'Package activation code for registration and encoding.'}
-                            </span>
                           </label>
                           <label className="grid gap-2 text-sm">
                             <span className="font-medium text-[var(--muted-foreground)]">Account Type</span>
@@ -1269,10 +1314,9 @@ export function AdminDashboardPage() {
                     <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
-                        variant="outline"
                         disabled={!selectedAdminCodes.length}
                         onClick={handleReleaseCodes}
-                        className="flex-1"
+                        className="flex-1 bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-40"
                       >
                         Release Selected
                       </Button>
@@ -1354,7 +1398,11 @@ export function AdminDashboardPage() {
                                 <td className="px-4 py-3 font-mono text-[var(--yor-copper-soft)]">{item.code}</td>
                                 <td className="px-4 py-3">{formatAccountTypeLabel(item.accountType, item.paymentStatus)}</td>
                                 <td className="px-4 py-3">{item.packageTier}</td>
-                                <td className="px-4 py-3">{item.assignedTo}</td>
+                                <td className="px-4 py-3">
+                                  {item.assignedTo === 'Unassigned'
+                                    ? <span className="text-xs italic text-[var(--muted-foreground)]">Loose pool</span>
+                                    : item.assignedTo}
+                                </td>
                                 <td className="px-4 py-3">
                                   <Badge variant={item.status === 'available' ? 'success' : item.status === 'unreleased' || item.status === 'lost' ? 'warning' : 'outline'}>
                                     {item.status}
@@ -1699,7 +1747,6 @@ export function AdminDashboardPage() {
             <section className="space-y-4">
               <Card className="border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
-                  <CardTitle>Account Details</CardTitle>
                   <CardDescription className="text-xs">
                     {isCashierRole
                       ? 'Search a member to update their name. Cashier accounts may only edit first name, middle name, and last name.'
@@ -2127,38 +2174,95 @@ export function AdminDashboardPage() {
                 </CardContent>
               </Card>
               {genealogyTree ? (
-              <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-                <Card className="border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader>
-                    <CardTitle>Tree Summary</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    <DataPoint label="Accounts On Left" value={leftAccountCount} />
-                    <DataPoint label="Accounts On Right" value={rightAccountCount} />
-                    <DataPoint label="Matched Points" value={matchedPoints} />
-                    <DataPoint label="Tree Type" value={genealogyTree.treeType} />
-                    <DataPoint label="Strong Leg Carry" value={strongLegCarry} />
-                    <DataPoint label="Weak Leg Carry" value={weakLegCarry} />
-                    <DataPoint label="Deepest Level" value={Math.max(...genealogyTree.nodes.map((node) => node.level), 0)} />
-                  </CardContent>
-                </Card>
-                {selectedTreeNode ? (
-                  <Card className="ops-admin-tree-detail-card border-[var(--border)] bg-[var(--card)]">
-                    <CardHeader>
-                      <CardTitle>Node Details</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-5">
-                      <DataPoint label="Username" value={selectedTreeNode.username} />
-                      <DataPoint label="Package" value={selectedTreeNode.packageTier} />
-                      <DataPoint label="Placement" value={selectedTreeNode.placement} />
-                      <DataPoint label="Level / Depth" value={selectedTreeNode.depth} />
-                      <DataPoint label="Trace Path" value={selectedTreeNode.tracePath} />
-                      <DataPoint label="Account State" value={selectedTreeNode.accountStateLabel} />
-                      <DataPoint label="Direct Referrals" value={selectedTreeNode.directReferrals} />
-                    </CardContent>
-                  </Card>
-                ) : null}
-              </section>
+                <section className="grid gap-4">
+                  <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                    <Card className="border-[var(--border)] bg-[var(--card)]">
+                      <CardHeader>
+                        <CardTitle>Tree Summary</CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <DataPoint label="Accounts On Left" value={leftAccountCount} />
+                        <DataPoint label="Accounts On Right" value={rightAccountCount} />
+                        <DataPoint label="Matched Points" value={matchedPoints} />
+                        <DataPoint label="Tree Type" value={genealogyTree.treeType} />
+                        <DataPoint label="Strong Leg Carry" value={strongLegCarry} />
+                        <DataPoint label="Weak Leg Carry" value={weakLegCarry} />
+                        <DataPoint label="Deepest Level" value={Math.max(...genealogyTree.nodes.map((node) => node.level), 0)} />
+                      </CardContent>
+                    </Card>
+                    {selectedTreeNode ? (
+                      <Card className="ops-admin-tree-detail-card border-[var(--border)] bg-[var(--card)]">
+                        <CardHeader>
+                          <CardTitle>Node Details</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-5">
+                          <DataPoint label="Username" value={selectedTreeNode.username} />
+                          <DataPoint label="Package" value={selectedTreeNode.packageTier} />
+                          <DataPoint label="Placement" value={selectedTreeNode.placement} />
+                          <DataPoint label="Level / Depth" value={selectedTreeNode.depth} />
+                          <DataPoint label="Trace Path" value={selectedTreeNode.tracePath} />
+                          <DataPoint label="Account State" value={selectedTreeNode.accountStateLabel} />
+                          <DataPoint label="Direct Referrals" value={selectedTreeNode.directReferrals} />
+                        </CardContent>
+                      </Card>
+                    ) : null}
+                  </section>
+
+                  {shadowAccounts ? (
+                    <Card className="border-[var(--border)] bg-[var(--card)]">
+                      <CardHeader>
+                        <CardTitle>Shadow Accounts</CardTitle>
+                        <CardDescription className="text-xs">
+                          Admin visibility for the selected member's Binary Function Only slots.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="grid gap-4">
+                        <div className="grid gap-3 md:grid-cols-3">
+                          <DataPoint label="Owner" value={shadowAccounts.owner} />
+                          <DataPoint label="Shadow Slots" value={shadowAccounts.accounts.length} />
+                          <DataPoint label="Available Codes" value={shadowAccounts.availableCodes.length} />
+                        </div>
+                        <div className="grid gap-4 xl:grid-cols-2">
+                          {shadowAccounts.accounts.map((account) => (
+                            <div key={account.shadowCode} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-semibold text-[var(--foreground)]">{account.label}</p>
+                                  <p className="text-xs text-[var(--muted-foreground)]">{account.shadowCode}</p>
+                                </div>
+                                <Badge variant={account.state.includes('reserved') ? 'warning' : 'success'} className="text-[10px]">
+                                  {formatShadowStateLabel(account.state)}
+                                </Badge>
+                              </div>
+                              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                <DataPoint label="Placement" value={account.placement} />
+                                <DataPoint label="Package" value={account.packageTier ?? 'Not activated'} />
+                                <DataPoint label="Account Type" value={account.accountType ? formatAccountTypeLabel(account.accountType) : 'Pending'} />
+                                <DataPoint label="Activation Code" value={account.activationCode ?? 'Not yet assigned'} />
+                                <DataPoint label="PV" value={account.pvValue} />
+                                <DataPoint label="Salesmatch" value={formatCurrency(account.salesmatchValue)} />
+                              </div>
+                              <div className="mt-3 space-y-1 text-xs text-[var(--muted-foreground)]">
+                                <p>Activated: {formatDateTime(account.activatedAt)}</p>
+                                <p>Last upgrade: {formatDateTime(account.lastUpgradedAt)}</p>
+                                <p>{account.note}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {shadowAccounts.notes.length ? (
+                          <div className="grid gap-2">
+                            {shadowAccounts.notes.map((note) => (
+                              <div key={note} className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm text-[var(--muted-foreground)]">
+                                {note}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  ) : null}
+                </section>
               ) : null}
             </section>
           ) : null}
@@ -2173,6 +2277,10 @@ export function AdminDashboardPage() {
 
           {moduleId === 'rankings' ? (
             <RankingsView activeModule={activeModule} />
+          ) : null}
+
+          {moduleId === 'leaderboard' ? (
+            <LeaderboardInFrame showStanding={false} showTableHeader={false} />
           ) : null}
 
           {moduleId === 'global-bonus' ? (
@@ -2199,11 +2307,6 @@ export function AdminDashboardPage() {
             <ChangePasswordView />
           ) : null}
 
-          {showDashboardActions ? (
-            <section className="ops-admin-footer-grid">
-              <GatedActionsCard actions={branchNotes} />
-            </section>
-          ) : null}
       </div>
     </ProtectedOfficeFrame>
   );
@@ -2333,16 +2436,6 @@ const ADMIN_STAT_CARDS: AdminStatCard[] = [
     glow: '0 4px 24px 0 rgba(16,185,129,0.15)',
     border: 'rgba(16,185,129,0.25)',
     metricKeywords: ['processed encash', 'paid encash', 'lifetime payout'],
-  },
-  {
-    label: 'Get Yor Five Purchases',
-    sub: 'Total purchase points',
-    icon: TrendingUp,
-    color: '#f59e0b',
-    bg: 'rgba(245,158,11,0.12)',
-    glow: '0 4px 24px 0 rgba(245,158,11,0.15)',
-    border: 'rgba(245,158,11,0.25)',
-    metricKeywords: ['five purchase', 'hi-five', 'get yor five', 'purchase point'],
   },
   {
     label: 'Weekly Activations',

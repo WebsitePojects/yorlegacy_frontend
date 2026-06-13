@@ -86,7 +86,7 @@ function workspaceLinksForRole(role: AppRole | undefined): WorkspaceLink[] {
 
   if (role === 'cashier') {
     return [
-      { href: '/cashier', label: 'Cashier' },
+      { href: '/admin', label: 'Cashier Office' },
       { href: '/member', label: 'Member View' },
       { href: '/', label: 'Public Site' }
     ];
@@ -102,7 +102,6 @@ function workspaceLinksForRole(role: AppRole | undefined): WorkspaceLink[] {
 
   return [
     { href: '/admin', label: 'Admin' },
-    { href: '/cashier', label: 'Cashier' },
     { href: '/bod', label: 'Board' },
     { href: '/member', label: 'Member View' },
     { href: '/', label: 'Public Site' }
