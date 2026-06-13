@@ -163,8 +163,8 @@ export function FeedbackProvider({ children }: PropsWithChildren) {
         <AlertDialogPrimitive.Portal>
           {pendingConfirm ? (
             <>
-              <AlertDialogPrimitive.Overlay className="feedback-dialog-overlay fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm" />
-              <AlertDialogPrimitive.Content className="feedback-dialog-content fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--popover)] p-6 text-[var(--popover-foreground)] shadow-2xl">
+              <AlertDialogPrimitive.Overlay className="feedback-dialog-overlay fixed inset-0 z-[500] bg-black/55 backdrop-blur-sm" />
+              <AlertDialogPrimitive.Content className="feedback-dialog-content fixed left-1/2 top-1/2 z-[510] w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--popover)] p-6 text-[var(--popover-foreground)] shadow-2xl">
                     <div className="flex items-start gap-4">
                       <div
                         className={cn(
@@ -208,8 +208,8 @@ export function FeedbackProvider({ children }: PropsWithChildren) {
         <AlertDialogPrimitive.Portal>
           {pendingNotice ? (
             <>
-              <AlertDialogPrimitive.Overlay className="feedback-dialog-overlay fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm" />
-              <AlertDialogPrimitive.Content className="feedback-dialog-content fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--popover)] p-6 text-[var(--popover-foreground)] shadow-2xl">
+              <AlertDialogPrimitive.Overlay className="feedback-dialog-overlay fixed inset-0 z-[500] bg-black/55 backdrop-blur-sm" />
+              <AlertDialogPrimitive.Content className="feedback-dialog-content fixed left-1/2 top-1/2 z-[510] w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--popover)] p-6 text-[var(--popover-foreground)] shadow-2xl">
                 <div className="flex items-start gap-4">
                   <div
                     className={cn(
