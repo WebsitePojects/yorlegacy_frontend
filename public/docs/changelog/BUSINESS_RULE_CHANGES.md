@@ -11,6 +11,67 @@ Simple UI tweaks, CSS, copy, and config changes are not recorded.
 
 ---
 
+## 2026-06-13 — GATE-BIN-CYCLE-NOCAP-20260613: Binary Cycle Bonus Has No Cap
+
+**Rule area:** Binary Cycle Bonus — cap treatment and calculation base
+**Gate ID:** `GATE-BIN-CYCLE-NOCAP-20260613`
+
+### What changed
+
+Binary Cycle Bonus is now uncapped. It pays a flat percent (Classic 2% / Standard 3% / Business 4% / VIP 5%) of the **full matched salesmatch movement** for each pairing cycle, independent of the weekly/monthly SMB caps, and it posts even when the SMB payout for that cycle is fully forfeited at the cap.
+
+**Before (wrong — effectively capped):** computed on the SMB-capped `payable` and only inside `if (payable > 0)`, so binary cycle was suppressed once the SMB cap was hit.
+```typescript
+if (payable > 0) {
+  // ...post salesmatch...
+  const binaryCredit = (payable * binaryCyclePercent) / 100; // capped base
+}
+```
+
+**After (correct — uncapped):** computed on the full `salesmatchDelta`, outside the payable gate.
+```typescript
+if (payable > 0) { /* ...post salesmatch (still capped)... */ }
+// GATE-BIN-CYCLE-NOCAP-20260613
+const binaryCredit = (salesmatchDelta * binaryCyclePercent) / 100; // full match base
+```
+
+### Files affected
+
+- `yor_backend/src/modules/production/encoding-service.ts` — `applyPlacementSalesItem`
+- `yor_backend/src/modules/production/encoding-service.test.ts` — two cap-scenario assertions updated (binary cycle 4 → 10; capped-out case 0 → 1 entry of 10)
+
+### Reason / authority
+
+Owner sign-off **item 3** (2026-06-13): "There is no cap of binary cycle." Overrides `BUSINESSRULE.md` BIN-02 "Weekly capping applies". The weekly/monthly caps remain in force for the Salesmatch Bonus (SMB) payout only.
+
+---
+
+## 2026-06-13 — GATE-GYF-WINDOW-20260613: Get Yor Five 3-Month Group Window
+
+**Rule area:** Get Yor Five Bonus — qualification window, crediting, and void lifecycle
+**Gate ID:** `GATE-GYF-WINDOW-20260613`
+
+### What changed
+
+Get Yor Five now groups qualified same-package directs into batches of five inside a 3-month window measured from each group's first direct. A group that reaches five within its window auto-credits once (company-funded, = package price). A group whose window lapses with fewer than five is VOIDED — its directs are kept for history/monitoring but can never credit again, and a fresh group starts from the next direct.
+
+**Before (wrong — date-blind):** credited whenever the running count of qualified same-package directs hit a multiple of five (`count % 5 === 0`), with no time window and no void concept.
+
+**After (correct — windowed):** crediting is driven by `computeGetYorFiveGroups(...)`; only `complete` groups post, keyed by completed-group index (idempotent via `postLedgerIfNeeded`). The member display surfaces, per package, the open group's remaining invites + remaining days, and voided-group history.
+
+### Files affected
+
+- `yor_backend/src/modules/compensation/get-yor-five.ts` (new) + `get-yor-five.test.ts` (new)
+- `yor_backend/src/modules/compensation/cap-windows.ts` — `addManilaMonths` helper
+- `yor_backend/src/modules/production/encoding-service.ts` — `postRegistrationDirectAndGetFive`, `getMemberGetYorFiveData`, `listQualifiedSamePackageGyfDirects` (removed date-blind `countQualifiedDirectsBySponsorAndPackage`)
+- `yor_backend/src/routes/member.ts` — Days Left column + Voided Groups metric
+
+### Reason / authority
+
+Owner sign-off **item 5** (2026-06-13). Resolves the previously-open Get Yor Five reset/repeatability decision. **Migration note:** keyed by completed-group index — verify no `get_five` ledger rows exist before applying to production data, as a void earlier in a sponsor's history can shift indices.
+
+---
+
 ## 2026-06-12 â€” GATE-BIN-PV-FS-2026-06-12: FS Paid Accounts Now Eligible for Binary Pairing
 
 **Rule area:** Binary PV gate â€” eligible account types for salesmatch/pairing propagation  
