@@ -6,7 +6,7 @@ describe('getDefaultDashboardPath', () => {
   it.each([
     ['member', '/member'],
     ['admin', '/admin'],
-    ['cashier', '/cashier'],
+    ['cashier', '/admin'],
     ['bod', '/bod'],
     ['superadmin', '/admin']
   ] as const)('routes %s users to %s after login', (role, path) => {
@@ -23,12 +23,16 @@ describe('getPostLoginPath', () => {
     expect(getPostLoginPath('superadmin', '/member/binary-genealogy')).toBe('/admin');
   });
 
-  it('keeps cashier users inside cashier routes when admin pages are requested', () => {
-    expect(getPostLoginPath('cashier', '/admin/encashment-reports')).toBe('/cashier');
+  it('allows cashier users to land on admin pages', () => {
+    expect(getPostLoginPath('cashier', '/admin/encashment-reports')).toBe('/admin/encashment-reports');
   });
 
-  it('keeps bod users inside board routes when cashier pages are requested', () => {
-    expect(getPostLoginPath('bod', '/cashier/activation-codes')).toBe('/bod');
+  it('keeps cashier users out of bod routes', () => {
+    expect(getPostLoginPath('cashier', '/bod/some-page')).toBe('/admin');
+  });
+
+  it('keeps bod users out of admin routes', () => {
+    expect(getPostLoginPath('bod', '/admin/activation-codes')).toBe('/bod');
   });
 
   it('preserves a valid same-side redirect', () => {

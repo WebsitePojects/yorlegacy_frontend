@@ -21,8 +21,7 @@ const credentialLabels: Record<AppRole, string> = {
 
 export function getDefaultDashboardPath(
   role: AppRole | undefined
-): '/admin' | '/member' | '/cashier' | '/bod' {
-  if (role === 'cashier') return '/cashier';
+): '/admin' | '/member' | '/bod' {
   if (role === 'bod') return '/bod';
   return role && role !== 'member' ? '/admin' : '/member';
 }
@@ -30,18 +29,16 @@ export function getDefaultDashboardPath(
 export function getPostLoginPath(
   role: AppRole | undefined,
   requestedPath: string | undefined
-): '/admin' | '/member' | '/cashier' | '/bod' | string {
+): '/admin' | '/member' | '/bod' | string {
   const defaultPath = getDefaultDashboardPath(role);
   if (!requestedPath) return defaultPath;
   if (
     role === 'member' &&
-    (requestedPath.startsWith('/admin') ||
-      requestedPath.startsWith('/cashier') ||
-      requestedPath.startsWith('/bod'))
+    (requestedPath.startsWith('/admin') || requestedPath.startsWith('/bod'))
   ) return defaultPath;
-  if (role === 'cashier' && (requestedPath.startsWith('/admin') || requestedPath.startsWith('/bod')))
+  if (role === 'cashier' && requestedPath.startsWith('/bod'))
     return defaultPath;
-  if (role === 'bod' && (requestedPath.startsWith('/admin') || requestedPath.startsWith('/cashier')))
+  if (role === 'bod' && requestedPath.startsWith('/admin'))
     return defaultPath;
   if ((role === 'admin' || role === 'superadmin') && requestedPath.startsWith('/member'))
     return defaultPath;

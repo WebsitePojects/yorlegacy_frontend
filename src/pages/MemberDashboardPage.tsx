@@ -449,13 +449,13 @@ export function MemberDashboardPage() {
 
       if (targetModuleId === 'genealogy') {
         [binaryTree, activationCodes] = await Promise.all([
-          getMemberBinaryTree(rootUsername.trim() || undefined),
+          getMemberBinaryTree(rootUsername.trim() || undefined).catch(() => null),
           getMemberActivationCodes()
         ]);
       }
 
       if (targetModuleId === 'binary-cycle-bonus' || targetModuleId === 'salesmatch-bonus') {
-        binaryTree = await getMemberBinaryTree(rootUsername.trim() || undefined);
+        binaryTree = await getMemberBinaryTree(rootUsername.trim() || undefined).catch(() => null);
       }
 
       if (targetModuleId === 'dashboard') {
