@@ -83,6 +83,7 @@ export type MemberOfficeData = {
     username: string;
     fullName: string;
     payoutMethod: string;
+    payoutDetails: string;
   };
   wallet: {
     availableBalance: string;

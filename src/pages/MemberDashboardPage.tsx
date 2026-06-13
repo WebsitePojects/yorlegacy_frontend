@@ -352,7 +352,7 @@ export function MemberDashboardPage() {
       setShadowAccounts(bundle.shadowAccounts);
       setSelectedTreeNodeId(bundle.binaryTree?.root.nodeId ?? null);
       setPayoutMethodDraft(bundle.office.profile.payoutMethod ?? '');
-      setPayoutDetailsDraft('');
+      setPayoutDetailsDraft(bundle.office.profile.payoutDetails ?? '');
       setEmailDraft(bundle.summary?.user.email ?? '');
       setPasswordDraft('');
 
@@ -1129,6 +1129,7 @@ export function MemberDashboardPage() {
                     ['Referral Code', office.profile.referralCode],
                     ['Sponsor Code', office.profile.sponsorCode || '—'],
                     ['Payout Method', office.profile.payoutMethod || '—'],
+                    ['Payout Details', office.profile.payoutDetails || '—'],
                     ['Payout Schedule', office.wallet.payoutSchedule],
                   ].map(([label, value]) => (
                     <div key={label} className="flex flex-col gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 py-3">
