@@ -77,7 +77,9 @@ export function RegistrationPageView({
   const placementParentUsername = resolvedPlacementContext?.parentUsername ?? '';
   const placementParentLabel = initialContext?.placementParentLabel ?? placementParentUsername;
   const placementSide = resolvedPlacementContext?.side ?? null;
-  const placementToken = initialContext?.placementToken ?? searchParams.get('token') ?? '';
+  // GATE-PLACEMENT-TOKEN-PARAM-20260615: read `placementToken` (backend param name); `token` is a fallback.
+  const placementToken =
+    initialContext?.placementToken ?? searchParams.get('placementToken') ?? searchParams.get('token') ?? '';
   const hasLockedPlacement = Boolean(resolvedPlacementContext);
   const [form, setForm] = useState({
     fullName: '',

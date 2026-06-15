@@ -27,7 +27,9 @@ export function RegisterPage() {
                 : ('left' as const)
           }
         : undefined,
-      placementToken: searchParams.get('token') ?? ''
+      // GATE-PLACEMENT-TOKEN-PARAM-20260615: backend emits `placementToken` (frontend-origin.ts);
+      // legacy `token` kept as fallback so older share links still resolve their reserved slot.
+      placementToken: searchParams.get('placementToken') ?? searchParams.get('token') ?? ''
     }),
     [referralCodeParam, searchParams]
   );

@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-06-15 — GATE-PLACEMENT-TOKEN-PARAM-20260615: fix reserved-slot share link dropping placement
+
+**Rule area:** Binary placement (genealogy position from sponsor share link)
+**Gate ID:** `GATE-PLACEMENT-TOKEN-PARAM-20260615`
+**Scope:** Frontend registration only (no schema, no money change).
+
+### What changed
+
+The "Active Share Link" reserves a specific binary slot and the backend emits the slot token as the URL param `placementToken=…` (`buildRegistrationUrl`, `frontend-origin.ts`). The registration page was reading `searchParams.get('token')` — the wrong key — so the token resolved to empty and the reservation was **silently dropped**: a prospect registering through the reserved link was auto-placed by the server's default policy instead of landing in the reserved slot. Because placement drives the binary tree (and downstream salesmatch pairing income), this is corrected.
+
+`RegisterPage.tsx` and `RegistrationPageView.tsx` now read `placementToken` first, with the legacy `token` key kept as a fallback so any older links still resolve. No money already paid is affected; only future placements through reserved share links are corrected.
+
+---
+
 ## 2026-06-15 — GATE-FS-PV-RECOMPUTE-20260615: PROD binary PV recomputed from eligible sources only (money kept)
 
 **Rule area:** Binary leg PV/points (genealogy + salesmatch legs)
