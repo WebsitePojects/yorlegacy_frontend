@@ -267,6 +267,32 @@ const customAdminModuleIds = new Set([
   'unilevel-rank-progress'
 ]);
 
+// These admin modules are rendered by dedicated components that fetch their own
+// data and are intentionally excluded from the backend module catalog
+// (OPERATIONAL_ADMIN_MODULE_IDS). Calling /api/admin/modules/<id> only 404s and
+// would reject the whole bundle, so resolve a synthetic shell instead.
+const FRONTEND_ONLY_ADMIN_MODULE_IDS = new Set([
+  'unilevel-rank-progress',
+  'get-five-reports',
+  'global-bonus'
+]);
+
+function buildSyntheticAdminModule(id: string): OperationalModule {
+  return {
+    id,
+    label: id,
+    path: `/admin/${id}`,
+    group: 'Compensation',
+    description: '',
+    status: 'read-only',
+    legacyReference: '',
+    permissions: ['admin', 'superadmin', 'bod', 'cashier'],
+    metrics: [],
+    table: { title: '', columns: [], rows: [] },
+    gatedActions: []
+  };
+}
+
 function getVisibleAdminMetrics(moduleId: string, metrics: AdminOfficeData['metrics']) {
   if (moduleId === 'dashboard') {
     return metrics;
@@ -528,11 +554,15 @@ export function AdminDashboardPage() {
         memberPage: number;
       }
     ): Promise<AdminModuleBundle> => {
+      const modulePromise = FRONTEND_ONLY_ADMIN_MODULE_IDS.has(targetModuleId)
+        ? Promise.resolve(buildSyntheticAdminModule(targetModuleId))
+        : getAdminModule(targetModuleId);
+
       const [nextSummary, nextOffice, nextMvpDashboard, nextModule] = await Promise.all([
         getAdminSummary(),
         getAdminOffice(),
         getAdminMvpDashboard(),
-        getAdminModule(targetModuleId)
+        modulePromise
       ]);
 
       let activationCodes: AdminActivationCodeCenter | null = null;
