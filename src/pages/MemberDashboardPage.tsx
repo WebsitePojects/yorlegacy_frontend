@@ -46,7 +46,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { searchMemberTransferTargets } from '@/lib/api';
-import { createMemberPlacementReservation } from '@/lib/api';
 import { apiUrl } from '@/lib/api';
 import { BinaryCyclePanel } from '@/features/earnings/components/BinaryCyclePanel';
 import { DirectReferralPanel } from '@/features/earnings/components/DirectReferralPanel';
@@ -493,7 +492,6 @@ export function MemberDashboardPage() {
   const [copiedCodeCount, setCopiedCodeCount] = useState<Record<string, number>>({});
   const [shadowCodeSelections, setShadowCodeSelections] = useState<Record<string, string>>({});
   const [shadowActionCode, setShadowActionCode] = useState<string | null>(null);
-  const [isShareLinkLoading, setIsShareLinkLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isContentLoading, setIsContentLoading] = useState(true);
   const [reloadNonce, setReloadNonce] = useState(0);
@@ -1137,42 +1135,24 @@ export function MemberDashboardPage() {
     }
   }
 
-  async function handleCreateShareLink() {
+  // GATE-REFERRAL-SINGLE-LINK-20260615: one canonical referral link (Nogatu parity).
+  // Prospects who register via it land with placement `pending`; the sponsor assigns
+  // the slot from the genealogy tree (no auto-placement, no separate placement-pinned link).
+  async function handleCopyReferralLink() {
     if (!registrationReadiness) {
       return;
     }
-
-    const recommendation = registrationReadiness.placementPolicy.recommendation;
-    if (!recommendation.placementUsername || !recommendation.placementSide) {
-      await notify({
-        title: 'Review genealogy first',
-        description: 'Pick or review an open slot before creating the sponsor share link.',
-        tone: 'warning'
-      });
-      return;
-    }
-
-    setIsShareLinkLoading(true);
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.yorinternational.net';
+    const link = `${origin}/join/${registrationReadiness.sponsor.referralCode}`;
     try {
-      const result = await createMemberPlacementReservation({
-        placementParentUsername: recommendation.placementUsername,
-        placementSide: recommendation.placementSide as 'left' | 'right'
-      });
-      await navigator.clipboard.writeText(result.reservation.shareLink);
+      await navigator.clipboard.writeText(link);
       notify({
-        title: 'Share link copied',
-        description: `${result.reservation.placementUsername} / ${result.reservation.placementSide} is now attached to the sponsor registration link.`,
+        title: 'Referral link copied',
+        description: 'Share it — prospects register under you. You then place them from your genealogy tree.',
         tone: 'success'
       });
-      setReloadNonce((value) => value + 1);
-    } catch (cause) {
-      notify({
-        title: 'Unable to create share link',
-        description: cause instanceof Error ? cause.message : 'Please try again.',
-        tone: 'destructive'
-      });
-    } finally {
-      setIsShareLinkLoading(false);
+    } catch {
+      notify({ title: 'Copy this link', description: link, tone: 'warning' });
     }
   }
 
@@ -1841,36 +1821,26 @@ export function MemberDashboardPage() {
                   </span>
                   <div>
                     <CardTitle className="text-base">Registration Readiness</CardTitle>
-                    <CardDescription className="text-xs">Reserve slot → share link → prospect registers.</CardDescription>
+                    <CardDescription className="text-xs">Share your link → prospect registers under you → place them from your tree.</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 <InfoRow label="Sponsor" value={registrationReadiness.sponsor.username} />
                 <InfoRow label="Referral Code" value={registrationReadiness.sponsor.referralCode} />
-                <InfoRow label="Placement Username" value={registrationReadiness.placementPolicy.recommendation.placementUsername} />
-                <InfoRow label="Placement Side" value={registrationReadiness.placementPolicy.recommendation.placementSide} />
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted-foreground)]">
-                  {registrationReadiness.placementPolicy.recommendation.note}
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/8 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400">Your Referral Link</p>
+                  <p className="mt-2 break-all text-sm text-[var(--foreground)]">
+                    {(typeof window !== 'undefined' ? window.location.origin : 'https://www.yorinternational.net')}/join/{registrationReadiness.sponsor.referralCode}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                    Prospects register under you with placement <strong className="text-[var(--foreground)]">pending</strong> — assign their slot from your genealogy tree.
+                  </p>
                 </div>
-                {registrationReadiness.activeReservation ? (
-                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/8 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400">Active Share Link</p>
-                    <p className="mt-2 break-all text-sm text-[var(--foreground)]">{registrationReadiness.activeReservation.shareLink}</p>
-                    <p className="mt-1 text-xs text-[var(--muted-foreground)]">Expires: {registrationReadiness.activeReservation.expiresAt}</p>
-                  </div>
-                ) : null}
                 <div className="flex flex-wrap gap-2">
-                  <Button type="button" className="flex-1" onClick={handleCreateShareLink} disabled={isShareLinkLoading}>
-                    {isShareLinkLoading ? 'Creating…' : registrationReadiness.activeReservation ? 'Refresh & Copy Link' : 'Create & Copy Link'}
-                  </Button>
-                  {registrationReadiness.activeReservation ? (
-                    <Button asChild variant="outline" className="shrink-0">
-                      <Link to={registrationReadiness.activeReservation.shareLink.replace(/https?:\/\/(localhost:\d+|yor\.local|yorinternational\.net)/, '')}>Open<ArrowRight className="ml-1 size-4" /></Link>
-                    </Button>
-                  ) : null}
+                  <Button type="button" className="flex-1" onClick={handleCopyReferralLink}>Copy Referral Link</Button>
                   <Button asChild variant="outline" className="shrink-0">
-                    <Link to="/member/genealogy"><GitBranch className="size-4" /></Link>
+                    <Link to="/member/genealogy"><GitBranch className="mr-1 size-4" /> Place in Tree</Link>
                   </Button>
                 </div>
               </CardContent>
