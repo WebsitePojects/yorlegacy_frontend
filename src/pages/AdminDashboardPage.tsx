@@ -70,7 +70,9 @@ import {
   fetchAdminCodeEvents,
   type CodeEventPage,
   fetchAdminCdAccounts,
-  type CdAccountCenter
+  type CdAccountCenter,
+  fetchAdminShadowOverview,
+  type ShadowOverview
 } from '@/lib/api';
 import { SponsorTreeCanvas } from '@/features/unilevel/components/SponsorTreeCanvas';
 import type {
@@ -347,7 +349,8 @@ const customAdminModuleIds = new Set([
   'contact-messages',
   'news-posts',
   'change-password',
-  'unilevel-rank-progress'
+  'unilevel-rank-progress',
+  'account-shadow-management'
 ]);
 
 // These admin modules are rendered by dedicated components that fetch their own
@@ -2557,6 +2560,10 @@ export function AdminDashboardPage() {
             <FinanceAccountingView activeModule={activeModule} />
           ) : null}
 
+          {moduleId === 'account-shadow-management' ? (
+            <ShadowOverviewView />
+          ) : null}
+
           {moduleId === 'get-five-reports' ? (
             <GetFiveRedeemView activeModule={activeModule} />
           ) : null}
@@ -3500,6 +3507,157 @@ function CdAccountsView(_props: ModuleViewProps) {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+// ─── 6b. Shadow Accounts Overview (admin monitoring) ──────────────────────────
+
+const SHADOW_PAGE_SIZE = 50;
+
+function formatShadowState(state: string): string {
+  if (state === 'activated_shadow') return 'Activated';
+  if (state === 'converted_full') return 'Converted';
+  if (state === 'reserved_shadow') return 'Reserved';
+  return state.replace(/_/g, ' ');
+}
+
+function ShadowOverviewView() {
+  const [center, setCenter] = useState<ShadowOverview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [stateFilter, setStateFilter] = useState<'all' | 'activated' | 'reserved' | 'earning'>('all');
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchAdminShadowOverview()
+      .then((d) => { if (!cancelled) setCenter(d); })
+      .catch(() => { if (!cancelled) setCenter(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const stats = center?.stats ?? null;
+  const shadows = center?.shadows ?? [];
+  const peso = (n: number) => `PHP ${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const filtered = shadows.filter((s) => {
+    const q = search.trim().toLowerCase();
+    const searchMatch = !q || s.ownerUsername.toLowerCase().includes(q) || s.ownerFullName.toLowerCase().includes(q) || s.shadowCode.toLowerCase().includes(q);
+    const stateMatch =
+      stateFilter === 'all' ||
+      (stateFilter === 'earning' ? s.totalEarned > 0 :
+        stateFilter === 'activated' ? (s.state === 'activated_shadow' || s.state === 'converted_full') :
+          s.state === 'reserved_shadow');
+    return searchMatch && stateMatch;
+  });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / SHADOW_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = filtered.slice((safePage - 1) * SHADOW_PAGE_SIZE, safePage * SHADOW_PAGE_SIZE);
+
+  const tiles: Array<{ label: string; value: string }> = [
+    { label: 'Total Shadows', value: loading ? '…' : String(stats?.totalShadows ?? 0) },
+    { label: 'Activated', value: loading ? '…' : String(stats?.activated ?? 0) },
+    { label: 'Reserved', value: loading ? '…' : String(stats?.reserved ?? 0) },
+    { label: 'Earning Shadows', value: loading ? '…' : String(stats?.earning ?? 0) },
+    { label: 'Total Matched PV', value: loading ? '…' : String(stats?.totalMatchedPoints ?? 0) },
+    { label: 'SMB Transferred', value: loading ? '…' : peso(stats?.totalTransferred ?? 0) },
+  ];
+
+  return (
+    <section className="space-y-5">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Admin</p>
+        <h2 className="mt-0.5 text-xl font-semibold text-[var(--foreground)]">Shadow Accounts</h2>
+        <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">A shadow only stores SMB from valid pairing under its sub-tree and transfers it to the owner's main wallet — monitor leg volumes, matched points, and transferred SMB.</p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {tiles.map((t) => (
+          <div key={t.label} className="flex flex-col justify-between rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)] leading-snug">{t.label}</p>
+            <p className="mt-1.5 text-base font-semibold text-[var(--foreground)]">{t.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <Card className="ops-admin-table-card flex h-[600px] flex-col border-[var(--border)] bg-[var(--card)]">
+        <CardHeader className="shrink-0 gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <CardTitle>Shadow Monitor ({filtered.length})</CardTitle>
+            <CardDescription>Every shadow slot with its live sub-leg volumes and transferred SMB.</CardDescription>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input className="w-52" placeholder="Search owner or code" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+            <select className={SELECT_CLASS + ' w-40'} value={stateFilter} onChange={(e) => { setStateFilter(e.target.value as typeof stateFilter); setPage(1); }}>
+              <option value="all">All states</option>
+              <option value="earning">Earning only</option>
+              <option value="activated">Activated</option>
+              <option value="reserved">Reserved</option>
+            </select>
+          </div>
+        </CardHeader>
+        <CardContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+          <div className="min-h-0 flex-1 overflow-hidden border-t border-[var(--border)]">
+            <div className="h-full overflow-x-auto overflow-y-auto">
+              <table className="w-full min-w-[1080px] text-sm">
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                    <th className="px-4 py-3">Owner</th>
+                    <th className="px-4 py-3">Side</th>
+                    <th className="px-4 py-3">Shadow Code</th>
+                    <th className="px-4 py-3">State</th>
+                    <th className="px-4 py-3 text-right">Left Vol</th>
+                    <th className="px-4 py-3 text-right">Right Vol</th>
+                    <th className="px-4 py-3 text-right">Matched</th>
+                    <th className="px-4 py-3 text-right">SMB Transferred</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">Loading…</td></tr>
+                  ) : pageRows.length === 0 ? (
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">No shadow accounts match the filters.</td></tr>
+                  ) : pageRows.map((s) => (
+                    <tr key={s.id} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-[var(--foreground)]">{s.ownerUsername}</p>
+                        <p className="text-[10px] text-[var(--muted-foreground)]">{s.ownerFullName}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={cn('inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold', s.placement === 'left' ? 'bg-blue-500/15 text-blue-400' : 'bg-emerald-500/15 text-emerald-400')}>
+                          {s.placement === 'left' ? 'L' : 'R'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-[10px] text-[var(--muted-foreground)]">{s.shadowCode}</td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className={s.totalEarned > 0 ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : s.state === 'reserved_shadow' ? 'border-amber-500/40 bg-amber-500/10 text-amber-400' : 'border-[var(--border)] text-[var(--muted-foreground)]'}>
+                          {formatShadowState(s.state)}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono">{s.leftVolume}</td>
+                      <td className="px-4 py-3 text-right font-mono">{s.rightVolume}</td>
+                      <td className="px-4 py-3 text-right font-mono text-[var(--foreground)]">{s.matchedPoints}</td>
+                      <td className="px-4 py-3 text-right font-mono text-amber-500">{peso(s.totalEarned)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {totalPages > 1 && (
+            <div className="shrink-0 flex items-center justify-between border-t border-[var(--border)] bg-[var(--background)] px-4 py-2 text-xs text-[var(--muted-foreground)]">
+              <span>{(safePage - 1) * SHADOW_PAGE_SIZE + 1}–{Math.min(safePage * SHADOW_PAGE_SIZE, filtered.length)} of {filtered.length}</span>
+              <div className="flex gap-1">
+                <button type="button" disabled={safePage <= 1} className="rounded px-2 py-1 disabled:opacity-30 hover:bg-[var(--muted)]/30" onClick={() => setPage((p) => p - 1)}>← Prev</button>
+                <span className="px-2 py-1">{safePage} / {totalPages}</span>
+                <button type="button" disabled={safePage >= totalPages} className="rounded px-2 py-1 disabled:opacity-30 hover:bg-[var(--muted)]/30" onClick={() => setPage((p) => p + 1)}>Next →</button>
+              </div>
             </div>
           )}
         </CardContent>

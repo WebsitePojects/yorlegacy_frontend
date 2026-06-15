@@ -485,6 +485,37 @@ export function fetchAdminVouchers(): Promise<VoucherCenter> {
   return fetchJson('/api/admin/vouchers', { method: 'GET' });
 }
 
+// Shadow-account overview (admin monitoring).
+export type ShadowOverviewRow = {
+  id: string;
+  shadowCode: string;
+  ownerUsername: string;
+  ownerFullName: string;
+  placement: 'left' | 'right';
+  state: string;
+  accountType: string | null;
+  leftVolume: number;
+  rightVolume: number;
+  matchedPoints: number;
+  unmatchedSurplus: number;
+  totalEarned: number;
+};
+export type ShadowOverview = {
+  stats: {
+    totalShadows: number;
+    activated: number;
+    reserved: number;
+    earning: number;
+    totalMatchedPoints: number;
+    totalTransferred: number;
+  } | null;
+  shadows: ShadowOverviewRow[];
+};
+
+export function fetchAdminShadowOverview(): Promise<ShadowOverview> {
+  return fetchJson('/api/admin/shadow-overview', { method: 'GET' });
+}
+
 // CD (Credit-Deduction) account center.
 export type CdAccountRow = {
   userId: string;
