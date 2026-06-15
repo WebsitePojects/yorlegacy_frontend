@@ -2460,6 +2460,7 @@ function WalletView({
   const [activeTab, setActiveTab] = useState<'main' | 'lifestyle' | 'ledger'>('main');
   const [ledgerPage, setLedgerPage] = useState(1);
   const [ledgerTypeFilter, setLedgerTypeFilter] = useState<string>('all');
+  const [ledgerSort, setLedgerSort] = useState<'recent' | 'amount-desc' | 'amount-asc'>('recent');
 
   const mainStreams = walletDetail.incomeBreakdown.filter(
     (s) => s.walletType.toLowerCase() !== 'lifestyle'
@@ -2789,9 +2790,15 @@ function WalletView({
         const LEDGER_PAGE_SIZE = 100;
         const creditEntries = walletDetail.ledger.filter((e) => e.creditAmount > 0);
         const entryTypes = ['all', ...Array.from(new Set(creditEntries.map((e) => e.entryType)))];
-        const filtered = ledgerTypeFilter === 'all'
+        const filteredByType = ledgerTypeFilter === 'all'
           ? creditEntries
           : creditEntries.filter((e) => e.entryType === ledgerTypeFilter);
+        // 'recent' keeps backend order (newest first); amount sorts are explicit.
+        const filtered = ledgerSort === 'recent'
+          ? filteredByType
+          : [...filteredByType].sort((a, b) =>
+              ledgerSort === 'amount-desc' ? b.creditAmount - a.creditAmount : a.creditAmount - b.creditAmount
+            );
         const totalPages = Math.max(1, Math.ceil(filtered.length / LEDGER_PAGE_SIZE));
         const safePage = Math.min(ledgerPage, totalPages);
         const pageRows = filtered.slice((safePage - 1) * LEDGER_PAGE_SIZE, safePage * LEDGER_PAGE_SIZE);
@@ -2810,22 +2817,33 @@ function WalletView({
                   <CardTitle className="text-base">Income Ledger</CardTitle>
                   <CardDescription className="text-xs">All wallet credit entries — every income event recorded against your account.</CardDescription>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {entryTypes.map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => { setLedgerTypeFilter(type); setLedgerPage(1); }}
-                      className={cn(
-                        'rounded-lg px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest transition',
-                        ledgerTypeFilter === type
-                          ? 'bg-[var(--foreground)] text-[var(--background)]'
-                          : 'bg-[var(--muted)]/40 text-[var(--muted-foreground)] hover:bg-[var(--muted)]/70'
-                      )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">
+                    Filter
+                    <select
+                      value={ledgerTypeFilter}
+                      onChange={(e) => { setLedgerTypeFilter(e.target.value); setLedgerPage(1); }}
+                      className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 py-1.5 text-xs font-medium normal-case tracking-normal text-[var(--foreground)]"
                     >
-                      {type === 'all' ? 'All' : type.replace(/_/g, ' ')}
-                    </button>
-                  ))}
+                      {entryTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type === 'all' ? 'All income types' : type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">
+                    Sort
+                    <select
+                      value={ledgerSort}
+                      onChange={(e) => { setLedgerSort(e.target.value as typeof ledgerSort); setLedgerPage(1); }}
+                      className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 py-1.5 text-xs font-medium normal-case tracking-normal text-[var(--foreground)]"
+                    >
+                      <option value="recent">Most recent</option>
+                      <option value="amount-desc">Amount: high → low</option>
+                      <option value="amount-asc">Amount: low → high</option>
+                    </select>
+                  </label>
                 </div>
               </CardHeader>
               <CardContent className="p-0 pb-0">

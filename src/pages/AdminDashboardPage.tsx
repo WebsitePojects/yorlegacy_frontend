@@ -66,7 +66,9 @@ import {
   type VoucherRecord,
   fetchAdminStaffAccounts,
   changeStaffPassword,
-  type StaffAccount
+  type StaffAccount,
+  fetchAdminCodeEvents,
+  type CodeEventPage
 } from '@/lib/api';
 import { SponsorTreeCanvas } from '@/features/unilevel/components/SponsorTreeCanvas';
 import type {
@@ -235,6 +237,76 @@ function formatAuditActionLabel(action: string) {
   }
 
   return action;
+}
+
+// Self-paging Code History: the full activation-code audit trail, fetched one
+// server-side page at a time (50/page) so it stays fast and scrolls on its own.
+function CodeHistoryPanel() {
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<CodeEventPage | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetchAdminCodeEvents(page, 50)
+      .then((d) => { if (!cancelled) setData(d); })
+      .catch(() => { if (!cancelled) setData(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [page]);
+
+  const events = data?.events ?? [];
+  const totalPages = data?.totalPages ?? 1;
+  const total = data?.total ?? 0;
+
+  return (
+    <Card className="ops-admin-table-card flex h-[480px] flex-col border-[var(--border)] bg-[var(--card)]">
+      <CardHeader className="shrink-0">
+        <CardTitle>Code History</CardTitle>
+        <CardDescription>Full activation-code audit trail — {total} event(s), paged for performance.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+        <div className="min-h-0 flex-1 overflow-hidden rounded-none border-t border-[var(--border)]">
+          <div className="h-full overflow-x-auto overflow-y-auto">
+            <table className="w-full min-w-[920px] text-sm">
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                  <th className="px-4 py-3">Actor</th>
+                  <th className="px-4 py-3">Action</th>
+                  <th className="px-4 py-3">Code</th>
+                  <th className="px-4 py-3">Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">Loading…</td></tr>
+                ) : events.length === 0 ? (
+                  <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">No activation-code history yet.</td></tr>
+                ) : events.map((event, i) => (
+                  <tr key={`${event.action}-${event.target}-${event.occurredAt}-${i}`} className="border-b border-[var(--border)] last:border-b-0">
+                    <td className="px-4 py-3">{event.actor}</td>
+                    <td className="px-4 py-3">{formatAuditActionLabel(event.action)}</td>
+                    <td className="px-4 py-3 font-mono text-[var(--yor-copper-soft)]">{event.target}</td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{event.occurredAt}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {totalPages > 1 && (
+          <div className="shrink-0 flex items-center justify-between border-t border-[var(--border)] bg-[var(--background)] px-4 py-2 text-xs text-[var(--muted-foreground)]">
+            <span>Page {data?.page ?? page} of {totalPages}</span>
+            <div className="flex gap-1">
+              <button type="button" disabled={page <= 1} className="rounded px-2 py-1 disabled:opacity-30 hover:bg-[var(--muted)]/30" onClick={() => setPage((p) => p - 1)}>← Prev</button>
+              <button type="button" disabled={page >= totalPages} className="rounded px-2 py-1 disabled:opacity-30 hover:bg-[var(--muted)]/30" onClick={() => setPage((p) => p + 1)}>Next →</button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 type CodeGenerationOption = {
@@ -1700,42 +1772,7 @@ export function AdminDashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card className="ops-admin-table-card flex h-[480px] flex-col border-[var(--border)] bg-[var(--card)]">
-                <CardHeader className="shrink-0">
-                  <CardTitle>Code History</CardTitle>
-                  <CardDescription>Latest activation-code events from the office ledger.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-                  {activationCodes.auditTrail.length ? (
-                    <div className="min-h-0 flex-1 overflow-hidden rounded-none border-t border-[var(--border)]">
-                      <div className="h-full overflow-x-auto overflow-y-auto">
-                        <table className="w-full min-w-[920px] text-sm">
-                          <thead className="sticky top-0 z-10">
-                            <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
-                              <th className="px-4 py-3">Actor</th>
-                              <th className="px-4 py-3">Action</th>
-                              <th className="px-4 py-3">Code</th>
-                              <th className="px-4 py-3">Time</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {activationCodes.auditTrail.map((event) => (
-                              <tr key={`${event.action}-${event.target}-${event.occurredAt}`} className="border-b border-[var(--border)] last:border-b-0">
-                                <td className="px-4 py-3">{event.actor}</td>
-                                <td className="px-4 py-3">{formatAuditActionLabel(event.action)}</td>
-                                <td className="px-4 py-3 font-mono text-[var(--yor-copper-soft)]">{event.target}</td>
-                                <td className="px-4 py-3 text-[var(--muted-foreground)]">{event.occurredAt}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-[var(--muted-foreground)]">No activation-code history yet.</p>
-                  )}
-                </CardContent>
-              </Card>
+              <CodeHistoryPanel />
             </section>
           ) : null}
 

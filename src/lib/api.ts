@@ -485,6 +485,18 @@ export function fetchAdminVouchers(): Promise<VoucherCenter> {
   return fetchJson('/api/admin/vouchers', { method: 'GET' });
 }
 
+export type CodeEventPage = {
+  events: Array<{ actor: string; action: string; target: string; occurredAt: string }>;
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export function fetchAdminCodeEvents(page: number, pageSize = 50): Promise<CodeEventPage> {
+  return fetchJson(`/api/admin/activation-code-events?page=${page}&pageSize=${pageSize}`, { method: 'GET' });
+}
+
 // GATE-ADMIN-PWD-20260615: staff-account directory + privileged password reset.
 export type StaffAccount = { id: string; email: string; displayName: string; role: AppRole };
 
