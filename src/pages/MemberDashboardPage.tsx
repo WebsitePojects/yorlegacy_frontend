@@ -329,6 +329,15 @@ const LIFESTYLE_SYNTHETIC_MODULE: OperationalModule = {
 
 const LIFESTYLE_THRESHOLD = 1000;
 
+// Product (maintenance) code families and their human product label.
+const PRODUCT_CODE_FAMILIES = ['YOR MAINTENANCE', 'YOR VISION', 'YOR REFILL'];
+function productTypeLabel(codeFamily: string, packageTier?: string): string {
+  if (/MAINTENANCE/i.test(codeFamily)) return 'Perfume';
+  if (/VISION/i.test(codeFamily)) return 'Eyedrops';
+  if (/REFILL/i.test(codeFamily)) return 'Perfume Refill';
+  return packageTier || 'Product';
+}
+
 // Dedicated Lifestyle Rewards page — uses the member's real lifestyle wallet
 // (repeat-purchase credits) rather than sandbox catalog numbers.
 function LifestyleRewardsView({ walletDetail, packageTier }: { walletDetail: MemberWalletDetail | null; packageTier?: string }) {
@@ -1025,9 +1034,9 @@ export function MemberDashboardPage() {
 
   async function handleMaintenanceCode() {
     const confirmed = await confirmAction({
-      title: 'Use maintenance code?',
-      description: `Consume ${maintenanceCode || 'the entered code'} as a maintenance action in the sandbox runtime.`,
-      confirmLabel: 'Use Code',
+      title: 'Use this product code?',
+      description: `Consume ${maintenanceCode || 'the selected code'} now. It will be marked used and credit +20 maintenance PV to your monthly Unilevel maintenance. This cannot be undone.`,
+      confirmLabel: 'Use & Credit',
       tone: 'warning'
     });
 
@@ -1775,11 +1784,44 @@ export function MemberDashboardPage() {
             <Card className="border-[var(--border)] bg-[var(--card)]">
               <CardHeader className="pb-3"><CardTitle className="text-base">Maintenance Use</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <label className="grid gap-2 text-sm">
-                  <span className="font-medium text-[var(--muted-foreground)]">Maintenance code</span>
-                  <Input value={maintenanceCode} onChange={(e) => setMaintenanceCode(e.target.value)} />
-                </label>
-                <Button type="button" className="w-full" onClick={handleMaintenanceCode}>Use Maintenance Code</Button>
+                {(() => {
+                  const productCodes = (activationCodes.inventory ?? []).filter(
+                    (item) => PRODUCT_CODE_FAMILIES.includes(item.codeFamily) && item.status === 'available'
+                  );
+                  return (
+                    <>
+                      <label className="grid gap-2 text-sm">
+                        <span className="font-medium text-[var(--muted-foreground)]">Product maintenance code</span>
+                        <select
+                          className="h-11 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-sm text-[var(--foreground)] disabled:opacity-50"
+                          value={maintenanceCode}
+                          disabled={productCodes.length === 0}
+                          onChange={(e) => setMaintenanceCode(e.target.value)}
+                        >
+                          <option value="">{productCodes.length === 0 ? 'No product codes available' : 'Select a product code…'}</option>
+                          {productCodes.map((item) => (
+                            <option key={item.code} value={item.code}>
+                              {item.code} — {productTypeLabel(item.codeFamily, item.packageTier)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <Button
+                        type="button"
+                        className="w-full"
+                        disabled={!maintenanceCode || !productCodes.some((c) => c.code === maintenanceCode)}
+                        onClick={handleMaintenanceCode}
+                      >
+                        Use &amp; Credit Maintenance Points
+                      </Button>
+                      <p className="text-xs leading-5 text-[var(--muted-foreground)]">
+                        Using a product code consumes it (marked <strong className="text-[var(--foreground)]">used</strong>) and credits
+                        <strong className="text-emerald-400"> +20 maintenance PV</strong> toward your monthly Unilevel maintenance (200 PV / month).
+                        You may also keep it or <strong className="text-[var(--foreground)]">transfer</strong> it instead — your choice.
+                      </p>
+                    </>
+                  );
+                })()}
                 <ul className="space-y-2 text-xs leading-5 text-[var(--muted-foreground)]">
                   {activationCodes.hints.map((hint) => <li key={hint} className="flex gap-2"><span className="text-amber-400">·</span>{hint}</li>)}
                 </ul>
