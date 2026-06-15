@@ -68,7 +68,9 @@ import {
   changeStaffPassword,
   type StaffAccount,
   fetchAdminCodeEvents,
-  type CodeEventPage
+  type CodeEventPage,
+  fetchAdminCdAccounts,
+  type CdAccountCenter
 } from '@/lib/api';
 import { SponsorTreeCanvas } from '@/features/unilevel/components/SponsorTreeCanvas';
 import type {
@@ -3308,21 +3310,50 @@ function GlobalBonusView({ activeModule }: ModuleViewProps) {
 
 // ─── 6. CD Accounts View ──────────────────────────────────────────────────────
 
-function CdAccountsView({ activeModule }: ModuleViewProps) {
-  const [searchText, setSearchText] = useState('');
-  const [cdStatus, setCdStatus] = useState('all');
-  const [packageFilter, setPackageFilter] = useState('all');
-  const metrics = activeModule?.metrics ?? [];
-  const rows = activeModule?.table?.rows ?? [];
+const CD_ACCOUNTS_PAGE_SIZE = 50;
 
-  const miniStats = [
-    { label: 'Total CD Accounts', keys: ['total', 'cd', 'account'] },
-    { label: 'Fully Paid', keys: ['fully', 'paid'] },
-    { label: 'Still Paying', keys: ['still', 'paying'] },
-    { label: 'Total CD Amount', keys: ['total', 'cd', 'amount'] },
-    { label: 'Total Paid So Far', keys: ['total', 'paid', 'far'] },
-    { label: 'CD Deductions', keys: ['cd', 'deduction'] },
-    { label: 'Net Encashment', keys: ['net', 'encashment'] },
+function CdAccountsView(_props: ModuleViewProps) {
+  const [searchText, setSearchText] = useState('');
+  const [cdStatus, setCdStatus] = useState<'all' | 'fully-paid' | 'paying'>('all');
+  const [packageFilter, setPackageFilter] = useState('all');
+  const [center, setCenter] = useState<CdAccountCenter | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchAdminCdAccounts()
+      .then((d) => { if (!cancelled) setCenter(d); })
+      .catch(() => { if (!cancelled) setCenter(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const stats = center?.stats ?? null;
+  const accounts = center?.accounts ?? [];
+  const breakdown = center?.packageBreakdown ?? [];
+
+  const peso = (n: number) => `PHP ${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const filteredAccounts = accounts.filter((a) => {
+    const q = searchText.trim().toLowerCase();
+    const statusMatch = cdStatus === 'all' || a.status === cdStatus;
+    const packageMatch = packageFilter === 'all' || a.packageTier.toLowerCase() === packageFilter;
+    const searchMatch = !q || a.username.toLowerCase().includes(q) || a.fullName.toLowerCase().includes(q);
+    return statusMatch && packageMatch && searchMatch;
+  });
+  const totalPages = Math.max(1, Math.ceil(filteredAccounts.length / CD_ACCOUNTS_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = filteredAccounts.slice((safePage - 1) * CD_ACCOUNTS_PAGE_SIZE, safePage * CD_ACCOUNTS_PAGE_SIZE);
+
+  const miniStats: Array<{ label: string; value: string }> = [
+    { label: 'Total CD Accounts', value: loading ? '…' : String(stats?.totalAccounts ?? 0) },
+    { label: 'Fully Paid', value: loading ? '…' : String(stats?.fullyPaid ?? 0) },
+    { label: 'Still Paying', value: loading ? '…' : String(stats?.paying ?? 0) },
+    { label: 'Total CD Amount', value: loading ? '…' : peso(stats?.totalCdAmount ?? 0) },
+    { label: 'Total Paid So Far', value: loading ? '…' : peso(stats?.totalPaid ?? 0) },
+    { label: 'CD Deductions', value: loading ? '…' : peso(stats?.cdDeductions ?? 0) },
+    { label: 'Net Encashment', value: loading ? '…' : peso(stats?.netEncashment ?? 0) },
   ];
 
   return (
@@ -3331,7 +3362,7 @@ function CdAccountsView({ activeModule }: ModuleViewProps) {
         {miniStats.map((stat) => (
           <div key={stat.label} className="flex flex-col justify-between rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
             <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[var(--muted-foreground)] leading-snug">{stat.label}</p>
-            <p className="mt-1.5 text-base font-semibold text-[var(--foreground)]">{getMetric(metrics, stat.keys)}</p>
+            <p className="mt-1.5 text-base font-semibold text-[var(--foreground)]">{stat.value}</p>
           </div>
         ))}
       </div>
@@ -3339,24 +3370,17 @@ function CdAccountsView({ activeModule }: ModuleViewProps) {
       <Card className="border-[var(--border)] bg-[var(--card)]">
         <CardHeader>
           <CardTitle>CD Account Management</CardTitle>
-          <CardDescription>
-            {activeModule?.description ?? 'View and filter member CD accounts by status, package, and payment progress.'}
-          </CardDescription>
+          <CardDescription>Credit-deduction balances and settlement readiness, computed from live network + encashment data.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-end gap-3">
             <label className="grid gap-1.5 text-sm">
               <span className="font-medium text-[var(--muted-foreground)]">Search</span>
-              <Input
-                className="w-56"
-                placeholder="Name or username"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-              />
+              <Input className="w-56" placeholder="Name or username" value={searchText} onChange={(e) => { setSearchText(e.target.value); setPage(1); }} />
             </label>
             <label className="grid gap-1.5 text-sm">
               <span className="font-medium text-[var(--muted-foreground)]">CD Status</span>
-              <select className={SELECT_CLASS + ' w-44'} value={cdStatus} onChange={(e) => setCdStatus(e.target.value)}>
+              <select className={SELECT_CLASS + ' w-44'} value={cdStatus} onChange={(e) => { setCdStatus(e.target.value as typeof cdStatus); setPage(1); }}>
                 <option value="all">All CD Status</option>
                 <option value="fully-paid">Fully Paid</option>
                 <option value="paying">Still Paying</option>
@@ -3364,7 +3388,7 @@ function CdAccountsView({ activeModule }: ModuleViewProps) {
             </label>
             <label className="grid gap-1.5 text-sm">
               <span className="font-medium text-[var(--muted-foreground)]">Package</span>
-              <select className={SELECT_CLASS + ' w-44'} value={packageFilter} onChange={(e) => setPackageFilter(e.target.value)}>
+              <select className={SELECT_CLASS + ' w-44'} value={packageFilter} onChange={(e) => { setPackageFilter(e.target.value); setPage(1); }}>
                 <option value="all">All Packages</option>
                 <option value="basic">Basic</option>
                 <option value="classic">Classic</option>
@@ -3373,20 +3397,79 @@ function CdAccountsView({ activeModule }: ModuleViewProps) {
                 <option value="vip">VIP</option>
               </select>
             </label>
-            <Button type="button" variant="outline">Search</Button>
-            <Button type="button" variant="outline" onClick={() => { setSearchText(''); setCdStatus('all'); setPackageFilter('all'); }}>Clear</Button>
-            <Button type="button" variant="outline" disabled>Export CSV</Button>
+            <Button type="button" variant="outline" onClick={() => { setSearchText(''); setCdStatus('all'); setPackageFilter('all'); setPage(1); }}>Clear</Button>
           </div>
         </CardContent>
       </Card>
 
+      {/* Per-account detail table */}
+      <Card className="ops-admin-table-card flex h-[560px] flex-col border-[var(--border)] bg-[var(--card)]">
+        <CardHeader className="shrink-0">
+          <CardTitle>CD Accounts ({filteredAccounts.length})</CardTitle>
+          <CardDescription>Every credit-deduction account, row by row.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+          <div className="min-h-0 flex-1 overflow-hidden border-t border-[var(--border)]">
+            <div className="h-full overflow-x-auto overflow-y-auto">
+              <table className="w-full min-w-[1080px] text-sm">
+                <thead className="sticky top-0 z-10">
+                  <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                    <th className="px-4 py-3">Username</th>
+                    <th className="px-4 py-3">Full Name</th>
+                    <th className="px-4 py-3">Package</th>
+                    <th className="px-4 py-3 text-right">CD Amount</th>
+                    <th className="px-4 py-3 text-right">Paid</th>
+                    <th className="px-4 py-3 text-right">Remaining</th>
+                    <th className="px-4 py-3 text-right">Net Encashment</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">Loading…</td></tr>
+                  ) : pageRows.length === 0 ? (
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">No CD accounts match the filters.</td></tr>
+                  ) : pageRows.map((a) => (
+                    <tr key={a.userId} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
+                      <td className="px-4 py-3 font-mono font-medium text-[var(--foreground)]">{a.username}</td>
+                      <td className="px-4 py-3 text-[var(--muted-foreground)]">{a.fullName}</td>
+                      <td className="px-4 py-3">{a.packageTier}</td>
+                      <td className="px-4 py-3 text-right font-mono">{peso(a.cdAmount)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-emerald-500">{peso(a.cdPaid)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-amber-500">{peso(a.cdRemaining)}</td>
+                      <td className="px-4 py-3 text-right font-mono">{peso(a.netEncashment)}</td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className={a.status === 'fully-paid' ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-amber-500/40 bg-amber-500/10 text-amber-400'}>
+                          {a.status === 'fully-paid' ? 'Fully Paid' : 'Paying'}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {totalPages > 1 && (
+            <div className="shrink-0 flex items-center justify-between border-t border-[var(--border)] bg-[var(--background)] px-4 py-2 text-xs text-[var(--muted-foreground)]">
+              <span>{(safePage - 1) * CD_ACCOUNTS_PAGE_SIZE + 1}–{Math.min(safePage * CD_ACCOUNTS_PAGE_SIZE, filteredAccounts.length)} of {filteredAccounts.length}</span>
+              <div className="flex gap-1">
+                <button type="button" disabled={safePage <= 1} className="rounded px-2 py-1 disabled:opacity-30 hover:bg-[var(--muted)]/30" onClick={() => setPage((p) => p - 1)}>← Prev</button>
+                <span className="px-2 py-1">{safePage} / {totalPages}</span>
+                <button type="button" disabled={safePage >= totalPages} className="rounded px-2 py-1 disabled:opacity-30 hover:bg-[var(--muted)]/30" onClick={() => setPage((p) => p + 1)}>Next →</button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Package breakdown */}
       <Card className="border-[var(--border)] bg-[var(--card)]">
         <CardHeader>
           <CardTitle>CD Package Breakdown</CardTitle>
         </CardHeader>
         <CardContent>
-          {rows.length === 0 ? (
-            <ModuleEmptyState message="No CD account records found." />
+          {breakdown.length === 0 ? (
+            <ModuleEmptyState message={loading ? 'Loading…' : 'No CD account records found.'} />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
               <table className="w-full min-w-[1000px] text-sm">
@@ -3396,23 +3479,23 @@ function CdAccountsView({ activeModule }: ModuleViewProps) {
                     <th className="px-4 py-3">Accounts</th>
                     <th className="px-4 py-3">Fully Paid</th>
                     <th className="px-4 py-3">Paying</th>
-                    <th className="px-4 py-3">CD Amount</th>
-                    <th className="px-4 py-3">Paid</th>
-                    <th className="px-4 py-3">Remaining</th>
-                    <th className="px-4 py-3">Net Encashment</th>
+                    <th className="px-4 py-3 text-right">CD Amount</th>
+                    <th className="px-4 py-3 text-right">Paid</th>
+                    <th className="px-4 py-3 text-right">Remaining</th>
+                    <th className="px-4 py-3 text-right">Net Encashment</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, i) => (
-                    <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
-                      <td className="px-4 py-3 font-medium text-[var(--foreground)]">{String(row['package'] ?? row['Package'] ?? '—')}</td>
-                      <td className="px-4 py-3">{String(row['accounts'] ?? row['Accounts'] ?? '—')}</td>
-                      <td className="px-4 py-3 text-emerald-500">{String(row['fullyPaid'] ?? row['fully_paid'] ?? row['FullyPaid'] ?? '—')}</td>
-                      <td className="px-4 py-3 text-amber-500">{String(row['paying'] ?? row['Paying'] ?? '—')}</td>
-                      <td className="px-4 py-3">{String(row['cdAmount'] ?? row['cd_amount'] ?? row['CdAmount'] ?? '—')}</td>
-                      <td className="px-4 py-3 text-emerald-500">{String(row['paid'] ?? row['Paid'] ?? '—')}</td>
-                      <td className="px-4 py-3 text-amber-500">{String(row['remaining'] ?? row['Remaining'] ?? '—')}</td>
-                      <td className="px-4 py-3 text-[var(--foreground)]">{String(row['netEncashment'] ?? row['net_encashment'] ?? row['NetEncashment'] ?? '—')}</td>
+                  {breakdown.map((row) => (
+                    <tr key={row.package} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
+                      <td className="px-4 py-3 font-medium text-[var(--foreground)]">{row.package}</td>
+                      <td className="px-4 py-3">{row.accounts}</td>
+                      <td className="px-4 py-3 text-emerald-500">{row.fullyPaid}</td>
+                      <td className="px-4 py-3 text-amber-500">{row.paying}</td>
+                      <td className="px-4 py-3 text-right font-mono">{peso(row.cdAmount)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-emerald-500">{peso(row.paid)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-amber-500">{peso(row.remaining)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-[var(--foreground)]">{peso(row.netEncashment)}</td>
                     </tr>
                   ))}
                 </tbody>

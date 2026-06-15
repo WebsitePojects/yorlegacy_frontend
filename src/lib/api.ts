@@ -485,6 +485,47 @@ export function fetchAdminVouchers(): Promise<VoucherCenter> {
   return fetchJson('/api/admin/vouchers', { method: 'GET' });
 }
 
+// CD (Credit-Deduction) account center.
+export type CdAccountRow = {
+  userId: string;
+  username: string;
+  fullName: string;
+  packageTier: string;
+  cdAmount: number;
+  cdPaid: number;
+  cdRemaining: number;
+  status: 'fully-paid' | 'paying';
+  cdDeductions: number;
+  netEncashment: number;
+};
+export type CdAccountCenter = {
+  stats: {
+    totalAccounts: number;
+    fullyPaid: number;
+    paying: number;
+    totalCdAmount: number;
+    totalPaid: number;
+    totalRemaining: number;
+    cdDeductions: number;
+    netEncashment: number;
+  } | null;
+  packageBreakdown: Array<{
+    package: string;
+    accounts: number;
+    fullyPaid: number;
+    paying: number;
+    cdAmount: number;
+    paid: number;
+    remaining: number;
+    netEncashment: number;
+  }>;
+  accounts: CdAccountRow[];
+};
+
+export function fetchAdminCdAccounts(): Promise<CdAccountCenter> {
+  return fetchJson('/api/admin/cd-accounts', { method: 'GET' });
+}
+
 export type CodeEventPage = {
   events: Array<{ actor: string; action: string; target: string; occurredAt: string }>;
   total: number;
