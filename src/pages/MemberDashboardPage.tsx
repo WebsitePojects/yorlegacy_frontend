@@ -448,13 +448,18 @@ export function MemberDashboardPage() {
 
   const buildMemberBundle = useCallback(
     async (targetModuleId: string, rootUsername: string): Promise<MemberModuleBundle> => {
+      // These three modules are rendered by dedicated components that fetch their
+      // own data (BinaryCyclePanel, UnilevelView, Get-Yor-Five). The backend module
+      // catalog intentionally excludes them (not in OPERATIONAL_MEMBER_MODULE_IDS),
+      // so calling /api/member/modules/<id> only 404s — resolve the synthetic shell
+      // directly to avoid the failed request (and the hover-prefetch noise).
       const modulePromise =
         targetModuleId === 'get-yor-five'
           ? Promise.resolve(GYF_SYNTHETIC_MODULE)
           : targetModuleId === 'binary-cycle-bonus'
-            ? getMemberModule(targetModuleId).catch(() => BINARY_CYCLE_SYNTHETIC_MODULE)
+            ? Promise.resolve(BINARY_CYCLE_SYNTHETIC_MODULE)
             : targetModuleId === 'unilevel-rank-progress'
-              ? getMemberModule(targetModuleId).catch(() => UNILEVEL_SYNTHETIC_MODULE)
+              ? Promise.resolve(UNILEVEL_SYNTHETIC_MODULE)
               : getMemberModule(targetModuleId);
 
       const [nextSummary, nextOffice, nextMvpDashboard, nextModule] = await Promise.all([
