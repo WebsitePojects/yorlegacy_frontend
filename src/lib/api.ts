@@ -39,6 +39,11 @@ const API_BASE_URL = (
 ).replace(/\/+$/, '');
 const CSRF_COOKIE_NAME = 'yor_csrf';
 
+// Same base as fetchJson — used for the live-updates EventSource.
+export function apiUrl(path: string): string {
+  return `${API_BASE_URL}${path}`;
+}
+
 function readCookie(name: string): string | null {
   if (typeof document === 'undefined') {
     return null;
@@ -377,6 +382,19 @@ export function fetchMemberDirectReferrals(): Promise<{ rows: Array<{ username: 
   return fetchJson('/api/member/direct-referrals', { method: 'GET' });
 }
 
+export function fetchMemberPairingEvents(): Promise<{
+  events: Array<{
+    occurredAt: string; source: string; leftVolume: number; rightVolume: number;
+    matchedPoints: number; leftRemaining: number; rightRemaining: number; salesmatchAmount: number;
+  }>;
+}> {
+  return fetchJson('/api/member/salesmatch/pairing-events', { method: 'GET' });
+}
+
+export function triggerMemberCompensation(): Promise<{ credited: number; processed: number }> {
+  return fetchJson('/api/member/trigger-compensation', { method: 'POST' });
+}
+
 export function fetchMemberShadowAccounts(ownerUsername?: string): Promise<ShadowAccountCenter> {
   const suffix = ownerUsername ? `?ownerUsername=${encodeURIComponent(ownerUsername)}` : '';
   return fetchJson(`/api/member/shadow-accounts${suffix}`, { method: 'GET' });
@@ -397,12 +415,17 @@ export function generateAdminActivationCodes(
   codeFamily?: string,
   assignedTo?: string,
   accountType?: string,
-  remarks?: string
+  remarks?: string,
+  assignedToUserId?: string
 ): Promise<GatedActionResponse> {
   return fetchJson('/api/admin/activation-codes/generate', {
     method: 'POST',
-    body: JSON.stringify({ quantity, packageTier, codeFamily, assignedTo, accountType, remarks })
+    body: JSON.stringify({ quantity, packageTier, codeFamily, assignedTo, accountType, remarks, assignedToUserId })
   });
+}
+
+export function fetchAdminCashiers(): Promise<Array<{ id: string; displayName: string; email: string }>> {
+  return fetchJson('/api/admin/cashiers');
 }
 
 export function releaseAdminActivationCodes(codes: string[]): Promise<GatedActionResponse> {
@@ -537,7 +560,7 @@ export function fetchAdminBinaryTree(rootUsername?: string): Promise<GenealogyCe
   return fetchJson(`/api/admin/genealogy/binary-tree${suffix}`, { method: 'GET' });
 }
 
-export function fetchAdminSponsorTree(rootUsername?: string): Promise<GenealogyCenter> {
+export function fetchAdminSponsorTree(rootUsername?: string): Promise<SponsorTreeCenter> {
   const suffix = rootUsername ? `?rootUsername=${encodeURIComponent(rootUsername)}` : '';
   return fetchJson(`/api/admin/genealogy/sponsor-tree${suffix}`, { method: 'GET' });
 }
@@ -637,5 +660,78 @@ export function updateAdminContactMessageStatus(
   return fetchJson(`/api/admin/contact-messages/${encodeURIComponent(id)}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status })
+  });
+}
+
+// ── Unilevel ──────────────────────────────────────────────────────────────────
+
+export type SponsorTreeApiNode = {
+  nodeId: string;
+  username: string;
+  fullName: string;
+  packageTier: string;
+  accountStateLabel: 'PD' | 'FS' | 'CD - Paid' | 'CD - Unpaid';
+  status: 'active' | 'pending' | 'disabled';
+  depth: number;
+  directReferrals: number;
+  children: SponsorTreeApiNode[];
+};
+
+export type SponsorTreeCenter = {
+  moneyMode: string;
+  treeType: 'sponsor';
+  root: SponsorTreeApiNode;
+};
+
+export type UnilevelData = {
+  moneyMode: string;
+  levelPercentages: number[];
+  totalEarned: number;
+  byLevel: Array<{ level: number; percent: number; amount: number; count: number }>;
+  entries: Array<{ id: string; level: number; sourceReference: string; creditAmount: number; occurredAt: string; status: string }>;
+};
+
+export function fetchMemberSponsorTree(rootUsername?: string): Promise<SponsorTreeCenter> {
+  const suffix = rootUsername ? `?rootUsername=${encodeURIComponent(rootUsername)}` : '';
+  return fetchJson(`/api/member/genealogy/sponsor-tree${suffix}`, { method: 'GET' });
+}
+
+export function fetchMemberUnilevelData(): Promise<UnilevelData> {
+  return fetchJson('/api/member/unilevel', { method: 'GET' });
+}
+
+export function fetchAdminMemberUnilevelData(username: string): Promise<UnilevelData> {
+  return fetchJson(`/api/admin/unilevel?username=${encodeURIComponent(username)}`, { method: 'GET' });
+}
+
+// ── Global Bonus ───────────────────────────────────────────────────────────────
+
+export type StockistLevel = 'none' | 'mobile_kiosk' | 'city_center' | 'mega_center';
+
+export type GlobalBonusEntry = {
+  userId: string;
+  username: string;
+  fullName: string;
+  packageTier: string;
+  stockistLevel: StockistLevel;
+  stockistLabel: string;
+  portions: number;
+};
+
+export type GlobalBonusData = {
+  moneyMode: string;
+  entries: GlobalBonusEntry[];
+  totalPortions: number;
+  notes: string[];
+};
+
+export function fetchAdminGlobalBonus(): Promise<GlobalBonusData> {
+  return fetchJson('/api/admin/global-bonus', { method: 'GET' });
+}
+
+export function tagStockistLevel(username: string, level: StockistLevel): Promise<{ username: string; stockistLevel: StockistLevel }> {
+  return fetchJson('/api/admin/global-bonus/tag-stockist', {
+    method: 'POST',
+    body: JSON.stringify({ username, level })
   });
 }

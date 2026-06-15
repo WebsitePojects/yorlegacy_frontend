@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 import App from './App';
 import { ProtectedRoute } from '../components/layout/ProtectedRoute';
+import { ErrorBoundary } from '../components/feedback/ErrorBoundary';
 import { AdminDashboardPage } from '../pages/AdminDashboardPage';
 import { HomePage } from '../pages/HomePage';
 import { ContentPage } from '../pages/ContentPage';
@@ -91,7 +92,9 @@ export const routes = [
         path: 'member',
         element: (
           <ProtectedRoute allowedRoles={['member', 'admin', 'cashier', 'bod', 'superadmin']}>
-            <MemberDashboardPage />
+            <ErrorBoundary label="member dashboard">
+              <MemberDashboardPage />
+            </ErrorBoundary>
           </ProtectedRoute>
         )
       },
@@ -99,7 +102,9 @@ export const routes = [
         path: 'member/:moduleId',
         element: (
           <ProtectedRoute allowedRoles={['member', 'admin', 'cashier', 'bod', 'superadmin']}>
-            <MemberDashboardPage />
+            <ErrorBoundary label="member dashboard">
+              <MemberDashboardPage />
+            </ErrorBoundary>
           </ProtectedRoute>
         )
       },
@@ -107,7 +112,9 @@ export const routes = [
         path: 'admin',
         element: (
           <ProtectedRoute allowedRoles={['admin', 'cashier', 'bod', 'superadmin']}>
-            <AdminDashboardPage />
+            <ErrorBoundary label="admin dashboard">
+              <AdminDashboardPage />
+            </ErrorBoundary>
           </ProtectedRoute>
         )
       },
@@ -115,7 +122,9 @@ export const routes = [
         path: 'admin/:moduleId',
         element: (
           <ProtectedRoute allowedRoles={['admin', 'cashier', 'bod', 'superadmin']}>
-            <AdminDashboardPage />
+            <ErrorBoundary label="admin dashboard">
+              <AdminDashboardPage />
+            </ErrorBoundary>
           </ProtectedRoute>
         )
       },
@@ -123,7 +132,9 @@ export const routes = [
         path: 'bod',
         element: (
           <ProtectedRoute allowedRoles={['bod', 'admin', 'superadmin']}>
-            <AdminDashboardPage />
+            <ErrorBoundary label="admin dashboard">
+              <AdminDashboardPage />
+            </ErrorBoundary>
           </ProtectedRoute>
         )
       },
@@ -131,7 +142,9 @@ export const routes = [
         path: 'bod/:moduleId',
         element: (
           <ProtectedRoute allowedRoles={['bod', 'admin', 'superadmin']}>
-            <AdminDashboardPage />
+            <ErrorBoundary label="admin dashboard">
+              <AdminDashboardPage />
+            </ErrorBoundary>
           </ProtectedRoute>
         )
       },

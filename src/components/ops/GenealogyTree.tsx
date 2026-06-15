@@ -13,7 +13,8 @@ import {
   Printer,
   RotateCcw,
   Search,
-  Target
+  Target,
+  User
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent as ReactWheelEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -37,6 +38,7 @@ type GenealogyTreeProps = {
   availableActivationCodes?: ActivationCodeOption[];
   adminMode?: boolean;
   onUpgradeSuccess?: () => void;
+  suppressPointerAway?: boolean;
 };
 
 type SearchOption = {
@@ -106,6 +108,14 @@ function packageTone(packageTier: string) {
   }
 
   return 'is-basic';
+}
+
+const PKG_ABBR: Record<string, string> = {
+  VIP: 'VIP', CLASSIC: 'CL', BASIC: 'BA', STARTER: 'ST', BUSINESS: 'BI', STANDARD: 'SD'
+};
+function pkgAbbr(tier: string | undefined): string {
+  if (!tier) return '';
+  return PKG_ABBR[tier.trim().toUpperCase()] ?? tier.slice(0, 2).toUpperCase();
 }
 
 function getVerticalGap(level: number): number {
@@ -223,7 +233,7 @@ function openPrintableExport(title: string, rows: Array<Record<string, string>>,
   return true;
 }
 
-export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode, onOpenSlot, availableActivationCodes = [], adminMode = false, onUpgradeSuccess }: GenealogyTreeProps) {
+export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode, onOpenSlot, availableActivationCodes = [], adminMode = false, onUpgradeSuccess, suppressPointerAway = false }: GenealogyTreeProps) {
   const navigate = useNavigate();
   const { confirmAction, presentNotice, notify } = useFeedback();
   const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
@@ -271,6 +281,11 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [visibleDepth, setVisibleDepth] = useState(2);
   const [nodeSearch, setNodeSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(nodeSearch), 300);
+    return () => clearTimeout(id);
+  }, [nodeSearch]);
   const [focusedNodeKey, setFocusedNodeKey] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
@@ -380,17 +395,17 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
     [canvasRoot, focusedNodeKey, root.nodeId, searchableNodes, selectedNodeId]
   );
   const searchOptions = useMemo(
-    () => searchableNodes.filter((node) => node.source || node.isShadowNode).map(toSearchOption),
+    () => searchableNodes.filter((node) => !!node.source).map(toSearchOption),
     [searchableNodes]
   );
   const filteredSearchOptions = useMemo(() => {
-    const query = nodeSearch.trim().toUpperCase();
+    const query = debouncedSearch.trim().toUpperCase();
     if (!query) {
       return searchOptions;
     }
 
     return searchOptions.filter((option) => option.searchValue.includes(query));
-  }, [nodeSearch, searchOptions]);
+  }, [debouncedSearch, searchOptions]);
   const exportRows = useMemo(
     () => buildExportRows(searchableNodes).map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, String(value)]))),
     [searchableNodes]
@@ -572,13 +587,15 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
       const target = event.target as Node;
 
       if (!shellRef.current?.contains(target)) {
-        setIsActive(false);
-        setIsDragging(false);
+        if (!suppressPointerAway) {
+          setIsActive(false);
+          setIsDragging(false);
+          dragRef.current = null;
+          pointersRef.current.clear();
+          pinchDistanceRef.current = null;
+        }
         setIsSearchOpen(false);
         setIsExportOpen(false);
-        dragRef.current = null;
-        pointersRef.current.clear();
-        pinchDistanceRef.current = null;
       }
 
       if (!searchRef.current?.contains(target)) {
@@ -601,7 +618,7 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
       document.removeEventListener('pointerdown', handlePointerAway);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, []);
+  }, [suppressPointerAway]);
 
   useEffect(() => {
     if (!filteredSearchOptions.length) {
@@ -1031,6 +1048,12 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
               onNavigateToNode={onNavigateToNode}
               adminMode={adminMode}
               onOpenSlot={(slot) => {
+                // The registration modal renders outside this canvas shell, so it is
+                // invisible while the shell is in the Fullscreen API. Exit fullscreen
+                // first so the modal is shown on the normal document.
+                if (document.fullscreenElement) {
+                  void document.exitFullscreen().catch(() => { /* ignore */ });
+                }
                 if (onOpenSlot) {
                   onOpenSlot(slot);
                   return;
@@ -1080,15 +1103,29 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="w-full max-w-md border border-[rgba(245,200,66,0.3)] bg-[#100d0c]/98 p-6 rounded-2xl shadow-[0_32px_64px_rgba(0,0,0,0.6)] animate-in fade-in zoom-in-95 duration-200 text-left">
-            <h3 className="text-lg font-bold text-[#f5c842] mb-2 font-serif">Activate Shadow Account</h3>
+            <h3 className="text-lg font-bold text-[#f5c842] mb-2 font-serif">Shadow Account</h3>
             <p className="text-sm text-gray-400 mb-5">
-              Activate your shadow account <strong className="text-white">{activeShadowNode?.label ?? 'Shadow Slot'}</strong> to begin tracking placement volume.
+              <strong className="text-white">{activeShadowNode?.label ?? 'Shadow Slot'}</strong> is already active. Apply a higher package code to upgrade it, or view its pairing income.
             </p>
+            <div className="mb-4 flex justify-start">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsActivationModalOpen(false);
+                  setSelectedActivationCode('');
+                  setActiveShadowNode(null);
+                  navigate('/member/account-shadow-management');
+                }}
+                className="px-3 py-1.5 border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+              >
+                View Shadow Income
+              </button>
+            </div>
 
             {availableActivationCodes.length > 0 ? (
               <div className="space-y-4">
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Select Activation Code</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Select Upgrade Code</label>
                   <select
                     value={selectedActivationCode}
                     onChange={(e) => setSelectedActivationCode(e.target.value)}
@@ -1120,14 +1157,14 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
                     disabled={isActivating}
                     className="px-4 py-2 bg-gradient-to-r from-[#c8703a] to-[#f5c842] hover:opacity-90 text-[#2c1607] font-bold rounded-xl text-sm border-0 transition-opacity disabled:opacity-50 cursor-pointer"
                   >
-                    {isActivating ? 'Activating...' : 'Activate Account'}
+                    {isActivating ? 'Upgrading...' : 'Apply Upgrade'}
                   </button>
                 </div>
               </div>
             ) : (
               <div>
-                <p className="text-sm text-red-400 mb-6 bg-red-950/20 border border-red-500/20 p-3 rounded-xl">
-                  No activation codes available. Please purchase a code under the Activation Codes tab to activate this shadow slot.
+                <p className="text-sm text-amber-300 mb-6 bg-amber-950/20 border border-amber-500/20 p-3 rounded-xl">
+                  No higher-tier upgrade codes available. This shadow is already active and earning; add a higher package code to upgrade its tier.
                 </p>
                 <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-red-500/10">
                   <button
@@ -1244,7 +1281,7 @@ function toSearchOption(node: CanvasNode): SearchOption {
       title: node.source.username,
       subtitle: node.source.fullName,
       meta: `Level ${node.level} - ${node.side} leg - ${node.source.packageTier}`,
-      searchValue: [node.source.username, node.source.fullName, node.source.referralCode, node.side, `level ${node.level}`].join(' ').toUpperCase(),
+      searchValue: [node.source.username, node.source.fullName].join(' ').toUpperCase(),
       nodeId: node.source.nodeId,
       kind: 'member'
     };
@@ -1298,9 +1335,7 @@ function BinaryBranch({
     }
 
     if (node.isShadowNode) {
-      if (node.shadowSlot?.activationStatus === 'activated') {
-        return;
-      }
+      // Always allow upgrade: shadows can always receive a higher-tier code
       await onActivateShadow({
         label: node.shadowSlot?.label ?? node.key,
         shadowCode: node.shadowSlot?.shadowCode ?? node.shadowSlot?.id ?? node.key
@@ -1375,7 +1410,12 @@ function BinaryBranch({
       >
         {source ? (
           <>
-            <div className="genealogy-canvas-node-orb">{source.username.slice(0, 2).toUpperCase()}</div>
+            <div className="genealogy-canvas-node-orb">
+              <div className="genealogy-orb-content">
+                <span>{source.username.slice(0, 2).toUpperCase()}</span>
+                <span className="genealogy-orb-pkg">{pkgAbbr(source.packageTier)}</span>
+              </div>
+            </div>
             <div className="genealogy-canvas-node-main">
               <div className="genealogy-canvas-node-title">
                 <strong>{source.fullName}</strong>
@@ -1467,7 +1507,7 @@ function BinaryBranch({
         ) : (
           <>
             <div className="genealogy-canvas-node-orb">
-              <Plus className="size-4" />
+              <User className="size-4" />
             </div>
             <div className="genealogy-canvas-node-main">
               <div className="genealogy-canvas-node-title">
@@ -1490,15 +1530,15 @@ function BinaryBranch({
 
                 <div className="genealogy-popover-section-label">Shadow Status</div>
                 <div className="genealogy-popover-row">
-                  <span className="genealogy-popover-row-label">Activation</span>
-                  <span className={cn('genealogy-popover-row-value', node.shadowSlot.activationStatus === 'activated' ? 'is-positive' : 'is-warning')}>
-                    {node.shadowSlot.activationStatus === 'activated' ? 'Activated' : 'Inactive'}
+                  <span className="genealogy-popover-row-label">Package</span>
+                  <span className={cn('genealogy-popover-row-value', node.shadowSlot.packageTier ? 'is-positive' : 'is-warning')}>
+                    {node.shadowSlot.packageTier ?? 'Not set'}
                   </span>
                 </div>
                 <div className="genealogy-popover-row">
-                  <span className="genealogy-popover-row-label">Account State</span>
-                  <span className="genealogy-popover-row-value">
-                    {node.shadowSlot.state.replace('_', ' ')}
+                  <span className="genealogy-popover-row-label">Upgrade Code</span>
+                  <span className={cn('genealogy-popover-row-value', node.shadowSlot.hasUpgradeCode ? 'is-positive' : 'is-warning')}>
+                    {node.shadowSlot.hasUpgradeCode ? `${node.shadowSlot.activationCode ?? '—'} (${node.shadowSlot.pvValue} PV)` : 'None — click to upgrade'}
                   </span>
                 </div>
                 <div className="genealogy-popover-row">
@@ -1541,9 +1581,9 @@ function BinaryBranch({
                   </>
                 ) : null}
 
-                {node.shadowSlot.activationStatus === 'inactive' && availableActivationCodes.length > 0 ? (
+                {availableActivationCodes.length > 0 ? (
                   <>
-                    <div className="genealogy-popover-section-label">Activate with Code</div>
+                    <div className="genealogy-popover-section-label">{node.shadowSlot.hasUpgradeCode ? 'Upgrade with Code' : 'Apply Upgrade Code'}</div>
                     <div className="genealogy-popover-code-list">
                       {availableActivationCodes.slice(0, 4).map((item) => (
                         <div key={item.code} className="genealogy-popover-code-row">
@@ -1559,8 +1599,8 @@ function BinaryBranch({
                   </>
                 ) : null}
 
-                {node.shadowSlot.activationStatus === 'inactive' && availableActivationCodes.length === 0 ? (
-                  <p className="genealogy-popover-note is-warning">No activation codes available. Purchase a code to activate this shadow slot.</p>
+                {availableActivationCodes.length === 0 ? (
+                  <p className="genealogy-popover-note is-warning">No upgrade codes available. Purchase a code to upgrade this shadow slot.</p>
                 ) : null}
               </div>
             ) : null}

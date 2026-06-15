@@ -16,6 +16,10 @@ type DirectReferralPanelProps = {
 export function DirectReferralPanel({ activeModule }: DirectReferralPanelProps) {
   const [page, setPage] = useState(1);
   const [prodRows, setProdRows] = useState<DirectReferralRow[] | null>(null);
+  // Tracks whether the production endpoint answered. A successful response of zero
+  // rows is authoritative (the member genuinely has no directs) and must NOT fall
+  // back to the static sandbox catalog, which previously showed a phantom "5".
+  const [prodResolved, setProdResolved] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,10 +27,16 @@ export function DirectReferralPanel({ activeModule }: DirectReferralPanelProps) 
     setLoading(true);
     fetchMemberDirectReferrals()
       .then((data) => {
-        if (!cancelled) setProdRows(data.rows.length > 0 ? data.rows : null);
+        if (!cancelled) {
+          setProdRows(data.rows);
+          setProdResolved(true);
+        }
       })
       .catch(() => {
-        if (!cancelled) setProdRows(null);
+        if (!cancelled) {
+          setProdRows(null);
+          setProdResolved(false);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -43,7 +53,9 @@ export function DirectReferralPanel({ activeModule }: DirectReferralPanelProps) 
     placement: String(r.placement ?? '')
   }));
 
-  const rows: DirectReferralRow[] = !loading && prodRows ? prodRows : sandboxRows;
+  // Prefer the production list whenever it resolved (even if empty); only fall back
+  // to the sandbox catalog when the production call actually failed.
+  const rows: DirectReferralRow[] = prodResolved ? (prodRows ?? []) : sandboxRows;
   const totalPages = Math.max(1, Math.ceil(rows.length / DR_PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const visibleRows = rows.slice((currentPage - 1) * DR_PAGE_SIZE, currentPage * DR_PAGE_SIZE);

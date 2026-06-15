@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+﻿import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FeedbackProvider } from '@/components/feedback/FeedbackProvider';
@@ -44,7 +44,7 @@ function makeNode(overrides: Partial<GenealogyTreeNode> = {}): GenealogyTreeNode
         state: 'reserved_shadow',
         shadowCode: 'shadow-left',
         label: 'YOU 2',
-        activationStatus: 'inactive',
+        hasUpgradeCode: false,
         registrationEnabled: false,
         walletEnabled: false,
         unilevelEnabled: false,
@@ -65,7 +65,7 @@ function makeNode(overrides: Partial<GenealogyTreeNode> = {}): GenealogyTreeNode
         state: 'reserved_shadow',
         shadowCode: 'shadow-right',
         label: 'YOU 3',
-        activationStatus: 'inactive',
+        hasUpgradeCode: false,
         registrationEnabled: false,
         walletEnabled: false,
         unilevelEnabled: false,

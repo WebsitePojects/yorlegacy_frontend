@@ -9,6 +9,7 @@ import {
 import {
   approveAdminEncashment,
   fetchAdminActivationCodes,
+  fetchAdminCashiers,
   fetchAdminBinaryTree,
   fetchAdminEncashments,
   fetchAdminMemberManagement,
@@ -55,6 +56,7 @@ import {
   useMaintenanceCode
 } from '../lib/api';
 import { clearAllOfficeCache } from '../lib/office-cache';
+import type { SponsorTreeCenter } from '../lib/api';
 import type {
   AdminActivationCodeCenter,
   AdminEncashmentCenter,
@@ -123,11 +125,13 @@ type AuthContextValue = AuthState & {
   getMemberShadowAccounts: (ownerUsername?: string) => Promise<ShadowAccountCenter>;
   getAdminShadowAccounts: (ownerUsername: string) => Promise<ShadowAccountCenter>;
   getAdminActivationCodes: () => Promise<AdminActivationCodeCenter>;
+  listCashiers: () => Promise<Array<{ id: string; displayName: string; email: string }>>;
   generateActivationCodes: (payload: {
     quantity: number;
     packageTier?: string;
     codeFamily?: string;
     assignedTo?: string;
+    assignedToUserId?: string;
     accountType?: string;
     remarks?: string;
   }) => Promise<GatedActionResponse>;
@@ -179,7 +183,7 @@ type AuthContextValue = AuthState & {
   ) => Promise<GatedActionResponse>;
   resetSandbox: () => Promise<GatedActionResponse>;
   getAdminBinaryTree: (rootUsername?: string) => Promise<GenealogyCenter>;
-  getAdminSponsorTree: (rootUsername?: string) => Promise<GenealogyCenter>;
+  getAdminSponsorTree: (rootUsername?: string) => Promise<SponsorTreeCenter>;
   searchMemberProfile: (username: string) => Promise<{ username: string; fullName: string; packageTier: string }>;
 };
 
@@ -278,8 +282,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     getMemberShadowAccounts: fetchMemberShadowAccounts,
     getAdminShadowAccounts: fetchAdminShadowAccounts,
     getAdminActivationCodes: fetchAdminActivationCodes,
-    generateActivationCodes: ({ quantity, packageTier, codeFamily, assignedTo, accountType, remarks }) =>
-      generateAdminActivationCodes(quantity, packageTier, codeFamily, assignedTo, accountType, remarks),
+    listCashiers: fetchAdminCashiers,
+    generateActivationCodes: ({ quantity, packageTier, codeFamily, assignedTo, assignedToUserId, accountType, remarks }) =>
+      generateAdminActivationCodes(quantity, packageTier, codeFamily, assignedTo, accountType, remarks, assignedToUserId),
     releaseActivationCodes: releaseAdminActivationCodes,
     transferAdminCodes: transferAdminActivationCodes,
     reviewActivationCodes: reviewAdminActivationCodes,

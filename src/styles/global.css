@@ -1498,6 +1498,30 @@ body {
   flex-shrink: 0;
 }
 
+.genealogy-orb-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  gap: 1px;
+}
+
+.genealogy-orb-content > span:first-child {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.genealogy-orb-pkg {
+  font-size: 0.44rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 220, 120, 0.9);
+  line-height: 1;
+}
+
 .genealogy-canvas-node-main,
 .genealogy-canvas-node-stats {
   min-width: 0;

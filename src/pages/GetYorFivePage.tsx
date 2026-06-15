@@ -195,7 +195,7 @@ export function GetYorFiveContent({ data, isLoading }: {
                       <td className="px-4 py-3 font-semibold text-amber-600 dark:text-amber-400">{formatCurrency(entry.creditAmount)}</td>
                       <td className="px-4 py-3 text-[var(--foreground)]">{formatCurrency(entry.balanceAfter)}</td>
                       <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">
-                        {entry.occurredAt ? new Date(entry.occurredAt).toLocaleDateString('en-PH') : '—'}
+                        {entry.occurredAt ? new Date(entry.occurredAt).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' }) : '—'}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={entry.status === 'posted' ? 'success' : 'outline'} className="text-[10px]">

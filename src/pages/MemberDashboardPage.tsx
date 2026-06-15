@@ -11,6 +11,7 @@ import {
   CreditCard,
   Eye,
   EyeOff,
+  FileText,
   Gift,
   GitBranch,
   Globe,
@@ -31,7 +32,7 @@ import { ProtectedOfficeFrame } from '@/components/layout/ProtectedOfficeFrame';
 import { RegistrationPageView } from '@/components/pages/RegistrationPageView';
 import { GenealogyTree } from '../components/ops/GenealogyTree';
 import { clearAllOfficeCache, readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
-import { formatAccountTypeLabel } from '@/lib/utils';
+import { cn, formatAccountTypeLabel } from '@/lib/utils';
 import {
   DataListCard,
   GatedActionsCard,
@@ -46,12 +47,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { searchMemberTransferTargets } from '@/lib/api';
 import { createMemberPlacementReservation } from '@/lib/api';
+import { apiUrl } from '@/lib/api';
 import { BinaryCyclePanel } from '@/features/earnings/components/BinaryCyclePanel';
 import { DirectReferralPanel } from '@/features/earnings/components/DirectReferralPanel';
 import { GlobalBonusPanel } from '@/features/earnings/components/GlobalBonusPanel';
 import { LifestylePanel } from '@/features/earnings/components/LifestylePanel';
 import { SalesmatchPanel } from '@/features/earnings/components/SalesmatchPanel';
-import { UnilevelPanel } from '@/features/earnings/components/UnilevelPanel';
+import { UnilevelView } from '@/features/unilevel/components/UnilevelView';
 import { GetYorFiveInFrame } from './GetYorFivePage';
 import { SupportView } from '@/features/support/components/SupportView';
 import type {
@@ -87,6 +89,7 @@ function formatDateTime(value: string | null | undefined): string {
   }
 
   return date.toLocaleString('en-PH', {
+    timeZone: 'Asia/Manila',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -151,6 +154,7 @@ function createEmptyEncashmentPreview(note: string): EncashmentPreview {
     totalDeductions: 0,
     netReceivable: 0,
     sufficientBalance: true,
+    retainerExempt: false,
     note
   };
 }
@@ -199,7 +203,7 @@ function getVisibleMemberMetrics(moduleId: string, metrics: MemberOfficeData['me
   }
 
   if (moduleId === 'direct-referrals') {
-    return metrics.filter((metric) => metric.label.toLowerCase().includes('direct referral'));
+    return [];
   }
 
   if (
@@ -296,6 +300,20 @@ const BINARY_CYCLE_SYNTHETIC_MODULE: OperationalModule = {
   gatedActions: []
 };
 
+const UNILEVEL_SYNTHETIC_MODULE: OperationalModule = {
+  id: 'unilevel-rank-progress',
+  label: 'Unilevel / Rank Progress',
+  path: '/member/unilevel-rank-progress',
+  group: 'Compensation',
+  description: 'Ten-level unilevel bonus over your sponsor tree, rank ladder, and monthly maintenance progress.',
+  status: 'read-only' as const,
+  legacyReference: 'yor-unilevel-rank',
+  permissions: ['member'],
+  metrics: [],
+  table: { title: '', columns: [], rows: [] },
+  gatedActions: []
+};
+
 export function MemberDashboardPage() {
   const {
     getMemberActivationCodes,
@@ -338,6 +356,8 @@ export function MemberDashboardPage() {
   const [encashPreviewError, setEncashPreviewError] = useState<string | null>(null);
   const [isEncashPreviewLoading, setIsEncashPreviewLoading] = useState(false);
   const [selectedCode, setSelectedCode] = useState('');
+  const [selfUpgradeCode, setSelfUpgradeCode] = useState('');
+  const [isSelfUpgradeLoading, setIsSelfUpgradeLoading] = useState(false);
   const [transferTarget, setTransferTarget] = useState('');
   const [transferSearchQuery, setTransferSearchQuery] = useState('');
   const [transferSearchResults, setTransferSearchResults] = useState<MemberTransferSearchResult[]>([]);
@@ -365,6 +385,28 @@ export function MemberDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [isContentLoading, setIsContentLoading] = useState(true);
   const [reloadNonce, setReloadNonce] = useState(0);
+
+  // Live updates: open one SSE stream; when the server pushes a PV/income change for
+  // this member, refetch the active view so balances tick without a manual reload.
+  // Debounced so a burst of events triggers at most one refetch per ~2s.
+  useEffect(() => {
+    let source: EventSource | null = null;
+    let debounce: ReturnType<typeof setTimeout> | null = null;
+    try {
+      source = new EventSource(apiUrl('/api/member/live'), { withCredentials: true });
+      source.addEventListener('update', () => {
+        if (debounce) clearTimeout(debounce);
+        debounce = setTimeout(() => setReloadNonce((value) => value + 1), 2000);
+      });
+      // Browser auto-reconnects on error; nothing to do.
+    } catch {
+      source = null;
+    }
+    return () => {
+      if (debounce) clearTimeout(debounce);
+      source?.close();
+    };
+  }, []);
 
   const applyMemberBundle = useCallback(
     (bundle: MemberModuleBundle) => {
@@ -411,7 +453,9 @@ export function MemberDashboardPage() {
           ? Promise.resolve(GYF_SYNTHETIC_MODULE)
           : targetModuleId === 'binary-cycle-bonus'
             ? getMemberModule(targetModuleId).catch(() => BINARY_CYCLE_SYNTHETIC_MODULE)
-            : getMemberModule(targetModuleId);
+            : targetModuleId === 'unilevel-rank-progress'
+              ? getMemberModule(targetModuleId).catch(() => UNILEVEL_SYNTHETIC_MODULE)
+              : getMemberModule(targetModuleId);
 
       const [nextSummary, nextOffice, nextMvpDashboard, nextModule] = await Promise.all([
         getMemberSummary(),
@@ -790,6 +834,39 @@ export function MemberDashboardPage() {
     }
   }
 
+  async function handleSelfUpgrade(codeOverride?: string) {
+    const effectiveCode = codeOverride ?? selfUpgradeCode;
+    if (!effectiveCode) {
+      notify({ title: 'Select a code', description: 'Choose an upgrade code before proceeding.', tone: 'warning' });
+      return;
+    }
+    const confirmed = await confirmAction({
+      title: 'Upgrade your account?',
+      description: `Apply code ${effectiveCode} to upgrade your own account to a higher package tier.`,
+      confirmLabel: 'Upgrade',
+      tone: 'warning'
+    });
+    if (!confirmed) return;
+    setIsSelfUpgradeLoading(true);
+    try {
+      const result = await upgradeActivationCode({ code: effectiveCode });
+      notify({
+        title: 'Account upgraded',
+        description: result.detail ?? result.reason,
+        tone: result.moneyMode === 'sandbox' ? 'success' : 'warning'
+      });
+      setReloadNonce((value) => value + 1);
+    } catch (cause) {
+      notify({
+        title: 'Upgrade failed',
+        description: cause instanceof Error ? cause.message : 'Please try again.',
+        tone: 'destructive'
+      });
+    } finally {
+      setIsSelfUpgradeLoading(false);
+    }
+  }
+
   async function handleShadowAccountAction(account: ShadowAccountCenter['accounts'][number]) {
     const selectedShadowCode = shadowCodeSelections[account.shadowCode] ?? shadowAccounts?.availableCodes[0]?.code ?? '';
     if (!selectedShadowCode) {
@@ -802,9 +879,9 @@ export function MemberDashboardPage() {
     }
 
     const confirmed = await confirmAction({
-      title: account.canActivate ? 'Activate shadow account?' : 'Upgrade shadow account?',
-      description: `${account.canActivate ? 'Apply' : 'Upgrade with'} ${selectedShadowCode} on ${account.label}. This should add PV and Salesmatch eligibility only.`,
-      confirmLabel: account.canActivate ? 'Activate Shadow' : 'Upgrade Shadow',
+      title: 'Upgrade shadow account?',
+      description: `Apply upgrade code ${selectedShadowCode} on ${account.label}. This sets the shadow PV and Salesmatch value from the code's package tier.`,
+      confirmLabel: 'Upgrade Shadow',
       tone: 'warning'
     });
 
@@ -819,7 +896,7 @@ export function MemberDashboardPage() {
         shadowCode: account.shadowCode
       });
       notify({
-        title: account.canActivate ? 'Shadow account activated' : 'Shadow account upgraded',
+        title: 'Shadow account upgraded',
         description: result.detail ?? result.reason,
         tone: result.moneyMode === 'sandbox' ? 'success' : 'warning'
       });
@@ -1023,6 +1100,10 @@ export function MemberDashboardPage() {
       const salesmatchIdx = result.findIndex((m) => m.id === 'salesmatch-bonus');
       const insertAt = afterIdx >= 0 ? afterIdx + 1 : salesmatchIdx + 1;
       result.splice(insertAt >= 0 ? insertAt : result.length, 0, GYF_SYNTHETIC_MODULE);
+    }
+    if (!result.find((m) => m.id === 'unilevel-rank-progress')) {
+      const afterBinaryCycle = result.findIndex((m) => m.id === 'binary-cycle-bonus');
+      result.splice(afterBinaryCycle >= 0 ? afterBinaryCycle + 1 : result.length, 0, UNILEVEL_SYNTHETIC_MODULE);
     }
     return result;
   }, [office?.modules]);
@@ -1654,6 +1735,58 @@ export function MemberDashboardPage() {
                 </div>
               </CardContent>
             </Card>
+            <Card className="border-[var(--border)] bg-[var(--card)] xl:col-span-2">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-amber-500/15">
+                    <TrendingUp className="size-5 text-amber-400" />
+                  </span>
+                  <div>
+                    <CardTitle className="text-base">Upgrade My Account</CardTitle>
+                    <CardDescription className="text-xs">Apply a higher-tier activation code to upgrade your own package.</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                  <span className="text-sm text-[var(--muted-foreground)]">Current Package</span>
+                  <span className="text-sm font-semibold text-[var(--foreground)]">{registrationReadiness.currentPackageTier}</span>
+                </div>
+                {registrationReadiness.selfUpgradeCodes.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Select Upgrade Code</label>
+                      <select
+                        value={selfUpgradeCode || registrationReadiness.selfUpgradeCodes[0]?.code || ''}
+                        onChange={(e) => setSelfUpgradeCode(e.target.value)}
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)]"
+                      >
+                        {registrationReadiness.selfUpgradeCodes.map((code) => (
+                          <option key={code.code} value={code.code}>
+                            {`${code.code} — ${code.packageTier} (${code.accountType})`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={() => {
+                        const effectiveCode = selfUpgradeCode || registrationReadiness.selfUpgradeCodes[0]?.code || '';
+                        handleSelfUpgrade(effectiveCode);
+                      }}
+                      disabled={isSelfUpgradeLoading}
+                    >
+                      {isSelfUpgradeLoading ? 'Upgrading…' : 'Upgrade My Account'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted-foreground)]">
+                    No higher-tier activation codes available. Codes of a higher package than your current tier will appear here once assigned to your account.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </section>
         ) : null}
 
@@ -1686,6 +1819,7 @@ export function MemberDashboardPage() {
                     }))
                   }
                   onUpgradeSuccess={() => setReloadNonce((value) => value + 1)}
+                  suppressPointerAway={pendingRegistrationSlot !== null}
                 />
               </CardContent>
             </Card>
@@ -1874,6 +2008,11 @@ export function MemberDashboardPage() {
                         {account.pvValue} PV / {formatCurrency(account.salesmatchValue)}
                       </p>
                     </div>
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Shadow Income (paired)</p>
+                      <p className="mt-1 text-sm font-bold text-emerald-500">{formatCurrency(account.totalEarned)}</p>
+                      <p className="text-[10px] text-[var(--muted-foreground)]">L {account.leftVolume} · R {account.rightVolume} · matched {account.matchedPoints}</p>
+                    </div>
                     <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-3">
                       <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Activation Code</p>
                       <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">{account.activationCode ?? 'Not yet assigned'}</p>
@@ -1928,13 +2067,7 @@ export function MemberDashboardPage() {
                       disabled={!shadowAccounts.availableCodes.length || shadowActionCode === account.shadowCode}
                       onClick={() => void handleShadowAccountAction(account)}
                     >
-                      {shadowActionCode === account.shadowCode
-                        ? account.canActivate
-                          ? 'Activating...'
-                          : 'Upgrading...'
-                        : account.canActivate
-                          ? 'Activate Shadow Account'
-                          : 'Upgrade Shadow Account'}
+                      {shadowActionCode === account.shadowCode ? 'Upgrading...' : 'Upgrade Shadow Account'}
                     </Button>
                   </div>
                 </div>
@@ -1943,7 +2076,7 @@ export function MemberDashboardPage() {
             <Card className="border-[var(--border)] bg-[var(--card)]">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Shadow State Table</CardTitle>
-                <CardDescription className="text-xs">Reserved and activated shadow-account visibility. Shadow nodes cannot earn wallet, Direct Referral, Unilevel, or Binary Cycle rights.</CardDescription>
+                <CardDescription className="text-xs">Shadow accounts are activated at encoding with your package tier. Apply an upgrade code to assign PV. Shadows cannot earn Direct Referral, Unilevel, or Binary Cycle rights.</CardDescription>
               </CardHeader>
               <CardContent><ReportTableView table={activeModule.table} /></CardContent>
             </Card>
@@ -1956,8 +2089,8 @@ export function MemberDashboardPage() {
         ) : null}
 
         {/* ── UNILEVEL / RANKING PROGRESS ── */}
-        {moduleId === 'unilevel-rank-progress' && activeModule ? (
-          <UnilevelPanel activeModule={activeModule} />
+        {moduleId === 'unilevel-rank-progress' ? (
+          <UnilevelView />
         ) : null}
 
         {/* ── GLOBAL BONUS ── */}
@@ -2057,17 +2190,19 @@ function DataPoint({ label, value }: { label: string; value: string | number }) 
 function EncashmentBreakdownRow({
   label,
   value,
-  emphasize = false
+  emphasize = false,
+  note
 }: {
   label: string;
   value: number;
   emphasize?: boolean;
+  note?: string;
 }) {
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
       <p className={emphasize ? 'font-semibold text-[var(--foreground)]' : 'text-[var(--muted-foreground)]'}>{label}</p>
       <p className={emphasize ? 'font-semibold text-[var(--foreground)]' : 'font-medium text-[var(--foreground)]'}>
-        - {formatCurrency(value)}
+        {note ? <span className="text-emerald-400 text-xs">{note}</span> : `- ${formatCurrency(value)}`}
       </p>
     </div>
   );
@@ -2317,7 +2452,9 @@ function WalletView({
   onEncashAmountBlur: () => void;
   onSubmitEncashment: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<'main' | 'lifestyle'>('main');
+  const [activeTab, setActiveTab] = useState<'main' | 'lifestyle' | 'ledger'>('main');
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerTypeFilter, setLedgerTypeFilter] = useState<string>('all');
 
   const mainStreams = walletDetail.incomeBreakdown.filter(
     (s) => s.walletType.toLowerCase() !== 'lifestyle'
@@ -2378,6 +2515,19 @@ function WalletView({
         >
           <Star className="size-4" />
           Lifestyle Bonus Wallet
+        </button>
+        <button
+          type="button"
+          onClick={() => { setActiveTab('ledger'); setLedgerPage(1); setLedgerTypeFilter('all'); }}
+          className={[
+            'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition',
+            activeTab === 'ledger'
+              ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
+              : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]',
+          ].join(' ')}
+        >
+          <FileText className="size-4" />
+          Income Ledger
         </button>
       </div>
 
@@ -2452,7 +2602,9 @@ function WalletView({
             <Card className="border-[var(--border)] bg-[var(--card)]">
               <CardHeader>
                 <CardTitle className="text-base">Encashment Preview</CardTitle>
-                <CardDescription className="text-xs">10% tax · PHP 50 processing fee · 5% system retainer · {walletDetail.summary.payoutSchedule.toLowerCase()}</CardDescription>
+                <CardDescription className="text-xs">
+                  10% tax · PHP 50 processing fee{renderedEncashmentPreview.retainerExempt ? ' · system retainer waived' : ' · 5% system retainer'} · {walletDetail.summary.payoutSchedule.toLowerCase()}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-3 gap-3">
@@ -2481,7 +2633,10 @@ function WalletView({
                 <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
                   <EncashmentBreakdownRow label="10% Tax" value={renderedEncashmentPreview.tax} />
                   <EncashmentBreakdownRow label="Processing Fee" value={renderedEncashmentPreview.processingFee} />
-                  <EncashmentBreakdownRow label="System Retainer (5%)" value={renderedEncashmentPreview.systemRetainer} />
+                  {renderedEncashmentPreview.retainerExempt
+                    ? <EncashmentBreakdownRow label="System Retainer" value={0} note="Waived" />
+                    : <EncashmentBreakdownRow label="System Retainer (5%)" value={renderedEncashmentPreview.systemRetainer} />
+                  }
                   <EncashmentBreakdownRow label="CD Deduction" value={renderedEncashmentPreview.cdDeduction} />
                   <div className="border-t border-[var(--border)] pt-2">
                     <EncashmentBreakdownRow label="Total Deductions" value={renderedEncashmentPreview.totalDeductions} emphasize />
@@ -2614,6 +2769,126 @@ function WalletView({
           </div>
         </div>
       ) : null}
+
+      {/* ── INCOME LEDGER TAB ── */}
+      {activeTab === 'ledger' ? (() => {
+        const LEDGER_PAGE_SIZE = 100;
+        const creditEntries = walletDetail.ledger.filter((e) => e.creditAmount > 0);
+        const entryTypes = ['all', ...Array.from(new Set(creditEntries.map((e) => e.entryType)))];
+        const filtered = ledgerTypeFilter === 'all'
+          ? creditEntries
+          : creditEntries.filter((e) => e.entryType === ledgerTypeFilter);
+        const totalPages = Math.max(1, Math.ceil(filtered.length / LEDGER_PAGE_SIZE));
+        const safePage = Math.min(ledgerPage, totalPages);
+        const pageRows = filtered.slice((safePage - 1) * LEDGER_PAGE_SIZE, safePage * LEDGER_PAGE_SIZE);
+        const totalIncome = creditEntries.reduce((s, e) => s + e.creditAmount, 0);
+
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <NogaStatCard icon={<FileText className="size-4" />} color="amber" label="Total Income" value={formatCurrency(totalIncome)} />
+              <NogaStatCard icon={<TrendingUp className="size-4" />} color="blue" label="Income Entries" value={String(creditEntries.length)} />
+              <NogaStatCard icon={<GitBranch className="size-4" />} color="emerald" label="Entry Types" value={String(entryTypes.length - 1)} />
+            </div>
+            <Card className="border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <CardTitle className="text-base">Income Ledger</CardTitle>
+                  <CardDescription className="text-xs">All wallet credit entries — every income event recorded against your account.</CardDescription>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {entryTypes.map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => { setLedgerTypeFilter(type); setLedgerPage(1); }}
+                      className={cn(
+                        'rounded-lg px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest transition',
+                        ledgerTypeFilter === type
+                          ? 'bg-[var(--foreground)] text-[var(--background)]'
+                          : 'bg-[var(--muted)]/40 text-[var(--muted-foreground)] hover:bg-[var(--muted)]/70'
+                      )}
+                    >
+                      {type === 'all' ? 'All' : type.replace(/_/g, ' ')}
+                    </button>
+                  ))}
+                </div>
+              </CardHeader>
+              <CardContent className="p-0 pb-0">
+                <div className="h-[480px] flex flex-col overflow-hidden border-t border-[var(--border)]">
+                  <div className="overflow-x-auto flex-1 overflow-y-auto">
+                    <table className="w-full min-w-[680px] text-sm">
+                      <thead className="sticky top-0 z-10">
+                        <tr className="border-b border-[var(--border)] bg-[var(--card)] text-left text-[10px] uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                          <th className="px-4 py-3">Wallet</th>
+                          <th className="px-4 py-3">Entry Type</th>
+                          <th className="px-4 py-3">Source / Reference</th>
+                          <th className="px-4 py-3 text-right">Credit</th>
+                          <th className="px-4 py-3 text-right">Balance After</th>
+                          <th className="px-4 py-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pageRows.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
+                              No income entries match the selected filter.
+                            </td>
+                          </tr>
+                        ) : pageRows.map((entry) => (
+                          <tr key={entry.id} className="border-b border-[var(--border)] hover:bg-[var(--muted)]/20">
+                            <td className="px-4 py-3">
+                              <Badge variant="outline" className="text-[9px] uppercase tracking-widest">{entry.walletType}</Badge>
+                            </td>
+                            <td className="px-4 py-3 text-xs font-medium text-[var(--foreground)]">
+                              {entry.entryType.replace(/_/g, ' ')}
+                            </td>
+                            <td className="px-4 py-3 font-mono text-[11px] text-[var(--muted-foreground)] max-w-[200px] truncate">
+                              {entry.sourceReference || entry.processId || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-right font-semibold text-amber-600 dark:text-amber-400">
+                              +{formatCurrency(entry.creditAmount)}
+                            </td>
+                            <td className="px-4 py-3 text-right text-xs text-[var(--muted-foreground)]">
+                              {formatCurrency(entry.balanceAfter)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge variant={entry.status === 'posted' ? 'success' : 'outline'} className="text-[9px]">
+                                {entry.status}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] px-4 py-2 text-xs text-[var(--muted-foreground)]">
+                      <button
+                        type="button"
+                        disabled={safePage <= 1}
+                        onClick={() => setLedgerPage((p) => Math.max(1, p - 1))}
+                        className="rounded px-2 py-1 hover:bg-[var(--muted)]/40 disabled:opacity-40"
+                      >
+                        ← Prev
+                      </button>
+                      <span>Page {safePage} of {totalPages} · {filtered.length} entries</span>
+                      <button
+                        type="button"
+                        disabled={safePage >= totalPages}
+                        onClick={() => setLedgerPage((p) => Math.min(totalPages, p + 1))}
+                        className="rounded px-2 py-1 hover:bg-[var(--muted)]/40 disabled:opacity-40"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })() : null}
     </section>
   );
 }

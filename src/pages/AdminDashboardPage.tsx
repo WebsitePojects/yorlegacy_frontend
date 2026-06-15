@@ -5,6 +5,8 @@ import {
   ArrowRight,
   Banknote,
   Bell,
+  ChevronDown,
+  ChevronRight,
   Eye,
   EyeOff,
   FileText,
@@ -45,9 +47,19 @@ import {
   fetchAdminContactMessages,
   updateAdminContactMessageStatus,
   searchAdminTransferTargets,
+  fetchAdminMemberUnilevelData,
+  fetchAdminSponsorTree,
+  fetchAdminGlobalBonus,
+  tagStockistLevel,
   type ContactMessage,
-  type SupportMessageStatus
+  type SupportMessageStatus,
+  type UnilevelData,
+  type SponsorTreeCenter,
+  type GlobalBonusData,
+  type GlobalBonusEntry,
+  type StockistLevel
 } from '@/lib/api';
+import { SponsorTreeCanvas } from '@/features/unilevel/components/SponsorTreeCanvas';
 import type {
   AdminActivationCodeCenter,
   AdminEncashmentCenter,
@@ -81,6 +93,7 @@ function formatDateTime(value: string | null | undefined): string {
   }
 
   return date.toLocaleString('en-PH', {
+    timeZone: 'Asia/Manila',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -94,6 +107,109 @@ function formatShadowStateLabel(value: string): string {
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+function ShadowAccountsCard({ shadowAccounts }: { shadowAccounts: ShadowAccountCenter }) {
+  const [expandedCode, setExpandedCode] = useState<string | null>(null);
+
+  function toggle(code: string) {
+    setExpandedCode((prev) => (prev === code ? null : code));
+  }
+
+  return (
+    <Card className="border-[var(--border)] bg-[var(--card)]">
+      <CardHeader>
+        <CardTitle>Shadow Accounts</CardTitle>
+        <CardDescription className="text-xs">
+          Admin visibility for the selected member's Binary Function Only slots.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-3 md:grid-cols-3">
+          <DataPoint label="Owner" value={shadowAccounts.owner} />
+          <DataPoint label="Shadow Slots" value={shadowAccounts.accounts.length} />
+          <DataPoint label="Available Codes" value={shadowAccounts.availableCodes.length} />
+        </div>
+        <div className="h-[320px] flex flex-col overflow-hidden rounded-xl border border-[var(--border)]">
+          <div className="grid grid-cols-[32px_1fr_80px_90px_80px_16px] gap-x-3 border-b border-[var(--border)] bg-[var(--background)] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted-foreground)] sticky top-0">
+            <span>Side</span>
+            <span>Label / Code</span>
+            <span>Package</span>
+            <span>PV / SMB</span>
+            <span>State</span>
+            <span />
+          </div>
+          <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)]">
+            {shadowAccounts.accounts.map((account) => {
+              const isExpanded = expandedCode === account.shadowCode;
+              return (
+                <div key={account.shadowCode}>
+                  <button
+                    type="button"
+                    onClick={() => toggle(account.shadowCode)}
+                    className="grid w-full grid-cols-[32px_1fr_80px_90px_80px_16px] gap-x-3 items-center px-3 py-2.5 text-left text-sm transition hover:bg-[var(--muted)]/30"
+                  >
+                    <span className={cn(
+                      'inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold',
+                      account.placement === 'left'
+                        ? 'bg-blue-500/15 text-blue-400'
+                        : 'bg-emerald-500/15 text-emerald-400'
+                    )}>
+                      {account.placement === 'left' ? 'L' : 'R'}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-[var(--foreground)]">{account.label}</p>
+                      <p className="truncate font-mono text-[10px] text-[var(--muted-foreground)]">{account.shadowCode}</p>
+                    </div>
+                    <span className="text-xs text-[var(--muted-foreground)]">{account.packageTier ?? '—'}</span>
+                    <span className="text-xs text-[var(--muted-foreground)]">
+                      {account.pvValue} PV / {formatCurrency(account.salesmatchValue)}
+                    </span>
+                    <Badge variant={account.state.includes('reserved') ? 'warning' : 'success'} className="text-[10px] w-fit">
+                      {formatShadowStateLabel(account.state)}
+                    </Badge>
+                    {isExpanded
+                      ? <ChevronDown className="size-3.5 text-[var(--muted-foreground)]" />
+                      : <ChevronRight className="size-3.5 text-[var(--muted-foreground)]" />
+                    }
+                  </button>
+                  {isExpanded && (
+                    <div className="bg-[var(--muted)]/20 px-4 py-3 text-sm">
+                      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                        <DataPoint label="Account Type" value={account.accountType ? formatAccountTypeLabel(account.accountType) : 'Pending'} />
+                        <DataPoint label="Activation Code" value={account.activationCode ?? 'Not yet assigned'} />
+                        <DataPoint label="Left Volume" value={account.leftVolume} />
+                        <DataPoint label="Right Volume" value={account.rightVolume} />
+                        <DataPoint label="Matched Points" value={account.matchedPoints} />
+                        <DataPoint label="Total Earned" value={formatCurrency(account.totalEarned)} />
+                        <DataPoint label="Wallet" value={account.walletEnabled ? 'Enabled' : 'Disabled'} />
+                        <DataPoint label="Unilevel" value={account.unilevelEnabled ? 'Enabled' : 'Disabled'} />
+                        <DataPoint label="Binary Cycle" value={account.binaryCycleEnabled ? 'Enabled' : 'Disabled'} />
+                      </div>
+                      <div className="mt-2 space-y-0.5 text-xs text-[var(--muted-foreground)]">
+                        <p>Activated: {formatDateTime(account.activatedAt)}</p>
+                        <p>Last upgrade: {formatDateTime(account.lastUpgradedAt)}</p>
+                        {account.note ? <p className="italic">{account.note}</p> : null}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        {shadowAccounts.notes.length ? (
+          <div className="grid gap-2">
+            {shadowAccounts.notes.map((note) => (
+              <div key={note} className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm text-[var(--muted-foreground)]">
+                {note}
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
 }
 
 function formatAuditActionLabel(action: string) {
@@ -116,65 +232,20 @@ type CodeGenerationOption = {
   value: string;
   label: string;
   packageTier: string;
-  codeFamily: 'YOR CODES' | 'YOR PERFUME' | 'YOR REFILL' | 'YOR VISION';
+  codeFamily: 'YOR CODES' | 'YOR MAINTENANCE' | 'YOR REFILL' | 'YOR VISION';
   kind: 'package' | 'product';
 };
 
 const CODE_GENERATION_OPTIONS: CodeGenerationOption[] = [
-  { value: 'pkg-basic', label: 'Basic Package', packageTier: 'Basic', codeFamily: 'YOR CODES', kind: 'package' },
-  { value: 'pkg-classic', label: 'Classic Package', packageTier: 'Classic', codeFamily: 'YOR CODES', kind: 'package' },
+  { value: 'pkg-basic',    label: 'Basic Package',    packageTier: 'Basic',    codeFamily: 'YOR CODES', kind: 'package' },
+  { value: 'pkg-classic',  label: 'Classic Package',  packageTier: 'Classic',  codeFamily: 'YOR CODES', kind: 'package' },
   { value: 'pkg-standard', label: 'Standard Package', packageTier: 'Standard', codeFamily: 'YOR CODES', kind: 'package' },
   { value: 'pkg-business', label: 'Business Package', packageTier: 'Business', codeFamily: 'YOR CODES', kind: 'package' },
-  { value: 'pkg-vip', label: 'VIP Package', packageTier: 'VIP', codeFamily: 'YOR CODES', kind: 'package' },
-  {
-    value: 'product-yor-perfume-hugo-boss',
-    label: 'Yor Perfume - Hugo Boss',
-    packageTier: 'Yor Perfume - Hugo Boss',
-    codeFamily: 'YOR PERFUME',
-    kind: 'product'
-  },
-  {
-    value: 'product-yor-perfume-swiss-army',
-    label: 'Yor Perfume - Swiss Army',
-    packageTier: 'Yor Perfume - Swiss Army',
-    codeFamily: 'YOR PERFUME',
-    kind: 'product'
-  },
-  {
-    value: 'product-yor-perfume-chanel-bleu',
-    label: 'Yor Perfume - Chanel Bleu',
-    packageTier: 'Yor Perfume - Chanel Bleu',
-    codeFamily: 'YOR PERFUME',
-    kind: 'product'
-  },
-  {
-    value: 'product-yor-perfume-paris-hilton',
-    label: 'Yor Perfume - Paris Hilton',
-    packageTier: 'Yor Perfume - Paris Hilton',
-    codeFamily: 'YOR PERFUME',
-    kind: 'product'
-  },
-  {
-    value: 'product-yor-perfume-bvlgari-amethyste',
-    label: 'Yor Perfume - Bvlgari Amethyste',
-    packageTier: 'Yor Perfume - Bvlgari Amethyste',
-    codeFamily: 'YOR PERFUME',
-    kind: 'product'
-  },
-  {
-    value: 'product-yor-perfume-vs-bombshell',
-    label: 'Yor Perfume - VS Bombshell',
-    packageTier: 'Yor Perfume - VS Bombshell',
-    codeFamily: 'YOR PERFUME',
-    kind: 'product'
-  },
-  {
-    value: 'product-yor-vision-mineral-drops',
-    label: 'Yor Vision Mineral Drops 15ml',
-    packageTier: 'Yor Vision Mineral Drops 15ml',
-    codeFamily: 'YOR VISION',
-    kind: 'product'
-  }
+  { value: 'pkg-vip',      label: 'VIP Package',      packageTier: 'VIP',      codeFamily: 'YOR CODES', kind: 'package' },
+  // Product codes — price at point of sale is the buyer's tier-based discounted price (DP), not SRP.
+  { value: 'product-yor-perfume', label: 'Yor Perfume', packageTier: 'Yor Perfume', codeFamily: 'YOR MAINTENANCE', kind: 'product' },
+  { value: 'product-yor-vision',  label: 'Yor Vision',  packageTier: 'Yor Vision',  codeFamily: 'YOR VISION',      kind: 'product' },
+  { value: 'product-yor-refill',  label: 'Yor Refill',  packageTier: 'Yor Refill',  codeFamily: 'YOR REFILL',      kind: 'product' },
 ];
 
 const customAdminModuleIds = new Set([
@@ -192,7 +263,8 @@ const customAdminModuleIds = new Set([
   'voucher-management',
   'contact-messages',
   'news-posts',
-  'change-password'
+  'change-password',
+  'unilevel-rank-progress'
 ]);
 
 function getVisibleAdminMetrics(moduleId: string, metrics: AdminOfficeData['metrics']) {
@@ -344,6 +416,7 @@ export function AdminDashboardPage() {
     getAdminOffice,
     getAdminShadowAccounts,
     getAdminSummary,
+    listCashiers,
     releaseActivationCodes,
     reviewEncashment,
     resetSandbox,
@@ -378,8 +451,12 @@ export function AdminDashboardPage() {
   const [codeBatchSelection, setCodeBatchSelection] = useState<string>('');
   const [codeBatchAccountType, setCodeBatchAccountType] = useState('PD');
   const [codeBatchAssignedTo, setCodeBatchAssignedTo] = useState('');
+  const [codeBatchAssignedToUserId, setCodeBatchAssignedToUserId] = useState('');
   const [codeBatchRemarks, setCodeBatchRemarks] = useState('');
+  const [cashierList, setCashierList] = useState<Array<{ id: string; displayName: string; email: string }>>([]);
   const [codeSearchQuery, setCodeSearchQuery] = useState('');
+  const [inventorySortBy, setInventorySortBy] = useState<'recent' | 'newest' | 'oldest' | 'status'>('recent');
+  const [inventoryStatusFilter, setInventoryStatusFilter] = useState<'' | 'unreleased' | 'available' | 'used'>('');
   const [error, setError] = useState<string | null>(null);
   const [isContentLoading, setIsContentLoading] = useState(true);
   const [reloadNonce, setReloadNonce] = useState(0);
@@ -389,7 +466,11 @@ export function AdminDashboardPage() {
   const [codeTransferSearchResults, setCodeTransferSearchResults] = useState<TransferSearchResult[]>([]);
   const [codeTransferSearchLoading, setCodeTransferSearchLoading] = useState(false);
   const [codeTransferSearchError, setCodeTransferSearchError] = useState<string | null>(null);
+  const [showTransferDropdown, setShowTransferDropdown] = useState(false);
+  const [inventoryPage, setInventoryPage] = useState(1);
   const [selectedEncashmentId, setSelectedEncashmentId] = useState('');
+  const [encashmentPage, setEncashmentPage] = useState(1);
+  const [encashmentStatusFilter, setEncashmentStatusFilter] = useState<'all' | 'pending' | 'paid' | 'cancelled'>('all');
   const [encashmentDraft, setEncashmentDraft] = useState<EncashmentDraft>(EMPTY_ENCASHMENT_DRAFT);
   const [selectedCodeTransferTarget, setSelectedCodeTransferTarget] = useState<TransferSearchResult | null>(null);
   const [showAdminMemberPassword, setShowAdminMemberPassword] = useState(false);
@@ -478,10 +559,16 @@ export function AdminDashboardPage() {
       }
 
       if (targetModuleId === 'account-genealogy' && options.rootUsername.trim()) {
-        [genealogyTree, shadowAccounts] = await Promise.all([
-          getAdminBinaryTree(options.rootUsername.trim()),
-          getAdminShadowAccounts(options.rootUsername.trim())
-        ]);
+        try {
+          [genealogyTree, shadowAccounts] = await Promise.all([
+            getAdminBinaryTree(options.rootUsername.trim()),
+            getAdminShadowAccounts(options.rootUsername.trim())
+          ]);
+        } catch {
+          // Member not found or invalid — stay on the page with empty tree
+          genealogyTree = null;
+          shadowAccounts = null;
+        }
       }
 
       return {
@@ -505,7 +592,8 @@ export function AdminDashboardPage() {
       getAdminMvpDashboard,
       getAdminOffice,
       getAdminShadowAccounts,
-      getAdminSummary
+      getAdminSummary,
+      listCashiers
     ]
   );
 
@@ -554,6 +642,15 @@ export function AdminDashboardPage() {
       navigate('/admin/activation-codes', { replace: true });
     }
   }, [moduleId, navigate, user?.role]);
+
+  // Load cashier list once for the Code Generation dropdown — independent of module
+  // loading so it survives bundle rerenders and cache hits.
+  useEffect(() => {
+    const role = user?.role;
+    if (role === 'admin' || role === 'bod' || role === 'superadmin') {
+      listCashiers().then(setCashierList).catch(() => {});
+    }
+  }, [user?.role, listCashiers]);
 
   useEffect(() => {
     let cancelled = false;
@@ -619,10 +716,11 @@ export function AdminDashboardPage() {
       notify({ title: 'Enter a valid quantity (1 or more)', tone: 'destructive' });
       return;
     }
+    const selectedCashier = cashierList.find((c) => c.id === codeBatchAssignedToUserId);
     const confirmed = await confirmAction({
       title: 'Generate activation code batch?',
-      description: codeBatchAssignedTo.trim()
-        ? `Generate ${qty} ${codeBatchAccountType} ${selectedCodeBatchOption.label} code(s) for ${codeBatchAssignedTo}.`
+      description: selectedCashier
+        ? `Generate ${qty} ${codeBatchAccountType} ${selectedCodeBatchOption.label} code(s) assigned to ${selectedCashier.displayName}.`
         : `Generate ${qty} ${codeBatchAccountType} ${selectedCodeBatchOption.label} code(s) into the unassigned code pool.`,
       confirmLabel: 'Generate Batch',
       tone: 'warning'
@@ -637,7 +735,7 @@ export function AdminDashboardPage() {
         quantity: qty,
         packageTier: selectedCodeBatchOption.packageTier,
         codeFamily: selectedCodeBatchOption.codeFamily,
-        assignedTo: codeBatchAssignedTo.trim() || undefined,
+        assignedToUserId: codeBatchAssignedToUserId || undefined,
         accountType: codeBatchAccountType,
         remarks: codeBatchRemarks.trim() || undefined
       });
@@ -684,6 +782,45 @@ export function AdminDashboardPage() {
         tone: 'destructive'
       });
     }
+  }
+
+  // Autocomplete: search as user types (debounced 300ms)
+  useEffect(() => {
+    const q = codeTransferSearchQuery.trim();
+    if (q.length < 2) {
+      setCodeTransferSearchResults([]);
+      setShowTransferDropdown(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setCodeTransferSearchLoading(true);
+      try {
+        const res = await searchAdminTransferTargets(q);
+        const hits = res.results.slice(0, 8);
+        setCodeTransferSearchResults(hits);
+        setShowTransferDropdown(hits.length > 0);
+        setCodeTransferSearchError(hits.length === 0 ? 'No members match that username.' : null);
+      } catch {
+        setCodeTransferSearchError('Search failed.');
+      } finally {
+        setCodeTransferSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [codeTransferSearchQuery, searchAdminTransferTargets]);
+
+  // Reset to page 1 when inventory filter/sort changes
+  useEffect(() => {
+    setInventoryPage(1);
+  }, [codeSearchQuery, inventoryStatusFilter, inventorySortBy]);
+
+  function selectTransferTarget(result: TransferSearchResult) {
+    setSelectedCodeTransferTarget(result);
+    setAdminTransferTarget(result.username);
+    setCodeTransferSearchQuery(result.username);
+    setCodeTransferSearchResults([]);
+    setShowTransferDropdown(false);
+    setCodeTransferSearchError(null);
   }
 
   async function handleReleaseCodes() {
@@ -758,6 +895,46 @@ export function AdminDashboardPage() {
     }
   }
 
+  async function handleReleaseAndTransferCodes() {
+    if (!adminTransferTarget.trim()) {
+      notify({
+        title: 'Search for a target first',
+        description: 'Use the username search to select the member who will receive the codes.',
+        tone: 'warning'
+      });
+      return;
+    }
+
+    const confirmed = await confirmAction({
+      title: 'Release & Transfer selected codes?',
+      description: `Transfer ${selectedAdminCodes.length} code(s) to ${selectedCodeTransferTarget?.username ?? adminTransferTarget} and immediately release them so the member can use them.`,
+      confirmLabel: 'Release & Transfer',
+      tone: 'warning'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await transferAdminCodes({ targetUsername: adminTransferTarget, codes: selectedAdminCodes });
+      const result = await releaseActivationCodes(selectedAdminCodes);
+      notify({
+        title: 'Codes released & transferred',
+        description: `${selectedAdminCodes.length} code(s) transferred to ${selectedCodeTransferTarget?.username ?? adminTransferTarget} and released. ${result.reason}`,
+        tone: 'success'
+      });
+      clearOfficeCache(currentAdminBundleCacheKey);
+      setReloadNonce((value) => value + 1);
+    } catch (cause) {
+      notify({
+        title: 'Unable to release & transfer',
+        description: cause instanceof Error ? cause.message : 'Please try again.',
+        tone: 'destructive'
+      });
+    }
+  }
+
   async function handleSearchCodeTransferTargets() {
     const query = codeTransferSearchQuery.trim();
 
@@ -791,13 +968,6 @@ export function AdminDashboardPage() {
     } finally {
       setCodeTransferSearchLoading(false);
     }
-  }
-
-  function handleEncashmentDraftField<Key extends keyof EncashmentDraft>(key: Key, value: EncashmentDraft[Key]) {
-    setEncashmentDraft((current) => ({
-      ...current,
-      [key]: value
-    }));
   }
 
   function handleSelectEncashment(encashmentId: string) {
@@ -1045,20 +1215,31 @@ export function AdminDashboardPage() {
     memberUsername: memberDetailUsername,
     memberPage
   });
-  const filteredActivationInventory = activationCodes?.inventory.filter((item) => {
+  const filteredActivationInventory = (() => {
     const query = codeSearchQuery.trim().toUpperCase();
-
-    if (!query) {
-      return true;
-    }
-
-    return (
-      item.code.toUpperCase().includes(query) ||
-      item.assignedTo.toUpperCase().includes(query) ||
-      item.packageTier.toUpperCase().includes(query) ||
-      item.remarks.toUpperCase().includes(query)
-    );
-  }) ?? [];
+    const base = (activationCodes?.inventory ?? []).filter((item) => {
+      if (inventoryStatusFilter && item.status !== inventoryStatusFilter) return false;
+      if (!query) return true;
+      const code = (item.code ?? '').toUpperCase();
+      const assignedTo = (item.assignedTo ?? '').toUpperCase();
+      const packageTier = (item.packageTier ?? '').toUpperCase();
+      const remarks = (item.remarks ?? '').toUpperCase();
+      return code.includes(query) || assignedTo.includes(query) || packageTier.includes(query) || remarks.includes(query);
+    });
+    const STATUS_ORDER: Record<string, number> = { unreleased: 0, available: 1, used: 2, lost: 3, disabled: 4 };
+    return [...base].sort((a, b) => {
+      if (inventorySortBy === 'newest') return b.generatedAt.localeCompare(a.generatedAt);
+      if (inventorySortBy === 'oldest') return a.generatedAt.localeCompare(b.generatedAt);
+      if (inventorySortBy === 'status') return (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
+      // 'recent' (default): sort by lastActivityAt if available, otherwise generatedAt
+      const aTime = (item: typeof a) => ('lastActivityAt' in item ? (item as {lastActivityAt: string}).lastActivityAt : item.generatedAt);
+      return aTime(b).localeCompare(aTime(a));
+    });
+  })();
+  const INVENTORY_PAGE_SIZE = 100;
+  const totalInventoryPages = Math.max(1, Math.ceil(filteredActivationInventory.length / INVENTORY_PAGE_SIZE));
+  const safePage = Math.min(inventoryPage, totalInventoryPages);
+  const pagedInventory = filteredActivationInventory.slice((safePage - 1) * INVENTORY_PAGE_SIZE, safePage * INVENTORY_PAGE_SIZE);
   const selectableAdminCodes = filteredActivationInventory.filter((item) => item.status !== 'used').map((item) => item.code);
   const allSelectableAdminCodesSelected =
     selectableAdminCodes.length > 0 && selectableAdminCodes.every((code) => selectedAdminCodes.includes(code));
@@ -1139,24 +1320,26 @@ export function AdminDashboardPage() {
               </div>
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
                 <Card className="ops-admin-control-card border-[var(--border)] bg-[var(--card)]">
-                  <CardHeader>
+                  <CardHeader className="pb-3">
                     <CardTitle>Code Generation</CardTitle>
+                    <CardDescription className="text-xs">Generate a batch and optionally assign it to a cashier who will distribute codes to customers.</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-5">
                     {canGenerateCodes ? (
                       <>
-                        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                          <label className="grid gap-2 text-sm">
+                        {/* Row 1: Quantity + Package */}
+                        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                          <label className="grid gap-1.5 text-sm">
                             <span className="font-medium text-[var(--muted-foreground)]">Quantity</span>
                             <Input
                               type="number"
                               min={1}
-                              placeholder="e.g. 10"
+                              placeholder="e.g. 12"
                               value={codeBatchQuantity}
                               onChange={(event) => setCodeBatchQuantity(event.target.value)}
                             />
                           </label>
-                          <label className="grid gap-2 text-sm">
+                          <label className="grid gap-1.5 text-sm">
                             <span className="font-medium text-[var(--muted-foreground)]">Package / Product</span>
                             <select
                               className="flex h-10 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
@@ -1165,16 +1348,18 @@ export function AdminDashboardPage() {
                             >
                               <option value="" disabled>Select package / product…</option>
                               {CODE_GENERATION_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
+                                <option key={option.value} value={option.value}>{option.label}</option>
                               ))}
                             </select>
                           </label>
-                          <label className="grid gap-2 text-sm">
+                        </div>
+
+                        {/* Row 2: Account Type + Assign to Cashier */}
+                        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                          <label className="grid gap-1.5 text-sm">
                             <span className="font-medium text-[var(--muted-foreground)]">Account Type</span>
                             <select
-                              className="flex h-10 w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                              className="flex h-10 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                               value={codeBatchAccountType}
                               onChange={(event) => setCodeBatchAccountType(event.target.value)}
                             >
@@ -1183,31 +1368,37 @@ export function AdminDashboardPage() {
                               <option value="FS">FS</option>
                             </select>
                           </label>
-                        <label className="grid gap-2 text-sm">
-                          <span className="font-medium text-[var(--muted-foreground)]">Optional Tagged User</span>
-                          <Input
-                            value={codeBatchAssignedTo}
-                            onChange={(event) => setCodeBatchAssignedTo(event.target.value)}
-                            placeholder="Leave blank for general pool"
-                          />
-                        </label>
-                        <label className="grid gap-2 text-sm sm:col-span-2 lg:col-span-4">
-                          <span className="font-medium text-[var(--muted-foreground)]">Remarks (optional)</span>
+                          <label className="grid gap-1.5 text-sm">
+                            <span className="font-medium text-[var(--muted-foreground)]">Assign to Cashier <span className="font-normal opacity-60">(optional)</span></span>
+                            <select
+                              className="flex h-10 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                              value={codeBatchAssignedToUserId}
+                              onChange={(event) => setCodeBatchAssignedToUserId(event.target.value)}
+                            >
+                              <option value="">— General pool (no cashier) —</option>
+                              {cashierList.map((cashier) => (
+                                <option key={cashier.id} value={cashier.id}>{cashier.displayName}</option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+
+                        {/* Row 3: Remarks */}
+                        <label className="grid gap-1.5 text-sm">
+                          <span className="font-medium text-[var(--muted-foreground)]">Remarks <span className="font-normal opacity-60">(optional)</span></span>
                           <textarea
                             maxLength={200}
                             value={codeBatchRemarks}
                             onChange={(event) => setCodeBatchRemarks(event.target.value)}
-                            placeholder="Internal note for generation batch, audit, or follow-up"
-                            className="min-h-[96px] w-full rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                            placeholder="Internal note for this batch — audit trail, customer name, follow-up…"
+                            className="min-h-[80px] w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] resize-none"
                           />
                           <span className="text-xs text-[var(--muted-foreground)]">{codeBatchRemarks.length}/200</span>
                         </label>
-                      </div>
-                        <div className="flex flex-wrap gap-3">
-                          <Button className="ops-admin-primary-action" type="button" onClick={handleGenerateCodes}>
-                            Generate General Codes
-                          </Button>
-                        </div>
+
+                        <Button className="ops-admin-primary-action w-full sm:w-auto" type="button" onClick={handleGenerateCodes}>
+                          Generate Codes
+                        </Button>
                       </>
                     ) : (
                       <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-4 text-sm text-[var(--muted-foreground)]">
@@ -1238,67 +1429,64 @@ export function AdminDashboardPage() {
                       </div>
                     </label>
 
-                    {/* Transfer target search */}
+                    {/* Transfer target search — autocomplete combobox */}
                     <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4 space-y-3">
                       <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Transfer Target</p>
-                      <div className="flex gap-2">
+                      <div className="relative">
                         <Input
                           value={codeTransferSearchQuery}
-                          onChange={(event) => setCodeTransferSearchQuery(event.target.value)}
-                          placeholder="Search recipient username…"
+                          onChange={(event) => {
+                            setCodeTransferSearchQuery(event.target.value);
+                            setSelectedCodeTransferTarget(null);
+                            setAdminTransferTarget('');
+                          }}
+                          placeholder="Type username to search…"
+                          onFocus={() => { if (codeTransferSearchResults.length > 0) setShowTransferDropdown(true); }}
+                          onBlur={() => setTimeout(() => setShowTransferDropdown(false), 150)}
                           onKeyDown={(event) => {
                             if (event.key === 'Enter') {
                               event.preventDefault();
-                              void handleSearchCodeTransferTargets();
+                              if (codeTransferSearchResults.length > 0) {
+                                selectTransferTarget(codeTransferSearchResults[0]);
+                              }
                             }
+                            if (event.key === 'Escape') setShowTransferDropdown(false);
                           }}
                         />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => void handleSearchCodeTransferTargets()}
-                          disabled={codeTransferSearchLoading}
-                        >
-                          {codeTransferSearchLoading ? '…' : 'Search'}
-                        </Button>
-                      </div>
-                      {codeTransferSearchError ? (
-                        <p className="text-sm text-amber-400">{codeTransferSearchError}</p>
-                      ) : null}
-                      {codeTransferSearchResults.length > 0 ? (
-                        <div className="grid gap-1.5">
-                          {codeTransferSearchResults.map((result) => {
-                            const isSelected = selectedCodeTransferTarget?.username === result.username;
-                            return (
+                        {codeTransferSearchLoading && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted-foreground)]">…</span>
+                        )}
+                        {showTransferDropdown && codeTransferSearchResults.length > 0 && (
+                          <div className="absolute top-full left-0 z-50 mt-1 w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-lg">
+                            {codeTransferSearchResults.map((result) => (
                               <button
                                 key={result.username}
                                 type="button"
-                                className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition ${
-                                  isSelected
-                                    ? 'border-[var(--yor-copper)] bg-[var(--muted)]/40'
-                                    : 'border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)]/20'
-                                }`}
-                                onClick={() => {
-                                  setSelectedCodeTransferTarget(result);
-                                  setAdminTransferTarget(result.username);
-                                }}
+                                className="flex w-full items-center justify-between gap-3 border-b border-[var(--border)] px-3 py-2.5 text-left text-sm last:border-b-0 hover:bg-[var(--muted)]/30"
+                                onMouseDown={(e) => { e.preventDefault(); selectTransferTarget(result); }}
                               >
                                 <span className="font-medium text-[var(--foreground)]">{result.username}</span>
-                                <span className="text-xs text-[var(--muted-foreground)]">
-                                  {result.displayName} · {result.packageTier}
-                                </span>
+                                <span className="text-xs text-[var(--muted-foreground)]">{result.displayName} · {result.packageTier}</span>
                               </button>
-                            );
-                          })}
-                        </div>
-                      ) : codeTransferSearchQuery.trim().length >= 3 && !codeTransferSearchLoading && !codeTransferSearchError ? (
-                        <p className="text-sm text-[var(--muted-foreground)]">No results found. Try a different username.</p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {codeTransferSearchError && !showTransferDropdown ? (
+                        <p className="text-sm text-amber-400">{codeTransferSearchError}</p>
                       ) : null}
                       {selectedCodeTransferTarget ? (
                         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--yor-copper)]/40 bg-[var(--yor-copper)]/5 px-3 py-2 text-sm">
                           <Badge variant="outline">{selectedCodeTransferTarget.username}</Badge>
                           <span className="text-[var(--foreground)]">{selectedCodeTransferTarget.displayName}</span>
                           <span className="text-[var(--muted-foreground)]">· {selectedCodeTransferTarget.packageTier}</span>
+                          <button
+                            type="button"
+                            className="ml-auto text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                            onClick={() => { setSelectedCodeTransferTarget(null); setAdminTransferTarget(''); setCodeTransferSearchQuery(''); }}
+                          >
+                            ✕ clear
+                          </button>
                         </div>
                       ) : null}
                     </div>
@@ -1332,32 +1520,67 @@ export function AdminDashboardPage() {
                         Transfer to {selectedCodeTransferTarget?.username ?? 'Member'}
                       </Button>
                     </div>
+                    <Button
+                      type="button"
+                      disabled={!selectedAdminCodes.length || !adminTransferTarget}
+                      onClick={() => void handleReleaseAndTransferCodes()}
+                      className="w-full bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40"
+                    >
+                      Release + Transfer to {selectedCodeTransferTarget?.username ?? 'Member'}
+                    </Button>
                   </CardContent>
                 </Card>
               </div>
-              <Card className="ops-admin-table-card border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
+              <Card className="ops-admin-table-card flex h-[640px] flex-col border-[var(--border)] bg-[var(--card)]">
+                <CardHeader className="shrink-0">
                   <CardTitle>Code Inventory</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="ops-code-table overflow-hidden rounded-xl border border-[var(--border)]">
-                    <div className="ops-code-table-actions flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
-                      <p className="text-sm font-medium text-[var(--foreground)]">Select codes from the table</p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={!selectableAdminCodes.length}
-                        onClick={() =>
-                          setSelectedAdminCodes(allSelectableAdminCodesSelected ? [] : selectableAdminCodes)
-                        }
-                      >
-                        {allSelectableAdminCodesSelected ? 'Clear Selection' : 'Select All'}
-                      </Button>
+                <CardContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                  <div className="ops-code-table flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border-t border-[var(--border)]">
+                    <div className="ops-code-table-actions shrink-0 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium text-[var(--foreground)]">Select codes from the table</p>
+                        <span className="text-xs text-[var(--muted-foreground)]">({filteredActivationInventory.length})</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Status filter */}
+                        <select
+                          className="h-8 rounded-lg border border-[var(--input)] bg-[var(--background)] px-2 text-xs text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--ring)]"
+                          value={inventoryStatusFilter}
+                          onChange={(e) => setInventoryStatusFilter(e.target.value as typeof inventoryStatusFilter)}
+                        >
+                          <option value="">All statuses</option>
+                          <option value="unreleased">Unreleased</option>
+                          <option value="available">Available</option>
+                          <option value="used">Used</option>
+                        </select>
+                        {/* Sort */}
+                        <select
+                          className="h-8 rounded-lg border border-[var(--input)] bg-[var(--background)] px-2 text-xs text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--ring)]"
+                          value={inventorySortBy}
+                          onChange={(e) => setInventorySortBy(e.target.value as typeof inventorySortBy)}
+                        >
+                          <option value="recent">Most recent activity</option>
+                          <option value="newest">Newest generated</option>
+                          <option value="oldest">Oldest generated</option>
+                          <option value="status">By status</option>
+                        </select>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={!selectableAdminCodes.length}
+                          onClick={() =>
+                            setSelectedAdminCodes(allSelectableAdminCodesSelected ? [] : selectableAdminCodes)
+                          }
+                        >
+                          {allSelectableAdminCodesSelected ? 'Clear Selection' : 'Select All'}
+                        </Button>
+                      </div>
                     </div>
-                    <div className="overflow-x-auto">
+                    <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto">
                       <table className="w-full min-w-[1220px] text-sm">
-                        <thead>
+                        <thead className="sticky top-0 z-10">
                           <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
                             <th className="w-16 px-4 py-3">Action</th>
                             <th className="px-4 py-3">Code</th>
@@ -1370,7 +1593,7 @@ export function AdminDashboardPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredActivationInventory.map((item) => {
+                          {pagedInventory.map((item) => {
                             const isSelected = selectedAdminCodes.includes(item.code);
                             const isLocked = item.status === 'used' || item.status === 'lost';
 
@@ -1419,21 +1642,32 @@ export function AdminDashboardPage() {
                         </tbody>
                       </table>
                     </div>
+                    {/* Pagination footer */}
+                    {totalInventoryPages > 1 && (
+                      <div className="shrink-0 flex items-center justify-between border-t border-[var(--border)] bg-[var(--background)] px-4 py-2 text-xs text-[var(--muted-foreground)]">
+                        <span>{(safePage - 1) * INVENTORY_PAGE_SIZE + 1}–{Math.min(safePage * INVENTORY_PAGE_SIZE, filteredActivationInventory.length)} of {filteredActivationInventory.length}</span>
+                        <div className="flex gap-1">
+                          <button type="button" disabled={safePage <= 1} className="rounded px-2 py-1 disabled:opacity-30 hover:bg-[var(--muted)]/30" onClick={() => setInventoryPage((p) => p - 1)}>← Prev</button>
+                          <span className="px-2 py-1">{safePage} / {totalInventoryPages}</span>
+                          <button type="button" disabled={safePage >= totalInventoryPages} className="rounded px-2 py-1 disabled:opacity-30 hover:bg-[var(--muted)]/30" onClick={() => setInventoryPage((p) => p + 1)}>Next →</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="ops-admin-table-card border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
+              <Card className="ops-admin-table-card flex h-[480px] flex-col border-[var(--border)] bg-[var(--card)]">
+                <CardHeader className="shrink-0">
                   <CardTitle>Code History</CardTitle>
                   <CardDescription>Latest activation-code events from the office ledger.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                   {activationCodes.auditTrail.length ? (
-                    <div className="overflow-hidden rounded-xl border border-[var(--border)]">
-                      <div className="overflow-x-auto">
+                    <div className="min-h-0 flex-1 overflow-hidden rounded-none border-t border-[var(--border)]">
+                      <div className="h-full overflow-x-auto overflow-y-auto">
                         <table className="w-full min-w-[920px] text-sm">
-                          <thead>
+                          <thead className="sticky top-0 z-10">
                             <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
                               <th className="px-4 py-3">Actor</th>
                               <th className="px-4 py-3">Action</th>
@@ -1957,171 +2191,185 @@ export function AdminDashboardPage() {
             </section>
           ) : null}
 
-          {moduleId === 'encashment-reports' && encashments ? (
-            <section className="ops-admin-encashment-grid grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-              <Card className="ops-admin-table-card border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Encashment Queue</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <DataPoint label="Gross Total" value={formatCurrency(encashments.totals.gross)} />
-                    <DataPoint label="Net Total" value={formatCurrency(encashments.totals.net)} />
-                    <DataPoint label="Awaiting Review" value={encashments.totals.awaitingReview} />
-                  </div>
-                  <div className="overflow-hidden rounded-xl border border-[var(--border)]">
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[900px] text-sm">
-                        <thead>
-                          <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
-                            <th className="px-4 py-3">Member</th>
-                            <th className="px-4 py-3">Reference</th>
-                            <th className="px-4 py-3">Method</th>
-                            <th className="px-4 py-3">Gross</th>
-                            <th className="px-4 py-3">Net</th>
-                            <th className="px-4 py-3">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {encashments.encashments.map((item) => {
-                            const selected = selectedEncashment?.id === item.id;
-                            return (
-                              <tr
-                                key={item.id}
-                                className={cn(
-                                  'cursor-pointer border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30',
-                                  selected && 'bg-[var(--muted)]/40'
-                                )}
-                                onClick={() => handleSelectEncashment(item.id)}
-                              >
-                                <td className="px-4 py-3 font-medium text-[var(--foreground)]">{item.member}</td>
-                                <td className="px-4 py-3 font-mono text-[var(--yor-copper-soft)]">{item.id}</td>
-                                <td className="px-4 py-3">{item.method}</td>
-                                <td className="px-4 py-3">{item.gross}</td>
-                                <td className="px-4 py-3">{item.net}</td>
-                                <td className="px-4 py-3">
-                                  <Badge variant={/paid/i.test(item.status) ? 'success' : /cancel/i.test(item.status) ? 'warning' : 'outline'}>
-                                    {item.status}
-                                  </Badge>
+          {moduleId === 'encashment-reports' && encashments ? (() => {
+            const ENCASHMENT_PAGE_SIZE = 100;
+            const allFiltered = encashments.encashments.filter((item) => {
+              if (encashmentStatusFilter === 'all') return true;
+              if (encashmentStatusFilter === 'paid') return /paid/i.test(item.status);
+              if (encashmentStatusFilter === 'cancelled') return /cancel/i.test(item.status);
+              return !/paid/i.test(item.status) && !/cancel/i.test(item.status);
+            });
+            const encTotalPages = Math.max(1, Math.ceil(allFiltered.length / ENCASHMENT_PAGE_SIZE));
+            const safePage = Math.min(encashmentPage, encTotalPages);
+            const pageRows = allFiltered.slice((safePage - 1) * ENCASHMENT_PAGE_SIZE, safePage * ENCASHMENT_PAGE_SIZE);
+
+            return (
+              <section className="grid gap-4">
+                {/* ── Queue Table ── */}
+                <Card className="border-[var(--border)] bg-[var(--card)]">
+                  <CardHeader className="gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <CardTitle>Encashment Queue</CardTitle>
+                      <div className="mt-1 flex gap-3 text-xs text-[var(--muted-foreground)]">
+                        <span>Gross: {formatCurrency(encashments.totals.gross)}</span>
+                        <span>Net: {formatCurrency(encashments.totals.net)}</span>
+                        <span>Awaiting: {encashments.totals.awaitingReview}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5">
+                      {(['all', 'pending', 'paid', 'cancelled'] as const).map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => { setEncashmentStatusFilter(f); setEncashmentPage(1); }}
+                          className={cn(
+                            'rounded-lg px-3 py-1 text-xs font-medium transition',
+                            encashmentStatusFilter === f
+                              ? 'bg-[var(--foreground)] text-[var(--background)]'
+                              : 'bg-[var(--muted)]/40 text-[var(--muted-foreground)] hover:bg-[var(--muted)]/70'
+                          )}
+                        >
+                          {f.charAt(0).toUpperCase() + f.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0 pb-0">
+                    <div className="h-[420px] flex flex-col overflow-hidden border-t border-[var(--border)]">
+                      <div className="overflow-x-auto flex-1 overflow-y-auto">
+                        <table className="w-full min-w-[800px] text-sm">
+                          <thead className="sticky top-0 z-10">
+                            <tr className="border-b border-[var(--border)] bg-[var(--card)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                              <th className="px-4 py-3">#</th>
+                              <th className="px-4 py-3">Member</th>
+                              <th className="px-4 py-3">Reference</th>
+                              <th className="px-4 py-3">Method</th>
+                              <th className="px-4 py-3">Gross</th>
+                              <th className="px-4 py-3">Net</th>
+                              <th className="px-4 py-3">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pageRows.length === 0 ? (
+                              <tr>
+                                <td colSpan={7} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
+                                  No encashments match the selected filter.
                                 </td>
                               </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                            ) : pageRows.map((item) => {
+                              const selected = selectedEncashment?.id === item.id;
+                              return (
+                                <tr
+                                  key={item.id}
+                                  className={cn(
+                                    'cursor-pointer border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30',
+                                    selected && 'bg-[var(--muted)]/40'
+                                  )}
+                                  onClick={() => handleSelectEncashment(item.id)}
+                                >
+                                  <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">{item.queueOrder}</td>
+                                  <td className="px-4 py-3 font-medium text-[var(--foreground)]">{item.member}</td>
+                                  <td className="px-4 py-3 font-mono text-xs text-[var(--yor-copper-soft)]">{item.id}</td>
+                                  <td className="px-4 py-3">{item.method}</td>
+                                  <td className="px-4 py-3">{item.gross}</td>
+                                  <td className="px-4 py-3">{item.net}</td>
+                                  <td className="px-4 py-3">
+                                    <Badge variant={/paid/i.test(item.status) ? 'success' : /cancel/i.test(item.status) ? 'warning' : 'outline'}>
+                                      {item.status}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      {encTotalPages > 1 && (
+                        <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] px-4 py-2 text-xs text-[var(--muted-foreground)]">
+                          <button
+                            type="button"
+                            disabled={safePage <= 1}
+                            onClick={() => setEncashmentPage((p) => Math.max(1, p - 1))}
+                            className="rounded px-2 py-1 hover:bg-[var(--muted)]/40 disabled:opacity-40"
+                          >
+                            ← Prev
+                          </button>
+                          <span>Page {safePage} of {encTotalPages}</span>
+                          <button
+                            type="button"
+                            disabled={safePage >= encTotalPages}
+                            onClick={() => setEncashmentPage((p) => Math.min(encTotalPages, p + 1))}
+                            className="rounded px-2 py-1 hover:bg-[var(--muted)]/40 disabled:opacity-40"
+                          >
+                            Next →
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="ops-admin-process-card border-[var(--border)] bg-[var(--card)]">
-                <CardHeader>
-                  <CardTitle>Selected Request</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {selectedEncashment ? (
-                    <>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <DataPoint label="Member" value={selectedEncashment.member} />
-                        <DataPoint label="Status" value={selectedEncashment.status} />
-                        <DataPoint label="Gross" value={selectedEncashment.gross} />
-                        <DataPoint label="Net" value={selectedEncashment.net} />
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <label className="grid gap-2 text-sm">
-                          <span className="font-medium text-[var(--muted-foreground)]">Payout Method</span>
-                          <Input
-                            value={encashmentDraft.method}
-                            onChange={(event) => handleEncashmentDraftField('method', event.target.value)}
-                          />
-                        </label>
-                        <label className="grid gap-2 text-sm">
-                          <span className="font-medium text-[var(--muted-foreground)]">Fee</span>
-                          <Input
-                            value={encashmentDraft.fee}
-                            onChange={(event) => handleEncashmentDraftField('fee', event.target.value)}
-                          />
-                        </label>
-                        <label className="grid gap-2 text-sm">
-                          <span className="font-medium text-[var(--muted-foreground)]">Tax</span>
-                          <Input
-                            value={encashmentDraft.tax}
-                            onChange={(event) => handleEncashmentDraftField('tax', event.target.value)}
-                          />
-                        </label>
-                        <label className="grid gap-2 text-sm">
-                          <span className="font-medium text-[var(--muted-foreground)]">CD Deduction</span>
-                          <Input
-                            value={encashmentDraft.cdDeduction}
-                            onChange={(event) => handleEncashmentDraftField('cdDeduction', event.target.value)}
-                          />
-                        </label>
-                      </div>
-                      <label className="grid gap-2 text-sm">
-                        <span className="font-medium text-[var(--muted-foreground)]">Remarks</span>
-                        <Input
-                          value={encashmentDraft.remarks}
-                          onChange={(event) => handleEncashmentDraftField('remarks', event.target.value)}
-                          placeholder="Reason for hold, payout note, correction reference"
-                        />
-                      </label>
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-                        <div className="grid gap-2 text-sm text-[var(--muted-foreground)]">
-                          <div className="flex items-center justify-between gap-3">
-                            <span>Gross</span>
-                            <strong className="text-[var(--foreground)]">{selectedEncashment.gross}</strong>
-                          </div>
-                          <div className="flex items-center justify-between gap-3">
-                            <span>Fee</span>
-                            <strong className="text-[var(--foreground)]">{formatCurrency(parseMoneyValue(encashmentDraft.fee))}</strong>
-                          </div>
-                          <div className="flex items-center justify-between gap-3">
-                            <span>Tax</span>
-                            <strong className="text-[var(--foreground)]">{formatCurrency(parseMoneyValue(encashmentDraft.tax))}</strong>
-                          </div>
-                          <div className="flex items-center justify-between gap-3">
-                            <span>CD Deduction</span>
-                            <strong className="text-[var(--foreground)]">{formatCurrency(parseMoneyValue(encashmentDraft.cdDeduction))}</strong>
-                          </div>
-                          <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-2">
-                            <span>Computed Net</span>
-                            <strong className="text-[var(--foreground)]">
-                              {formatCurrency(
-                                Math.max(
-                                  0,
-                                  parseMoneyValue(selectedEncashment.gross) -
-                                    parseMoneyValue(encashmentDraft.fee) -
-                                    parseMoneyValue(encashmentDraft.tax) -
-                                    parseMoneyValue(encashmentDraft.cdDeduction)
-                                )
-                              )}
-                            </strong>
+                  </CardContent>
+                </Card>
+
+                {/* ── Selected Detail ── */}
+                <Card className="border-[var(--border)] bg-[var(--card)]">
+                  <CardHeader>
+                    <CardTitle>Selected Request</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {selectedEncashment ? (
+                      <>
+                        {/* Encashment values are member-submitted and fixed. The admin
+                            only settles the request — no field is editable. */}
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <DataPoint label="Member" value={selectedEncashment.member} />
+                          <DataPoint label="Status" value={selectedEncashment.status} />
+                          <DataPoint label="Payout Method" value={encashmentDraft.method || '—'} />
+                          <DataPoint label="Remarks" value={encashmentDraft.remarks || '—'} />
+                        </div>
+                        <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                          <div className="grid gap-2 text-sm text-[var(--muted-foreground)]">
+                            <div className="flex items-center justify-between gap-3">
+                              <span>Gross</span>
+                              <strong className="text-[var(--foreground)]">{selectedEncashment.gross}</strong>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span>Fee</span>
+                              <strong className="text-[var(--foreground)]">{formatCurrency(parseMoneyValue(encashmentDraft.fee))}</strong>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span>Tax</span>
+                              <strong className="text-[var(--foreground)]">{formatCurrency(parseMoneyValue(encashmentDraft.tax))}</strong>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span>CD Deduction</span>
+                              <strong className="text-[var(--foreground)]">{formatCurrency(parseMoneyValue(encashmentDraft.cdDeduction))}</strong>
+                            </div>
+                            <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-2">
+                              <span>Net Receivable</span>
+                              <strong className="text-[var(--foreground)]">{selectedEncashment.net}</strong>
+                            </div>
                           </div>
                         </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            className="flex-1"
+                            disabled={!canApproveEncashment || /paid/i.test(selectedEncashment.status)}
+                            onClick={() => void handleReviewEncashment('mark-paid')}
+                          >
+                            {/paid/i.test(selectedEncashment.status) ? 'Already Paid' : 'Mark Paid'}
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-5 text-sm text-[var(--muted-foreground)]">
+                        Select an encashment row to review gross, net, deductions, remarks, and settlement actions.
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button type="button" variant="outline" disabled={!canApproveEncashment} onClick={() => void handleReviewEncashment('edit')}>
-                          Save Changes
-                        </Button>
-                        <Button type="button" variant="outline" disabled={!canApproveEncashment} onClick={() => void handleReviewEncashment('queue')}>
-                          Queue
-                        </Button>
-                        <Button type="button" variant="outline" disabled={!canApproveEncashment} onClick={() => void handleReviewEncashment('cancel')}>
-                          Cancel
-                        </Button>
-                        <Button type="button" disabled={!canApproveEncashment} onClick={() => void handleReviewEncashment('mark-paid')}>
-                          Mark Paid
-                        </Button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-5 text-sm text-[var(--muted-foreground)]">
-                      Select an encashment row to review gross, net, deductions, remarks, and settlement actions.
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </section>
-          ) : null}
+                    )}
+                  </CardContent>
+                </Card>
+              </section>
+            );
+          })() : null}
 
           {moduleId === 'account-genealogy' ? (
             <section className="ops-admin-tree-grid grid gap-4">
@@ -2169,6 +2417,10 @@ export function AdminDashboardPage() {
                       }}
                       adminMode={true}
                     />
+                  ) : treeRootUsername ? (
+                    <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-sm text-destructive">
+                      Member <strong>{treeRootUsername}</strong> was not found. The username may have changed — try searching with the updated username.
+                    </div>
                   ) : (
                     <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] p-8 text-sm text-[var(--muted-foreground)]">
                       Enter a username such as yor01, YOR0002, or a referral code to load the tree.
@@ -2212,58 +2464,7 @@ export function AdminDashboardPage() {
                   </section>
 
                   {shadowAccounts ? (
-                    <Card className="border-[var(--border)] bg-[var(--card)]">
-                      <CardHeader>
-                        <CardTitle>Shadow Accounts</CardTitle>
-                        <CardDescription className="text-xs">
-                          Admin visibility for the selected member's Binary Function Only slots.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="grid gap-4">
-                        <div className="grid gap-3 md:grid-cols-3">
-                          <DataPoint label="Owner" value={shadowAccounts.owner} />
-                          <DataPoint label="Shadow Slots" value={shadowAccounts.accounts.length} />
-                          <DataPoint label="Available Codes" value={shadowAccounts.availableCodes.length} />
-                        </div>
-                        <div className="grid gap-4 xl:grid-cols-2">
-                          {shadowAccounts.accounts.map((account) => (
-                            <div key={account.shadowCode} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
-                              <div className="flex items-start justify-between gap-3">
-                                <div>
-                                  <p className="text-sm font-semibold text-[var(--foreground)]">{account.label}</p>
-                                  <p className="text-xs text-[var(--muted-foreground)]">{account.shadowCode}</p>
-                                </div>
-                                <Badge variant={account.state.includes('reserved') ? 'warning' : 'success'} className="text-[10px]">
-                                  {formatShadowStateLabel(account.state)}
-                                </Badge>
-                              </div>
-                              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                                <DataPoint label="Placement" value={account.placement} />
-                                <DataPoint label="Package" value={account.packageTier ?? 'Not activated'} />
-                                <DataPoint label="Account Type" value={account.accountType ? formatAccountTypeLabel(account.accountType) : 'Pending'} />
-                                <DataPoint label="Activation Code" value={account.activationCode ?? 'Not yet assigned'} />
-                                <DataPoint label="PV" value={account.pvValue} />
-                                <DataPoint label="Salesmatch" value={formatCurrency(account.salesmatchValue)} />
-                              </div>
-                              <div className="mt-3 space-y-1 text-xs text-[var(--muted-foreground)]">
-                                <p>Activated: {formatDateTime(account.activatedAt)}</p>
-                                <p>Last upgrade: {formatDateTime(account.lastUpgradedAt)}</p>
-                                <p>{account.note}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        {shadowAccounts.notes.length ? (
-                          <div className="grid gap-2">
-                            {shadowAccounts.notes.map((note) => (
-                              <div key={note} className="rounded-xl border border-[var(--border)] px-3 py-2 text-sm text-[var(--muted-foreground)]">
-                                {note}
-                              </div>
-                            ))}
-                          </div>
-                        ) : null}
-                      </CardContent>
-                    </Card>
+                    <ShadowAccountsCard shadowAccounts={shadowAccounts} />
                   ) : null}
                 </section>
               ) : null}
@@ -2300,6 +2501,10 @@ export function AdminDashboardPage() {
 
           {moduleId === 'contact-messages' ? (
             <ContactMessagesView activeModule={activeModule} />
+          ) : null}
+
+          {moduleId === 'unilevel-rank-progress' ? (
+            <AdminUnilevelView />
           ) : null}
 
           {moduleId === 'news-posts' ? (
@@ -2850,96 +3055,144 @@ function RankingsView({ activeModule }: ModuleViewProps) {
 
 // ─── 5. Global Bonus View ────────────────────────────────────────────────────
 
-function GlobalBonusView({ activeModule }: ModuleViewProps) {
-  const [completedYear, setCompletedYear] = useState(String(new Date().getFullYear() - 1));
-  const metrics = activeModule?.metrics ?? [];
-  const rows = activeModule?.table?.rows ?? [];
+const STOCKIST_LEVEL_OPTIONS: { value: StockistLevel; label: string }[] = [
+  { value: 'none', label: 'No designation' },
+  { value: 'mobile_kiosk', label: 'Mobile Kiosk' },
+  { value: 'city_center', label: 'City Center' },
+  { value: 'mega_center', label: 'Mega Center' }
+];
 
-  const statsConfig = [
-    { label: 'Annual Net Sales', keys: ['annual', 'net', 'sales'] },
-    { label: 'Bonus Pool (2%)', keys: ['bonus', 'pool'] },
-    { label: 'Total Portions', keys: ['total', 'portion'] },
-    { label: 'Per Portion Value', keys: ['per', 'portion'] },
-  ];
+function GlobalBonusView({ activeModule }: ModuleViewProps) {
+  const { notify } = useFeedback();
+  const [data, setData] = useState<GlobalBonusData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [taggingUsername, setTaggingUsername] = useState<string | null>(null);
+  const [searchFilter, setSearchFilter] = useState('');
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetchAdminGlobalBonus()
+      .then(setData)
+      .catch(() => notify({ title: 'Load failed', description: 'Unable to load global bonus data.', tone: 'destructive' }))
+      .finally(() => setIsLoading(false));
+  }, [notify]);
+
+  async function handleSetLevel(entry: GlobalBonusEntry, level: StockistLevel) {
+    setTaggingUsername(entry.username);
+    try {
+      await tagStockistLevel(entry.username, level);
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              entries: prev.entries.map((e) =>
+                e.username === entry.username
+                  ? { ...e, stockistLevel: level, stockistLabel: STOCKIST_LEVEL_OPTIONS.find((o) => o.value === level)?.label ?? '—', portions: level !== 'none' ? 1 : 0 }
+                  : e
+              ),
+              totalPortions: prev.entries.reduce((sum, e) => sum + (e.username === entry.username ? (level !== 'none' ? 1 : 0) : e.portions), 0)
+            }
+          : prev
+      );
+      notify({ title: 'Stockist updated', description: `${entry.username} → ${level === 'none' ? 'removed' : STOCKIST_LEVEL_OPTIONS.find((o) => o.value === level)?.label}`, tone: 'success' });
+    } catch (error) {
+      notify({ title: 'Update failed', description: error instanceof Error ? error.message : 'Unable to update.', tone: 'destructive' });
+    } finally {
+      setTaggingUsername(null);
+    }
+  }
+
+  const filteredEntries = useMemo(() => {
+    if (!data) return [];
+    const q = searchFilter.trim().toUpperCase();
+    return q
+      ? data.entries.filter((e) => e.username.toUpperCase().includes(q) || e.fullName.toUpperCase().includes(q))
+      : data.entries;
+  }, [data, searchFilter]);
+
+  const stockistEntries = useMemo(() => (data?.entries ?? []).filter((e) => e.stockistLevel !== 'none'), [data]);
 
   return (
     <section className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[
+          { label: 'Total Members', value: data ? String(data.entries.length) : '—' },
+          { label: 'Tagged Stockists', value: data ? String(stockistEntries.length) : '—' },
+          { label: 'Total Portions', value: data ? String(data.totalPortions) : '—' }
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">{stat.label}</p>
+            <p className="mt-1.5 text-lg font-semibold text-[var(--foreground)]">{stat.value}</p>
+          </div>
+        ))}
+      </div>
+
       <Card className="border-[var(--border)] bg-[var(--card)]">
         <CardHeader>
-          <CardTitle>Global Bonus</CardTitle>
+          <CardTitle>Stockist Designations</CardTitle>
           <CardDescription>
-            {activeModule?.description ?? 'Annual PPT pool distribution — load the completed year to review and distribute the global bonus pool.'}
+            Tag members as Mobile Kiosk, City Center, or Mega Center. Each designation qualifies them for 1 portion of the annual global bonus pool.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="grid gap-1.5 text-sm">
-              <span className="font-medium text-[var(--muted-foreground)]">Completed Year</span>
-              <Input
-                type="number"
-                className="w-32"
-                value={completedYear}
-                onChange={(e) => setCompletedYear(e.target.value)}
-                min={2020}
-                max={2099}
-              />
-            </label>
-            <Button type="button" variant="outline">Load Annual Report</Button>
-            <Button type="button" variant="outline" disabled>Latest Distributed</Button>
-            <Button type="button" className="bg-emerald-600 text-white hover:bg-emerald-700">Distribute Annual Pool</Button>
-          </div>
-          <p className="text-xs text-[var(--muted-foreground)]">
-            The PPT rule is annual. The current year cannot be distributed until the year is complete.
-          </p>
-
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {statsConfig.map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">{stat.label}</p>
-                <p className="mt-1.5 text-lg font-semibold text-[var(--foreground)]">
-                  {getMetric(metrics, stat.keys)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-[var(--border)] bg-[var(--card)]">
-        <CardHeader>
-          <CardTitle>Distributed Recipients</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {rows.length === 0 ? (
-            <ModuleEmptyState message="No distribution records found for this year." />
+        <CardContent className="space-y-3">
+          <Input
+            placeholder="Search by username or name…"
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            className="max-w-xs"
+          />
+          {isLoading ? (
+            <p className="py-6 text-center text-sm text-[var(--muted-foreground)]">Loading…</p>
+          ) : filteredEntries.length === 0 ? (
+            <ModuleEmptyState message="No members found." />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-              <table className="w-full min-w-[860px] text-sm">
+              <table className="w-full min-w-[760px] text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
-                    <th className="px-4 py-3">Member</th>
                     <th className="px-4 py-3">Username</th>
-                    <th className="px-4 py-3">Member Type</th>
-                    <th className="px-4 py-3">Portions</th>
-                    <th className="px-4 py-3">Share Amount</th>
-                    <th className="px-4 py-3">Distributed Date</th>
+                    <th className="px-4 py-3">Full Name</th>
+                    <th className="px-4 py-3">Package</th>
+                    <th className="px-4 py-3">Current Level</th>
+                    <th className="px-4 py-3">Change</th>
+                    <th className="px-4 py-3 text-center">Portions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, i) => (
-                    <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
-                      <td className="px-4 py-3 font-medium text-[var(--foreground)]">{String(row['member'] ?? row['Member'] ?? '—')}</td>
-                      <td className="px-4 py-3 font-mono text-[var(--muted-foreground)]">{String(row['username'] ?? row['Username'] ?? '—')}</td>
-                      <td className="px-4 py-3">{String(row['memberType'] ?? row['member_type'] ?? row['MemberType'] ?? '—')}</td>
-                      <td className="px-4 py-3 text-amber-500">{String(row['portions'] ?? row['Portions'] ?? '—')}</td>
-                      <td className="px-4 py-3 text-emerald-500">{String(row['shareAmount'] ?? row['share_amount'] ?? row['ShareAmount'] ?? '—')}</td>
-                      <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['distributedDate'] ?? row['distributed_date'] ?? row['DistributedDate'] ?? '—')}</td>
+                  {filteredEntries.map((entry) => (
+                    <tr key={entry.userId} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
+                      <td className="px-4 py-3 font-mono font-medium text-[var(--foreground)]">{entry.username}</td>
+                      <td className="px-4 py-3 text-[var(--muted-foreground)]">{entry.fullName}</td>
+                      <td className="px-4 py-3">{entry.packageTier}</td>
+                      <td className="px-4 py-3">
+                        {entry.stockistLevel !== 'none' ? (
+                          <Badge className="bg-violet-500/15 text-violet-400 border-violet-500/30">{entry.stockistLabel}</Badge>
+                        ) : (
+                          <span className="text-[var(--muted-foreground)]">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          className="rounded border border-[var(--border)] bg-[var(--background)] px-2 py-1 text-xs text-[var(--foreground)] disabled:opacity-50"
+                          value={entry.stockistLevel}
+                          disabled={taggingUsername === entry.username}
+                          onChange={(e) => handleSetLevel(entry, e.target.value as StockistLevel)}
+                        >
+                          {STOCKIST_LEVEL_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-4 py-3 text-center font-semibold text-amber-500">{entry.portions}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
+          {(data?.notes ?? []).map((note, i) => (
+            <p key={i} className="text-xs text-[var(--muted-foreground)]">{note}</p>
+          ))}
         </CardContent>
       </Card>
     </section>
@@ -3286,6 +3539,198 @@ function resolveContactStatusClass(status: string): string {
   return 'border-[var(--border)] text-[var(--muted-foreground)]';
 }
 
+// ── Admin Unilevel View ────────────────────────────────────────────────────────
+
+const UNILEVEL_PERCENTAGES_ADMIN = [10, 8, 5, 5, 3, 3, 2, 1, 1, 1];
+
+function AdminUnilevelView() {
+  const { notify } = useFeedback();
+  const [memberSearch, setMemberSearch] = useState('');
+  const [selectedUsername, setSelectedUsername] = useState<string | null>(null);
+  const [data, setData] = useState<UnilevelData | null>(null);
+  const [tree, setTree] = useState<SponsorTreeCenter | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [treeNavStack, setTreeNavStack] = useState<string[]>([]);
+  const [treeNavLoading, setTreeNavLoading] = useState(false);
+  function loadMemberUnilevel(username: string, treeRoot?: string) {
+    setSelectedUsername(username);
+    setLoading(true);
+    Promise.all([
+      fetchAdminMemberUnilevelData(username),
+      fetchAdminSponsorTree(treeRoot ?? username)
+    ]).then(([uniData, treeData]) => {
+      setData(uniData);
+      setTree(treeData);
+      setTreeNavStack([]);
+    }).catch(() => {
+      notify({ title: 'Error', description: 'Unable to load unilevel data.', tone: 'destructive' });
+    }).finally(() => setLoading(false));
+  }
+
+  function handleTreeNavigate(username: string) {
+    if (!tree || username === tree.root.username || !selectedUsername) return;
+    setTreeNavLoading(true);
+    fetchAdminSponsorTree(username).then((treeData) => {
+      setTreeNavStack((prev) => [...prev, tree.root.username]);
+      setTree(treeData);
+    }).finally(() => setTreeNavLoading(false));
+  }
+
+  function handleTreeBack() {
+    if (!treeNavStack.length) return;
+    const prev = treeNavStack[treeNavStack.length - 1];
+    setTreeNavLoading(true);
+    fetchAdminSponsorTree(prev).then((treeData) => {
+      setTreeNavStack((s) => s.slice(0, -1));
+      setTree(treeData);
+    }).finally(() => setTreeNavLoading(false));
+  }
+
+  return (
+    <section className="space-y-6">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Reporting</p>
+        <h2 className="mt-0.5 text-xl font-bold text-[var(--foreground)]">Uni-Level Bonus Report</h2>
+        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+          Look up any member to view their unilevel earnings breakdown and sponsor downline tree.
+        </p>
+      </div>
+
+      {/* Member lookup */}
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Member Lookup</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <input
+              className="flex h-9 flex-1 rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-1 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+              placeholder="Enter member username to look up unilevel data"
+              value={memberSearch}
+              onChange={(e) => setMemberSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && memberSearch.trim()) {
+                  loadMemberUnilevel(memberSearch.trim());
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => { if (memberSearch.trim()) loadMemberUnilevel(memberSearch.trim()); }}
+              disabled={loading || !memberSearch.trim()}
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-medium text-[var(--foreground)] transition hover:bg-[var(--accent)] disabled:opacity-50"
+            >
+              {loading ? 'Loading…' : 'Look Up'}
+            </button>
+          </div>
+          {selectedUsername && (
+            <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+              Showing data for: <strong className="text-[var(--foreground)]">{selectedUsername}</strong>
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Results */}
+      {data && (
+        <>
+          {/* Summary */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[
+              { label: 'Total Earned', value: `PHP ${data.totalEarned.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`, sub: 'Lifetime unilevel' },
+              { label: 'Active Levels', value: `${data.byLevel.filter(l => l.amount > 0).length} / 10`, sub: 'Levels with credits' },
+              { label: 'Credit Events', value: String(data.entries.length), sub: 'Repurchase events' }
+            ].map((card) => (
+              <Card key={card.label} className="border-[var(--border)] bg-[var(--card)]">
+                <CardContent className="pt-5">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">{card.label}</p>
+                  <p className="mt-1 text-2xl font-bold text-[var(--foreground)]">{card.value}</p>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">{card.sub}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Level breakdown */}
+          <Card className="border-[var(--border)] bg-[var(--card)]">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Per-Level Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {UNILEVEL_PERCENTAGES_ADMIN.map((pct, idx) => {
+                  const level = idx + 1;
+                  const row = data.byLevel.find(l => l.level === level);
+                  const amount = row?.amount ?? 0;
+                  const count = row?.count ?? 0;
+                  const maxAmt = Math.max(1, ...data.byLevel.map(l => l.amount));
+                  const barW = amount > 0 ? Math.max(4, Math.round((amount / maxAmt) * 100)) : 0;
+                  return (
+                    <div key={level} className="flex items-center gap-3">
+                      <span className="shrink-0 w-8 text-right text-[10px] font-bold text-[var(--muted-foreground)]">L{level}</span>
+                      <span className="shrink-0 w-7 text-[10px] text-[var(--muted-foreground)]">{pct}%</span>
+                      <div className="flex-1 overflow-hidden">
+                        <div className="h-1.5 rounded-full bg-[var(--muted)]">
+                          <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-all" style={{ width: `${barW}%` }} />
+                        </div>
+                      </div>
+                      <span className="w-28 shrink-0 text-right text-xs font-medium text-[var(--foreground)]">
+                        {amount > 0 ? `PHP ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : '—'}
+                      </span>
+                      <span className="w-16 shrink-0 text-right text-[10px] text-[var(--muted-foreground)]">
+                        {count > 0 ? `${count}x` : ''}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sponsor tree */}
+          {tree && (
+            <Card className="border-[var(--border)] bg-[var(--card)] overflow-hidden">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base">Sponsor Downline Tree</CardTitle>
+                    <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">Up to 20 levels · click any node to navigate</p>
+                  </div>
+                  {treeNavStack.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleTreeBack}
+                      disabled={treeNavLoading}
+                      className="inline-flex h-7 items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 text-xs font-medium text-[var(--foreground)] transition hover:bg-[var(--accent)] disabled:opacity-50"
+                    >
+                      ← {treeNavStack[treeNavStack.length - 1]}
+                    </button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="px-0 pb-0">
+                {treeNavLoading ? (
+                  <div className="flex h-[400px] items-center justify-center">
+                    <p className="text-sm text-[var(--muted-foreground)]">Loading sponsor tree…</p>
+                  </div>
+                ) : (
+                  <SponsorTreeCanvas root={tree.root} onNavigate={handleTreeNavigate} />
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {!data && !loading && (
+        <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-dashed border-[var(--border)]">
+          <p className="text-sm text-[var(--muted-foreground)]">Enter a username above to view their unilevel report.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ContactMessagesView({ activeModule }: ModuleViewProps) {
   const { notify } = useFeedback();
   const [activeTab, setActiveTab] = useState<ContactTab>('all');
@@ -3344,7 +3789,7 @@ function ContactMessagesView({ activeModule }: ModuleViewProps) {
                 <h3 className="text-base font-semibold text-[var(--foreground)]">{selectedMessage.subject}</h3>
                 <p className="text-xs text-[var(--muted-foreground)]">
                   From <span className="font-medium text-[var(--foreground)]">{selectedMessage.displayName}</span>
-                  {' '}({selectedMessage.username}) · {selectedMessage.email} · {new Date(selectedMessage.createdAt).toLocaleString('en-PH')}
+                  {' '}({selectedMessage.username}) · {selectedMessage.email} · {new Date(selectedMessage.createdAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}
                 </p>
               </div>
               <Button type="button" variant="outline" size="sm" onClick={() => setSelectedMessage(null)}>Close</Button>
@@ -3441,7 +3886,7 @@ function ContactMessagesView({ activeModule }: ModuleViewProps) {
                       </td>
                       <td className="px-4 py-3 capitalize text-[var(--muted-foreground)]">{msg.category}</td>
                       <td className="max-w-[220px] px-4 py-3 truncate text-[var(--foreground)]">{msg.subject}</td>
-                      <td className="px-4 py-3 text-[var(--muted-foreground)]">{new Date(msg.createdAt).toLocaleDateString('en-PH')}</td>
+                      <td className="px-4 py-3 text-[var(--muted-foreground)]">{new Date(msg.createdAt).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' })}</td>
                       <td className="px-4 py-3">
                         <Badge variant="outline" className={resolveContactStatusClass(msg.status)}>
                           {msg.status}

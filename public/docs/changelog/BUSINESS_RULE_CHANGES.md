@@ -1,5 +1,166 @@
 ﻿# Business Rule & Logic Change Log
 
+---
+
+## 2026-06-15 — GATE-FS-PV-RECOMPUTE-20260615: PROD binary PV recomputed from eligible sources only (money kept)
+
+**Rule area:** Binary leg PV/points (genealogy + salesmatch legs)
+**Gate ID:** `GATE-FS-PV-RECOMPUTE-20260615`
+**Scope:** PROD data correction only (no schema change; `schema.sql` unaffected). Migration `db/migrations/0013_recompute_eligible_pv_prod_cleanup.sql`.
+
+### What changed
+
+Prod went live before the pairing/DR eligibility gate existed, so FS and CD-unpaid (ineligible) accounts generated binary PV into uplines and were paid Direct Referral + Salesmatch. Per owner ruling 2026-06-15:
+
+- **Money kept untouched** — `wallet_ledger` (PHP 514,749 total credits) and `salesmatch_balances.matched_sales` are unchanged. No one loses what was already paid; no double-pay (matched stays ahead of recomputed legs).
+- **Ineligible PV removed** — every account's `left_points` / `right_points` (network) and `left_points` / `right_points` / `left_sales` / `right_sales` (salesmatch) were recomputed counting **only eligible (PD / settled-CD) source PV**, package-weighted by each member's activation-code `locked_binary_points` (1 PV = PHP 250). FS / CD-unpaid as a **source** now contributes 0.
+- FS accounts may still hold large legs (e.g., 22 PV) **as long as those points come from eligible downline**.
+
+Confirmed against Nogatu `services/accountState.js` (FS never an eligible source; CD only when fully paid). Reversible snapshot: `_pv_recompute_backup_20260615` (prod).
+
+---
+
+## 2026-06-15 — GATE-UNI-MONTHLY-20260615: Unilevel is a monthly batch over the sponsor tree with 200-PV maintenance
+
+**Rule area:** Unilevel Bonus
+**Gate ID:** `GATE-UNI-MONTHLY-20260615`
+
+### What changed
+
+Unilevel was previously credited **inline** on each product repurchase (walking the sponsor chain up, no maintenance gate). Per the official Yor Unilevel Bonus plan it is now a **monthly batch**:
+
+- **Tree:** sponsor / bloodline tree (`network.sponsorUserId`), **never the binary tree**. Each direct/bloodline ancestor earns at their own level.
+- **Base:** downline **repurchase PV** accrued that calendar month (every product = **20 PV**: Perfume, Eyedrops, Perfume Refill). Not the peso price, not the SMB pairing PV.
+- **Rates (10 levels):** L1 10%, L2 8%, L3 5%, L4 5%, L5 3%, L6 3%, L7 2%, L8 1%, L9 1%, L10 1%.
+- **Maintenance:** an earner must accrue **≥ 200 repurchase PV that month** to earn any unilevel; **resets every month** — a non-maintaining month earns nothing and carries nothing forward.
+- **Idempotent** per `(earner, month, level, downline)`; settled by `reconcileMonthlyUnilevel()` (drainer each tick, safe to re-run). `submitProductRepurchase` now records the repurchase PV and credits Lifestyle inline, but **no longer credits unilevel inline**.
+
+### Why
+
+Owner compensation-plan slide (2026-06-15) + ruling: unilevel is monthly, maintenance-gated, paid through the bloodline tree.
+
+---
+
+## 2026-06-15 — GATE-SMB-FS-RECIPIENT-20260615: FS/Business/VIP owners earn salesmatch on their own matched volume
+
+**Rule area:** Salesmatch Bonus (SMB) recipient eligibility
+**Gate ID:** `GATE-SMB-FS-RECIPIENT-20260615`
+
+### What changed
+
+`applyPlacementSalesItem` (inline) and `reconcileSalesmatchForUserLocked` (sweep) previously gated **whether the owner could receive a pairing payout** on `countsForPairingSource(owner)` — which returns `false` for `FS` and unsettled-`CD` accounts. Because **Business and VIP packages map to account type `FS`**, those owners accumulated volume on both legs but **never paired** — earning zero SMB.
+
+Now the owner earns salesmatch on their own matched volume **regardless of their own account type**. Only two gates remain on match execution:
+- the shadow sibling-pair block (`GATE-SHADOW-ACT-20260613`), and
+- positive matched volume on both legs (`salesmatchDelta > 0`).
+
+### Why (rule basis)
+
+`countsForPairingSource` (FS / CD-unpaid exclusion) governs whether a **new member's PV feeds uplines as a *source*** — and that is already enforced at registration via `pvEligible` *before any leg accumulates*. Per **BIN-01**, SMB eligibility is "qualified source volume", with no requirement on the recipient's account type. Applying the source rule to the recipient was a Nogatu-parity carry-over not present in Yor's BUSINESSRULE.md, and it produced the nonsensical result that the highest-paid package (VIP, PHP 159,998, 300k/week SMB cap) earned no salesmatch.
+
+### Blast radius
+
+Network-wide: every `FS` / unsettled-`CD` owner with qualified volume on both legs now earns SMB as before any PD owner would. No change to caps, conversion (1 PV = PHP 250), carry-forward, or source eligibility.
+
+### Idempotency / backfill
+
+`processId` (`smb-reconcile:<userId>:<matchedSales×100>`) is unchanged, so the reconcile backfills each owner's outstanding `min(left,right) − matchedSales` delta exactly once on the next encode or trigger — no double-pay.
+
+---
+
+## 2026-06-15 — GATE-SMB-INSTANT-20260615: Salesmatch / binary-cycle compensation runs synchronously on encode
+
+**Rule area:** Salesmatch Bonus (SMB) + Binary Cycle crediting timing
+**Gate ID:** `GATE-SMB-INSTANT-20260615`
+
+### What changed
+
+Previously, `submitRegistration` only **enqueued** a `placement-sales` compensation event. Crediting then waited for either the 10-second background drainer or a dashboard page-load `trigger-compensation` call — so SMB/binary-cycle income did not appear immediately after encoding a member.
+
+Now, immediately after enqueueing (when the new member is PV-eligible), `submitRegistration` synchronously calls `processCompensationQueue()` + `reconcileSalesmatchAllEligible()` so PV propagation, SMB pairing, and binary cycle credit at the moment of encode.
+
+- **No calculation change** — same amounts, same caps, same idempotent `processId` locks. Only the execution timing moved earlier.
+- Failure is non-fatal: registration is already committed; the background drainer retries.
+
+### Why
+
+Owner/member expectation: encoding an eligible member that completes a left/right pair must credit SMB instantly, not after a delay.
+
+---
+
+## 2026-06-15 — GATE-GLOBAL-BONUS-3PCT-20260615 (amended): 3% net product sales pool reclassified as Lifestyle Bonus (lifestyle_rewards), not Global Bonus
+
+**Rule area:** Lifestyle Bonus income stream
+**Gate ID:** `GATE-GLOBAL-BONUS-3PCT-20260615` (amendment — original entry below)
+
+### What changed (amendment 2026-06-15)
+
+The 3% net product sales pool distribution was initially implemented posting to `global_bonus` / `main` wallet. Owner ruling 2026-06-15 clarified: this pool **is** the Lifestyle Bonus mechanism, not a Global Bonus.
+
+- Changed `entryType`: `global_bonus` → `lifestyle_rewards`
+- Changed `walletType`: `main` → `lifestyle`
+- `sourceReference`: `'global-bonus-pool'` → `'lifestyle-pool'`
+- `processId` prefix: `'global-bonus:'` → `'lifestyle-pool:'`
+- All other mechanics unchanged (3% pool, equal distribution, idempotent `global_bonus_included` flag)
+
+### Original entry (initial implementation 2026-06-15)
+
+Prior rule (BUSINESSRULE.md): Global Bonus was "2% yearly pool with HOF and maintenance qualifiers."
+
+New rule (owner ruling 2026-06-15): **3% of the company's net product sales**, distributed continuously to **all active members in equal portions**.
+
+- Pool = `SUM(repurchases.unit_price WHERE global_bonus_included = false) × 3%`
+- Per-member share = `pool ÷ count(active members)`
+- Tracked via `repurchases.global_bonus_included` flag (idempotent)
+- Drainer runs every 10 seconds
+
+### Reason / authority
+
+Owner ruling 2026-06-15: "it is based on the product sales net and 3% of that will be equally distributed across the whole system — this is lifestyle bonus."
+
+### Files affected
+
+- `yor_backend/src/modules/production/encoding-service.ts` (`reconcileGlobalBonus`)
+- `yor_backend/src/server.ts` (drainer log label)
+- `db/migrations/0011_product_dp_and_global_bonus_tracking.sql` (DB tracking columns unchanged)
+
+---
+
+## 2026-06-15 — GATE-PRODUCT-DP-20260615: Product repurchase unit_price is now tier-based Discounted Price (DP), not SRP
+
+**Rule area:** Product repurchase accounting / `repurchases` ledger
+**Gate ID:** `GATE-PRODUCT-DP-20260615`
+
+### What changed
+
+Previously `repurchases.unit_price` stored the SRP (PHP 500 for both Yor Perfume and Yor Vision). This was inaccurate — the company does not collect the SRP from members; it collects the DP (discounted price) which varies by the buyer's package tier.
+
+New behavior: `repurchases.unit_price` = the actual DP charged to the member based on their package tier:
+
+| Package | Yor Perfume DP | Yor Vision DP |
+|---------|---------------|--------------|
+| Basic   | PHP 350       | PHP 250      |
+| Classic | PHP 320       | PHP 240      |
+| Standard| PHP 300       | PHP 230      |
+| Business| PHP 280       | PHP 220      |
+| VIP     | PHP 250       | PHP 210      |
+
+SRP (PHP 500) is stored in the new `repurchases.srp_price` column for audit reference. The retail profit (SRP − DP) accrues to the selling member and remains outside the internal earning engine (Direct Selling is a public-only activity per BUSINESSRULE.md).
+
+Existing rows backfilled: `srp_price = unit_price` (old rows used SRP as unit_price); marked `global_bonus_included = true` to exclude from future pool calculations.
+
+### Reason / authority
+
+Owner image supplied 2026-06-15 showing tier-based DP table. Accounting accuracy requirement: "the company sold to one Basic member at PHP 350 but to a VIP at PHP 250 for the same product."
+
+### Files affected
+
+- `yor_backend/src/modules/compensation/repurchase-product-catalog.ts` (`dpByTier`, `srpPrice`, `getProductDp`)
+- `yor_backend/src/modules/production/encoding-service.ts` (`submitProductRepurchase`)
+- `db/migrations/0011_product_dp_and_global_bonus_tracking.sql`
+
+---
+
 This file is the canonical record of every business rule, compensation logic, or
 financial calculation change made to the Yor International platform.
 
@@ -8,6 +169,92 @@ financial calculation change made to the Yor International platform.
 
 Only business-rule-level changes are logged here.
 Simple UI tweaks, CSS, copy, and config changes are not recorded.
+
+---
+
+## 2026-06-14 — GATE-PV-GROSS-20260614: Binary leg points are gross lifetime volume; matched is tracked separately (no consume-on-match)
+
+**Rule area:** Binary PV / salesmatch leg accounting
+**Gate ID:** `GATE-PV-GROSS-20260614`
+
+### What changed
+
+Binary leg points/sales (`network_accounts.left_points/right_points`, `salesmatch_balances.left_sales/right_sales/left_points/right_points`) are now **gross lifetime accumulated volume** and are **never reduced**. Previously each pairing **consumed** (subtracted) the matched amount from both legs (carry-forward model).
+
+Salesmatch and Binary Cycle now pay on the **increase** in matched volume:
+`salesmatchDelta = min(grossLeft, grossRight) - matchedSales(previous)`, and `matched_sales`/`matched_points` hold the **cumulative matched running total**. Payout amounts are unchanged; only the leg bookkeeping changed (gross is preserved so the genealogy tree shows true downline volume bottom-to-top).
+
+This also backfills correctly: see `GATE-PV-BACKFILL-20260614` (db/migrations/0007) which set existing leg points to gross volume — the engine now stays consistent with that on every new registration.
+
+### Reason / authority
+
+Owner ruling 2026-06-14: "don't reduce — separate the gross/lifetime accumulated points vs matched points." Fixes the genealogy tree showing near-zero PV at the roots instead of the accumulated network volume.
+
+### Files affected
+
+- `yor_backend/src/modules/production/encoding-service.ts` (`applyPlacementSalesItem` match block)
+- `yor_backend/src/modules/production/encoding-service.test.ts`
+- `db/migrations/0007_backfill_binary_pv_gross_leg_volume.sql`
+
+---
+
+## 2026-06-14 — GATE-BIN-CYCLE-UPLINE-A-20260614: Binary Cycle is paid one level down to the upline's A-position member, never self-earned
+
+**Rule area:** Binary Cycle bonus recipient
+**Gate ID:** `GATE-BIN-CYCLE-UPLINE-A-20260614` (supersedes `GATE-BIN-CYCLE-ONCE-20260613`)
+
+### What changed
+
+Binary Cycle is **no longer paid on your own matched salesmatch volume**. When any upline `U`
+executes a salesmatch pairing, the Binary Cycle percentage flows **one level down** to `U`'s
+**A-position member** — the member placed at `U`'s **left-shadow-left** slot
+(`findPlacementChild(U, 'left', 'left')`). The percentage is the **A member's own package**
+`binaryCyclePercent`, applied to the full matched salesmatch movement (uncapped, per
+`GATE-BIN-CYCLE-NOCAP-20260613`).
+
+Consequences:
+- A member earns Binary Cycle **solely** from the upline that placed them in the A slot. One
+  level only — no cascade, no payout to `U` itself, no B→YOU propagation.
+- The prior once-per-event self-payout model (`GATE-BIN-CYCLE-ONCE-20260613`) is retired; each
+  paying upline now credits its own distinct A, so no propagation guard is needed.
+- Basic A-recipients earn nothing (Basic has no Binary Cycle layer).
+
+### Reason / authority
+
+Owner sign-off 2026-06-14: "the real binary cycle you earn is from your upline that placed you
+on A position … when he earned pairing you will receive percent based on your package." Fixes
+the reported over-payment where a member self-earned Binary Cycle on their own A/B pairing.
+
+### Files affected
+
+- `yor_backend/src/modules/production/encoding-service.ts` (`applyPlacementSalesItem`)
+- `yor_backend/src/modules/production/encoding-service.test.ts`
+- `yor_backend/src/modules/production/encoding-compensation-matrix.test.ts`
+
+---
+
+## 2026-06-14 — GATE-ENCASH-DIRECT-PAY-20260614: Encashment settles in one Mark-Paid step with no approval/queue and fixed member-submitted values
+
+**Rule area:** Encashment review workflow
+**Gate ID:** `GATE-ENCASH-DIRECT-PAY-20260614`
+
+### What changed
+
+Encashment no longer requires a separate approve/queue step. An admin marks a **pending**
+request paid directly in one action; CD recovery + settlement fire exactly as before. The
+member-submitted breakdown (gross, fee, tax, CD deduction, method) is **fixed and read-only** —
+the admin can no longer edit any value. Only already-`paid` or `rejected` requests are blocked
+from a Mark-Paid transition.
+
+### Reason / authority
+
+Owner request 2026-06-14: "make the encashment no need approval just mark as paid no more queue
+and make it unchangeable values … I shouldn't be able to add tax and anything."
+
+### Files affected
+
+- `yor_backend/src/modules/production/encoding-service.ts` (`reviewEncashment`)
+- `yor_frontend/src/pages/AdminDashboardPage.tsx` (encashment panel)
 
 ---
 
@@ -567,4 +814,189 @@ cross-check), 2026-06-12. ENC-01 deduction values unchanged.
 
 ---
 
-*Last updated: 2026-06-12*
+---
+
+## 2026-06-13 — GATE-SHADOW-ACT-20260613: Shadow Accounts Auto-Activate at Encoding with Owner Package Tier
+
+**Rule area:** Shadow accounts — activation lifecycle, package inheritance, sibling-pair block  
+**Gate ID:** `GATE-SHADOW-ACT-20260613`
+
+### What changed
+
+**Before:** Shadow accounts were created in state `reserved_shadow` (no package tier, no PV, no salesmatch value). A separate activation code had to be manually applied to move them to `activated_shadow`.
+
+**After:** Shadow accounts are created in state `activated_shadow` **immediately when the owner member is encoded**. They inherit the owner's package tier at creation (Business member → two Business shadows). PV and salesmatch value remain 0 until an upgrade code is applied.
+
+#### Activation status semantics (changed)
+
+| Field | Old meaning | New meaning |
+|---|---|---|
+| `activationStatus = 'inactive'` | `state === 'reserved_shadow'` | `pvValue === 0` (auto-activated but no upgrade code yet) |
+| `activationStatus = 'activated'` | `state === 'activated_shadow'` | `pvValue > 0` (upgrade code applied) |
+| `canActivate` | `state === 'reserved_shadow'` | `pvValue === 0` |
+| `canUpgrade` | `state !== 'reserved_shadow'` | `pvValue > 0` |
+
+#### Sibling-pair block (new)
+
+When a shadow upgrade code is applied and a `placement-sales` event is enqueued, the payload now carries `shadowPairBlockOwnerUserId = ownerUserId`. During compensation processing (`applyPlacementSalesItem`), when the walk-up reaches the blocked owner's userId, the leg **accumulates normally** but **match execution is suppressed at that level**. The PV continues walking up to the owner's placement parent and above.
+
+This means: a member's left shadow and right shadow can NEVER pair each other to generate a salesmatch bonus for the owner. Pairing at the owner's level is only possible when a **real member's** placement-sales event (which carries no `shadowPairBlockOwnerUserId`) contributes to one of the legs.
+
+### Package inheritance table
+
+| Owner package | Left shadow package | Right shadow package |
+|---|---|---|
+| Basic | Basic | Basic |
+| Classic | Classic | Classic |
+| Standard | Standard | Standard |
+| Business | Business | Business |
+| VIP | VIP | VIP |
+
+Shadows can be upgraded (e.g., Basic → Standard) by applying a higher-value code through the existing `activateShadowAccount` flow.
+
+### What did NOT change
+
+- Shadow accounts still cannot earn wallet, unilevel, or binary cycle bonuses (`walletEnabled`, `unilevelEnabled`, `binaryCycleEnabled` all remain `false`)
+- Shadows are still excluded from sponsor-tree (unilevel) crediting
+- The upgrade flow (applying a higher-tier code to increase PV) works identically
+- The `hasQualifiedPersonalDirectInSubtree` gate for first pairing unlock is unchanged
+
+### Files affected
+
+- `yor_backend/src/modules/production/encoding-service.ts`
+  - `ProductionCompensationQueueItem.payload`: added `shadowPairBlockOwnerUserId?: string | null`
+  - `createDefaultShadowAccount`: state changed to `'activated_shadow'`, packageTier auto-set from owner
+  - `toGenealogyShadowSlot`: `activationStatus` now derived from `pvValue`
+  - Member shadow account listing: `activationStatus`, `canActivate`, `canUpgrade` re-derived from `pvValue`
+  - `activateShadowAccount`: upgrade-block guard now checks `previousSalesmatchValue > 0` instead of `state !== 'reserved_shadow'`; enqueued payload gains `shadowPairBlockOwnerUserId`
+  - `applyPlacementSalesItem`: sibling-pair block check added before match execution
+
+### Reason / authority
+
+Owner instruction 2026-06-13: "shadow accounts must be activated as soon as youre encoded but they are considered inactive when theres nothing in your downline … if you are a business package account then your 2 shadows also business … they cant pair to each other you left shadow cant pair to right shadow."
+
+---
+
+## 2026-06-13 — GATE-RETAINER-EXEMPT-20260613: PrinceI.T System Retainer Exemption
+
+**Rule area:** Encashment — system retainer charge  
+**Gate ID:** `GATE-RETAINER-EXEMPT-20260613`
+
+### What changed
+
+Account `PrinceI.T` (system operator) is permanently exempt from the 5% system retainer on all encashment requests. The exemption is keyed by **immutable userId** (`0f0464cf-9886-471f-9adf-5a4255a8043f`), so name or username changes never affect it. The preview API returns `retainerExempt: true`; the frontend shows "system retainer waived."
+
+### Files affected
+
+- `yor_backend/src/modules/production/encoding-service.ts` — `SYSTEM_RETAINER_EXEMPT_USER_IDS`, `submitEncashment`, `buildMemberWalletData`
+- `yor_frontend/src/types/auth.ts`, `yor_frontend/src/pages/MemberDashboardPage.tsx`
+
+### Reason / authority
+
+Owner instruction 2026-06-13.
+
+---
+
+## 2026-06-13 — GATE-SHADOW-WALLET-20260613: Shadow Wallets Enabled; activationStatus Removed
+
+**Rule area:** Shadow accounts — wallet enablement and status model  
+**Gate ID:** `GATE-SHADOW-WALLET-20260613`
+
+### What changed
+
+- Shadow `walletEnabled` set to `true` when an upgrade code is applied (was always `false`).
+- Upgrading main account does NOT auto-upgrade shadows; shadows need their own codes.
+- `activationStatus: 'inactive' | 'activated'` removed from API and UI, replaced by `hasUpgradeCode: boolean`.
+- Genealogy tree popover now shows package tier and upgrade code, always offers upgrade codes.
+- All "Activate Shadow" copy replaced with "Upgrade Shadow."
+
+### Files affected
+
+- `yor_backend/src/modules/production/encoding-service.ts`, `yor_frontend/src/types/auth.ts`, `yor_frontend/src/components/ops/GenealogyTree.tsx`, `yor_frontend/src/pages/MemberDashboardPage.tsx`, test fixtures
+
+### Reason / authority
+
+Owner instruction 2026-06-13: "inactive and active is not needed as part of the system now since shadow accounts can be upgraded in order to weekly/monthly limit of their each wallet … they will be needing separate activation codes."
+
+---
+
+## 2026-06-13 — GATE-FS-RESET-20260613: FS Account Binary Left/Right Points Reset to Zero
+
+**Rule area:** Binary accumulation — FS accounts  
+**Gate ID:** `GATE-FS-RESET-20260613`
+
+### What changed
+
+Binary `left_points` and `right_points` on `network_accounts` for 12 FS (Free Slot) accounts were reset to 0 in the production DB. Salesmatch `matched_sales`, `matched_points` are preserved. The reset eliminates erroneously accumulated binary PV generated by FS-to-FS and FS-to-direct-referral pairings that occurred before the `GATE-BIN-PV-PDCD-20260612` eligibility gate was enforced.
+
+**Authority:** Owner directive 2026-06-13. Production write authorized by owner.
+
+---
+
+## 2026-06-13 — GATE-BIN-CYCLE-ONCE-20260613: Binary Cycle Fires at Most Once Per Placement Event
+
+**Rule area:** Binary Cycle Bonus — propagation limit per registration  
+**Gate ID:** `GATE-BIN-CYCLE-ONCE-20260613`
+
+### What changed
+
+The binary cycle bonus now fires **at most once** per placement event walk-up. Previously, the cycle could fire at every ancestor level where a salesmatch match occurred (B→YOU chain). A `binaryCycleConsumed` boolean flag stops re-firing after the first eligible credit.
+
+**File:** `yor_backend/src/modules/production/encoding-service.ts` — `applyPlacementSalesItem`
+
+**Authority:** Owner clarification 2026-06-13.
+
+---
+
+## 2026-06-13 — GATE-CASHIER-CODES-20260613: Cashier Cannot Generate Activation Codes
+
+**Rule area:** Activation code workflow — cashier permissions  
+**Gate ID:** `GATE-CASHIER-CODES-20260613`
+
+### What changed
+
+Cashier removed from code generation route guard. Admin generates → transfers to cashier → cashier sees only `assignedUserId === cashier.id` codes. Cashier's sole function is to release or transfer their assigned codes.
+
+**Files:** `yor_backend/src/routes/admin.ts`, `yor_backend/src/modules/production/encoding-service.ts`
+
+**Authority:** Owner instruction 2026-06-13.
+
+---
+
+## 2026-06-13 — GATE-REPURCHASE-PV-20260613: Repurchase PV Updated for Perfume and Vision Eyedrops
+
+**Rule area:** Product repurchase — PV per product  
+**Gate ID:** `GATE-REPURCHASE-PV-20260613`
+
+### What changed
+
+| Product | Old PV | New PV |
+|---|---:|---:|
+| Perfume (all 6 SKUs) | 500 | **20** |
+| Vision Mineral Drops | 500 | **20** |
+| Refill | 150 | 150 (unchanged, pending confirmation) |
+
+**File:** `yor_backend/src/modules/compensation/repurchase-product-catalog.ts`
+
+**Authority:** Owner ruling 2026-06-13.
+
+---
+
+## 2026-06-13 — GATE-GLOBAL-BONUS-STOCKIST-20260613: Stockist Level System and Global Bonus Pool
+
+**Rule area:** Global Bonus — stockist designation and pool qualification  
+**Gate ID:** `GATE-GLOBAL-BONUS-STOCKIST-20260613`
+
+### What changed
+
+New `stockist_level` column on `member_profiles` with values `none | mobile_kiosk | city_center | mega_center`. Any non-`none` level = 1 portion of the annual Global Bonus pool. Admin-only tagging. Global Bonus page on both admin and member dashboards.
+
+**Production migration:** `add_stockist_level_to_member_profiles` applied to `Yorinternationalprod` and dev `hcrsrxdroldfvbplbuuz`.
+
+**Files:** `yor_backend/src/types/db.ts`, `supabase-encoding-repository.ts`, `encoding-service.ts`, `yor_backend/src/routes/admin.ts`, `yor_frontend/src/lib/api.ts`, `GlobalBonusPanel.tsx`, `AdminDashboardPage.tsx`
+
+**Authority:** Owner instruction 2026-06-13.
+
+---
+
+*Last updated: 2026-06-13*

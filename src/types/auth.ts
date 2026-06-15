@@ -265,6 +265,7 @@ export type MemberWalletDetail = {
     totalDeductions: number;
     netReceivable: number;
     sufficientBalance: boolean;
+    retainerExempt: boolean;
     note: string;
   };
   ledger: Array<{
@@ -387,6 +388,8 @@ export type RegistrationReadiness = {
   } | null;
   referralLink: string;
   availableCodes: MemberActivationCodeCenter['inventory'];
+  currentPackageTier: string;
+  selfUpgradeCodes: MemberActivationCodeCenter['inventory'];
   checklist: string[];
 };
 
@@ -416,7 +419,7 @@ export type GenealogyTreeNode = {
       state: 'reserved_shadow' | 'activated_shadow';
       shadowCode: string;
       label: string;
-      activationStatus: 'inactive' | 'activated';
+      hasUpgradeCode: boolean;
       registrationEnabled: boolean;
       walletEnabled: boolean;
       unilevelEnabled: boolean;
@@ -437,7 +440,7 @@ export type GenealogyTreeNode = {
       state: 'reserved_shadow' | 'activated_shadow';
       shadowCode: string;
       label: string;
-      activationStatus: 'inactive' | 'activated';
+      hasUpgradeCode: boolean;
       registrationEnabled: boolean;
       walletEnabled: boolean;
       unilevelEnabled: boolean;
@@ -537,7 +540,7 @@ export type ShadowAccountCenter = {
     shadowCode: string;
     label: string;
     state: string;
-    activationStatus: 'inactive' | 'activated';
+    hasUpgradeCode: boolean;
     placement: 'left' | 'right';
     walletEnabled: boolean;
     unilevelEnabled: boolean;
@@ -550,6 +553,10 @@ export type ShadowAccountCenter = {
     activatedAt: string | null;
     lastUpgradedAt: string | null;
     note: string;
+    leftVolume: number;
+    rightVolume: number;
+    matchedPoints: number;
+    totalEarned: number;
     canActivate: boolean;
     canUpgrade: boolean;
   }>;
