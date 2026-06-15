@@ -2916,9 +2916,10 @@ function WalletView({
         const filteredByType = ledgerTypeFilter === 'all'
           ? creditEntries
           : creditEntries.filter((e) => e.entryType === ledgerTypeFilter);
-        // 'recent' keeps backend order (newest first); amount sorts are explicit.
+        // Backend returns the ledger oldest-first, so 'recent' reverses to newest-first;
+        // amount sorts are explicit.
         const filtered = ledgerSort === 'recent'
-          ? filteredByType
+          ? [...filteredByType].reverse()
           : [...filteredByType].sort((a, b) =>
               ledgerSort === 'amount-desc' ? b.creditAmount - a.creditAmount : a.creditAmount - b.creditAmount
             );

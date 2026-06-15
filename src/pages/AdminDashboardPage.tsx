@@ -3702,9 +3702,12 @@ function formatVoucherDate(value: string | null): string {
   return d.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+const VOUCHER_PAGE_SIZE = 100;
+
 function VoucherManagementView(_props: ModuleViewProps) {
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<VoucherStatusFilter>('all');
+  const [page, setPage] = useState(1);
   const [center, setCenter] = useState<VoucherCenter | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -3737,6 +3740,9 @@ function VoucherManagementView(_props: ModuleViewProps) {
     void reload();
   }, [reload]);
 
+  // Keep the page in range when filters/search narrow the list.
+  useEffect(() => { setPage(1); }, [searchText, statusFilter]);
+
   const vouchers = center?.vouchers ?? [];
   const stats = center?.stats ?? { total: 0, active: 0, expired: 0, suspended: 0, fullyUsed: 0 };
   const tileCount: Record<string, number> = {
@@ -3760,6 +3766,9 @@ function VoucherManagementView(_props: ModuleViewProps) {
       (v.beneficiaryFullName ?? '').toLowerCase().includes(q);
     return statusMatch && searchMatch;
   });
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / VOUCHER_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageRows = filteredRows.slice((safePage - 1) * VOUCHER_PAGE_SIZE, safePage * VOUCHER_PAGE_SIZE);
 
   async function submitGrant() {
     setGrantError(null);
@@ -3916,7 +3925,7 @@ function VoucherManagementView(_props: ModuleViewProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRows.map((v) => (
+                  {pageRows.map((v) => (
                     <tr key={v.id} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
                       <td className="px-4 py-3 font-mono text-[var(--muted-foreground)]">{v.voucherCode}</td>
                       <td className="px-4 py-3 font-medium text-[var(--foreground)]">{v.beneficiaryUsername}</td>
@@ -3965,7 +3974,16 @@ function VoucherManagementView(_props: ModuleViewProps) {
               </table>
             </div>
           )}
-          <p className="mt-3 text-xs text-[var(--muted-foreground)]">Showing {filteredRows.length} voucher(s)</p>
+          <div className="mt-3 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+            <span>Showing {pageRows.length} of {filteredRows.length} voucher(s)</span>
+            {totalPages > 1 && (
+              <div className="flex gap-1">
+                <button type="button" disabled={safePage <= 1} className="rounded px-2 py-1 disabled:opacity-30 hover:bg-[var(--muted)]/30" onClick={() => setPage((p) => p - 1)}>← Prev</button>
+                <span className="px-2 py-1">Page {safePage} of {totalPages}</span>
+                <button type="button" disabled={safePage >= totalPages} className="rounded px-2 py-1 disabled:opacity-30 hover:bg-[var(--muted)]/30" onClick={() => setPage((p) => p + 1)}>Next →</button>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
