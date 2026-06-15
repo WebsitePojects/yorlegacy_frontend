@@ -34,7 +34,7 @@ function Initials({ name, username }: { name: string; username: string }) {
 // ── Your standing — one editorial banner, not a grid of cards ──
 function StandingBanner({ rank, position, isLoading }: { rank: MemberRankData | null; position: number | null; isLoading: boolean }) {
   const ranked = (rank?.level ?? 0) > 0;
-  const total = rank?.totalIncome ?? 0;
+  const total = rank?.unilevelIncome ?? 0;
   const nextThreshold = rank?.nextThreshold ?? null;
   const remaining = rank?.remainingToNext ?? null;
   const pct = nextThreshold
@@ -59,7 +59,7 @@ function StandingBanner({ rank, position, isLoading }: { rank: MemberRankData | 
             {isLoading ? '—' : ranked ? rank!.rankName : 'Unranked'}
           </h2>
           <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-            Lifetime total income{' '}
+            Lifetime unilevel income{' '}
             <span className="font-semibold text-[var(--foreground)]">{isLoading ? '—' : pesoFull(total)}</span>
             {position ? <> · Rank <span className="font-semibold text-amber-400">#{position}</span> on the board</> : null}
           </p>

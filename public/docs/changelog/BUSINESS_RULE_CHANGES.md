@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-06-15 — GATE-RANK-UNILEVEL-20260615: rank gated by UNILEVEL income only
+
+**Rule area:** Rank ladder (Manager → Hall of Famer)
+**Gate ID:** `GATE-RANK-UNILEVEL-20260615` (supersedes `GATE-RANK-TOTALINCOME-20260613`)
+
+### What changed
+
+Rank was previously determined by lifetime **total income** (gross sum of all wallet credits). Per owner ruling, rank is now determined **solely by lifetime UNILEVEL income** — the sum of `'unilevel'` wallet-ledger credits. The ladder and thresholds are unchanged (PHP 50K Manager, 100K Bronze Director, 250K Silver, 500K Gold, 750K Platinum, 1M Millionaires Circle, 3M 1-Diamond, 5M 2-Diamond, 15M 1-Star, 25M 2-Star, 50M Hall of Famer).
+
+**Example:** a member with PHP 100k total income but only PHP 20k of unilevel income is **not ranked**; they need PHP 50k of unilevel income to reach Manager, and so on up the ladder.
+
+- `rank-ladder.ts`: `rankForIncome(unilevelIncome)`; `RankProgress.totalIncome` → `unilevelIncome`.
+- `getMemberRank`, admin `rankings` report, and `getLeaderboard` compute the rank tier from each member's unilevel-only income. Leaderboard standings remain sorted by total income; only the rank **tier** uses unilevel income.
+- Frontend `MemberRankData.totalIncome` → `unilevelIncome`; rank banner + unilevel rank-progress relabeled to "unilevel income (rank basis)".
+
+Old behavior gated with `// GATE-RANK-UNILEVEL-20260615` comments at each call site.
+
+---
+
 ## 2026-06-15 — GATE-VOUCHER-B1T1-20260615: Buy-1-Take-1 voucher inventory (admin)
 
 **Rule area:** Voucher entitlements (new money-adjacent surface)

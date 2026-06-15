@@ -342,7 +342,8 @@ export type MemberRankData = {
   moneyMode: MoneyMode;
   level: number;
   rankName: string;
-  totalIncome: number;
+  // GATE-RANK-UNILEVEL-20260615: rank is gated by lifetime UNILEVEL income only.
+  unilevelIncome: number;
   currentThreshold: number;
   nextRankName: string | null;
   nextThreshold: number | null;

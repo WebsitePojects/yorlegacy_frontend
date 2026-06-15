@@ -126,7 +126,7 @@ export function UnilevelView() {
                     {(rankData?.level ?? 0) === 0 ? 'Unranked' : (rankData?.rankName ?? '—')}
                   </p>
                   <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
-                    Lifetime income: <span className="font-semibold text-[var(--foreground)]">{money(rankData?.totalIncome ?? 0)}</span>
+                    Unilevel income (rank basis): <span className="font-semibold text-[var(--foreground)]">{money(rankData?.unilevelIncome ?? 0)}</span>
                   </p>
                 </div>
                 {rankData?.nextRankName && (
@@ -143,7 +143,7 @@ export function UnilevelView() {
                       className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-all duration-700"
                       style={{
                         width: `${Math.min(100, Math.max(2,
-                          ((rankData.totalIncome - rankData.currentThreshold) /
+                          ((rankData.unilevelIncome - rankData.currentThreshold) /
                            (rankData.nextThreshold - rankData.currentThreshold)) * 100
                         ))}%`
                       }}
