@@ -2867,9 +2867,30 @@ function ModuleEmptyState({ message }: { message: string }) {
 // ─── 1. Finance Accounting View ───────────────────────────────────────────────
 
 function FinanceAccountingView({ activeModule }: ModuleViewProps) {
-  const [yearInput, setYearInput] = useState(String(new Date().getFullYear()));
+  const currentYear = new Date().getFullYear();
+  const [yearInput, setYearInput] = useState(String(currentYear));
+  const [yearNotice, setYearNotice] = useState<string | null>(null);
   const metrics = activeModule?.metrics ?? [];
   const rows = activeModule?.table?.rows ?? [];
+
+  function handleLoadYear() {
+    const year = Number(yearInput);
+    if (!Number.isInteger(year) || year < 2020 || year > 2099) {
+      setYearNotice('Enter a valid fiscal year between 2020 and 2099.');
+      return;
+    }
+    // Annual accounting only makes sense for a *completed* year — the current
+    // year is still in progress and future years have no data.
+    if (year > currentYear) {
+      setYearNotice(`${year} is a future year — there is no accounting data to load yet.`);
+      return;
+    }
+    if (year === currentYear) {
+      setYearNotice(`${year} is not finished yet. Annual accounting is only available for completed fiscal years (${currentYear - 1} and earlier).`);
+      return;
+    }
+    setYearNotice(null);
+  }
 
   const summaryStats = [
     { label: 'Gross Sales', keys: ['gross', 'sales'] },
@@ -2902,9 +2923,15 @@ function FinanceAccountingView({ activeModule }: ModuleViewProps) {
                 max={2099}
               />
             </label>
-            <Button type="button" variant="outline">Load Year</Button>
+            <Button type="button" variant="outline" onClick={handleLoadYear}>Load Year</Button>
             <Button type="button" variant="outline" disabled>Export CSV</Button>
           </div>
+
+          {yearNotice ? (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
+              {yearNotice}
+            </div>
+          ) : null}
 
           <div>
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Year Summary — {yearInput}</p>
