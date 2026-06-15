@@ -63,7 +63,10 @@ import {
   suspendAdminVoucher,
   reactivateAdminVoucher,
   type VoucherCenter,
-  type VoucherRecord
+  type VoucherRecord,
+  fetchAdminStaffAccounts,
+  changeStaffPassword,
+  type StaffAccount
 } from '@/lib/api';
 import { SponsorTreeCanvas } from '@/features/unilevel/components/SponsorTreeCanvas';
 import type {
@@ -4212,20 +4215,61 @@ function NewsPostsView({ activeModule }: ModuleViewProps) {
 
 // ─── 10. Change Password View ────────────────────────────────────────────────
 
+const STAFF_ROLE_LABEL: Record<string, string> = {
+  admin: 'Admin',
+  superadmin: 'Super Admin',
+  cashier: 'Cashier',
+  bod: 'Board'
+};
+
 function ChangePasswordView() {
-  const [selectedAccount, setSelectedAccount] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
+  const { user } = useAuth();
+  const [accounts, setAccounts] = useState<StaffAccount[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const [selectedId, setSelectedId] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
+  const [busy, setBusy] = useState(false);
   const { notify } = useFeedback();
 
-  function handleSubmit() {
-    if (!selectedAccount || !currentPassword || !newPassword) {
-      void notify({ title: 'Fill in all fields', description: 'Select an account and enter both password fields.', tone: 'warning' });
+  const actorIsSuperadmin = user?.role === 'superadmin';
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchAdminStaffAccounts()
+      .then((data) => { if (!cancelled) setAccounts(data.accounts); })
+      .catch(() => { if (!cancelled) setAccounts([]); })
+      .finally(() => { if (!cancelled) setLoadingAccounts(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const selected = accounts.find((a) => a.id === selectedId) ?? null;
+  // Only a superadmin can change a superadmin password (mirrors the backend rule).
+  const blockedBySuperadminRule = selected?.role === 'superadmin' && !actorIsSuperadmin;
+
+  async function handleSubmit() {
+    if (!selectedId || !newPassword) {
+      void notify({ title: 'Fill in all fields', description: 'Select an account and enter a new password.', tone: 'warning' });
       return;
     }
-    void notify({ title: 'Password update submitted', description: 'Use the admin API to commit this change.', tone: 'warning' });
+    if (newPassword.length < 8) {
+      void notify({ title: 'Password too short', description: 'New password must be at least 8 characters.', tone: 'warning' });
+      return;
+    }
+    if (blockedBySuperadminRule) {
+      void notify({ title: 'Not allowed', description: 'Only a Super Admin can change a Super Admin password.', tone: 'destructive' });
+      return;
+    }
+    setBusy(true);
+    try {
+      await changeStaffPassword(selectedId, newPassword);
+      setNewPassword('');
+      void notify({ title: 'Password updated', description: `${selected?.displayName ?? 'Account'} password changed successfully.`, tone: 'success' });
+    } catch (cause) {
+      void notify({ title: 'Unable to change password', description: cause instanceof Error ? cause.message : 'Please try again.', tone: 'destructive' });
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -4244,37 +4288,24 @@ function ChangePasswordView() {
               <span className="font-medium text-[var(--muted-foreground)]">Administrator Account</span>
               <select
                 className={SELECT_CLASS}
-                value={selectedAccount}
-                onChange={(e) => setSelectedAccount(e.target.value)}
+                value={selectedId}
+                onChange={(e) => setSelectedId(e.target.value)}
+                disabled={loadingAccounts}
               >
-                <option value="">Select account...</option>
-                <option value="admin">Admin</option>
-                <option value="superadmin">Super Admin</option>
-                <option value="cashier">Cashier</option>
-                <option value="bod">Board</option>
+                <option value="">{loadingAccounts ? 'Loading accounts…' : 'Select account...'}</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.displayName} — {STAFF_ROLE_LABEL[account.role] ?? account.role}
+                  </option>
+                ))}
               </select>
             </label>
 
-            {/* Current Password */}
-            <label className="grid gap-2 text-sm">
-              <span className="font-medium text-[var(--muted-foreground)]">Current Password</span>
-              <div className="relative">
-                <Input
-                  type={showCurrent ? 'text' : 'password'}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]"
-                  onClick={() => setShowCurrent((v) => !v)}
-                  aria-label={showCurrent ? 'Hide password' : 'Show password'}
-                >
-                  <Eye className="size-4" />
-                </button>
+            {blockedBySuperadminRule ? (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+                Only a Super Admin can change a Super Admin password.
               </div>
-            </label>
+            ) : null}
 
             {/* New Password */}
             <label className="grid gap-2 text-sm">
@@ -4285,6 +4316,7 @@ function ChangePasswordView() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="pr-10"
+                  placeholder="At least 8 characters"
                 />
                 <button
                   type="button"
@@ -4297,8 +4329,13 @@ function ChangePasswordView() {
               </div>
             </label>
 
-            <Button type="button" className="w-full bg-emerald-600 text-white hover:bg-emerald-700" onClick={handleSubmit}>
-              Change Password
+            <Button
+              type="button"
+              className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
+              disabled={busy || blockedBySuperadminRule || !selectedId}
+              onClick={() => void handleSubmit()}
+            >
+              {busy ? 'Updating…' : 'Change Password'}
             </Button>
           </CardContent>
         </Card>
