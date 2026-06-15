@@ -2621,6 +2621,15 @@ function WalletView({
                       inputMode="decimal"
                       placeholder="10,000"
                       value={encashAmountInput}
+                      onFocus={(event) => {
+                        // Clear the default "0" so the user can type straight away
+                        // (no need to delete it first); select any real value instead.
+                        if ((parseEncashmentAmount(encashAmountInput) ?? 0) === 0) {
+                          onEncashAmountChange('');
+                        } else {
+                          event.currentTarget.select();
+                        }
+                      }}
                       onChange={(e) => onEncashAmountChange(e.target.value)}
                       onBlur={onEncashAmountBlur}
                     />

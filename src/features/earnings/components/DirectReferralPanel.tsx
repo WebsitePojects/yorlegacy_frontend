@@ -3,9 +3,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { fetchMemberDirectReferrals } from '@/lib/api';
+import { readOfficeCache, writeOfficeCache } from '@/lib/office-cache';
 import type { OperationalModule } from '@/types/auth';
 
 const DR_PAGE_SIZE = 10;
+const DR_CACHE_KEY = 'member:direct-referrals';
 
 type DirectReferralRow = { username: string; name: string; package: string; status: string; placement: string };
 
@@ -15,25 +17,30 @@ type DirectReferralPanelProps = {
 
 export function DirectReferralPanel({ activeModule }: DirectReferralPanelProps) {
   const [page, setPage] = useState(1);
-  const [prodRows, setProdRows] = useState<DirectReferralRow[] | null>(null);
+  // Hydrate synchronously from cache so revisiting the page renders instantly
+  // (cache-first / stale-while-revalidate) instead of flashing a loading spinner.
+  const cachedRows = readOfficeCache<DirectReferralRow[]>(DR_CACHE_KEY)?.data ?? null;
+  const [prodRows, setProdRows] = useState<DirectReferralRow[] | null>(cachedRows);
   // Tracks whether the production endpoint answered. A successful response of zero
   // rows is authoritative (the member genuinely has no directs) and must NOT fall
   // back to the static sandbox catalog, which previously showed a phantom "5".
-  const [prodResolved, setProdResolved] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [prodResolved, setProdResolved] = useState(cachedRows !== null);
+  // Only show the loading state on a cold open (no cache). With cache present we
+  // render it immediately and refresh in the background.
+  const [loading, setLoading] = useState(cachedRows === null);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     fetchMemberDirectReferrals()
       .then((data) => {
         if (!cancelled) {
           setProdRows(data.rows);
           setProdResolved(true);
+          writeOfficeCache(DR_CACHE_KEY, data.rows);
         }
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!cancelled && cachedRows === null) {
           setProdRows(null);
           setProdResolved(false);
         }
@@ -42,6 +49,7 @@ export function DirectReferralPanel({ activeModule }: DirectReferralPanelProps) 
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const moduleRows = activeModule.table.rows as Array<Record<string, unknown>>;
