@@ -51,7 +51,6 @@ import { apiUrl } from '@/lib/api';
 import { BinaryCyclePanel } from '@/features/earnings/components/BinaryCyclePanel';
 import { DirectReferralPanel } from '@/features/earnings/components/DirectReferralPanel';
 import { GlobalBonusPanel } from '@/features/earnings/components/GlobalBonusPanel';
-import { LifestylePanel } from '@/features/earnings/components/LifestylePanel';
 import { SalesmatchPanel } from '@/features/earnings/components/SalesmatchPanel';
 import { UnilevelView } from '@/features/unilevel/components/UnilevelView';
 import { GetYorFiveInFrame } from './GetYorFivePage';
@@ -314,6 +313,108 @@ const UNILEVEL_SYNTHETIC_MODULE: OperationalModule = {
   gatedActions: []
 };
 
+const LIFESTYLE_SYNTHETIC_MODULE: OperationalModule = {
+  id: 'lifestyle-rewards',
+  label: 'Lifestyle Rewards',
+  path: '/member/lifestyle-rewards',
+  group: 'Compensation',
+  description: 'Repeat-purchase lifestyle wallet — balance, threshold progress, and credit history.',
+  status: 'read-only' as const,
+  legacyReference: 'yor-lifestyle-repeat-purchase',
+  permissions: ['member'],
+  metrics: [],
+  table: { title: '', columns: [], rows: [] },
+  gatedActions: []
+};
+
+const LIFESTYLE_THRESHOLD = 1000;
+
+// Dedicated Lifestyle Rewards page — uses the member's real lifestyle wallet
+// (repeat-purchase credits) rather than sandbox catalog numbers.
+function LifestyleRewardsView({ walletDetail, packageTier }: { walletDetail: MemberWalletDetail | null; packageTier?: string }) {
+  const lifestyleStreams = (walletDetail?.incomeBreakdown ?? []).filter((s) => s.walletType.toLowerCase() === 'lifestyle');
+  const lifestyleLedger = (walletDetail?.ledger ?? []).filter((e) => e.walletType.toLowerCase() === 'lifestyle');
+  const balance = lifestyleStreams.reduce((sum, s) => sum + s.amount, 0);
+  const progress = Math.min(100, LIFESTYLE_THRESHOLD > 0 ? (balance / LIFESTYLE_THRESHOLD) * 100 : 0);
+
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center gap-4">
+        <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-500/10 shadow-md shadow-emerald-500/20">
+          <Star className="size-7 text-emerald-500" />
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Lifestyle Rewards</p>
+          <p className="text-lg font-bold text-[var(--foreground)]">Repeat-purchase lifestyle wallet</p>
+          <p className="text-xs text-[var(--muted-foreground)]">Credits earned from product repeat purchases{packageTier ? ` · ${packageTier} package` : ''}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <NogaStatCard icon={<Star className="size-4" />} color="emerald" label="Lifestyle Balance" value={formatCurrency(balance)} sub="repeat-purchase credits" />
+        <NogaStatCard icon={<TrendingUp className="size-4" />} color="amber" label="Threshold" value={formatCurrency(LIFESTYLE_THRESHOLD)} sub="release threshold" />
+        <NogaStatCard icon={<FileText className="size-4" />} color="blue" label="Credit Entries" value={String(lifestyleLedger.length)} sub="lifestyle ledger" />
+      </div>
+
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Threshold Progress</CardTitle>
+          <CardDescription className="text-xs">Lifestyle balance toward the release threshold.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-[var(--muted-foreground)]">Progress</span>
+            <span className="font-medium text-[var(--foreground)]">{formatCurrency(balance)} / {formatCurrency(LIFESTYLE_THRESHOLD)}</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-[var(--muted)]">
+            <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300 transition-all" style={{ width: `${progress}%` }} />
+          </div>
+          <p className="text-xs text-[var(--muted-foreground)]">
+            {balance >= LIFESTYLE_THRESHOLD
+              ? 'Threshold reached — lifestyle bonus ready for release.'
+              : `${formatCurrency(LIFESTYLE_THRESHOLD - balance)} remaining to reach threshold.`}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Lifestyle Credit History</CardTitle>
+          <CardDescription className="text-xs">Every credit posted to your lifestyle wallet.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0 pb-0">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead>
+                <tr className="border-y border-[var(--border)] bg-[var(--background)] text-left text-[10px] uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                  <th className="px-4 py-3">Entry</th>
+                  <th className="px-4 py-3">Source</th>
+                  <th className="px-4 py-3 text-right">Credit</th>
+                  <th className="px-4 py-3 text-right">Balance After</th>
+                  <th className="px-4 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lifestyleLedger.length === 0 ? (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">No lifestyle wallet entries yet. Earn by making product repeat purchases.</td></tr>
+                ) : lifestyleLedger.map((e, i) => (
+                  <tr key={e.id ?? i} className="border-b border-[var(--border)] last:border-0">
+                    <td className="px-4 py-3 capitalize text-[var(--foreground)]">{e.entryType.replace(/_/g, ' ')}</td>
+                    <td className="px-4 py-3 text-[var(--muted-foreground)]">{e.sourceReference}</td>
+                    <td className="px-4 py-3 text-right font-mono text-emerald-500">{formatCurrency(e.creditAmount)}</td>
+                    <td className="px-4 py-3 text-right font-mono">{formatCurrency(e.balanceAfter)}</td>
+                    <td className="px-4 py-3"><Badge variant="outline" className="text-[10px]">{e.status}</Badge></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
 export function MemberDashboardPage() {
   const {
     getMemberActivationCodes,
@@ -462,7 +563,9 @@ export function MemberDashboardPage() {
             ? Promise.resolve(BINARY_CYCLE_SYNTHETIC_MODULE)
             : targetModuleId === 'unilevel-rank-progress'
               ? Promise.resolve(UNILEVEL_SYNTHETIC_MODULE)
-              : getMemberModule(targetModuleId);
+              : targetModuleId === 'lifestyle-rewards'
+                ? Promise.resolve(LIFESTYLE_SYNTHETIC_MODULE)
+                : getMemberModule(targetModuleId);
 
       const [nextSummary, nextOffice, nextMvpDashboard, nextModule] = await Promise.all([
         getMemberSummary(),
@@ -479,7 +582,7 @@ export function MemberDashboardPage() {
       let binaryTree: GenealogyCenter | null = null;
       let shadowAccounts: ShadowAccountCenter | null = null;
 
-      if (targetModuleId === 'wallet') {
+      if (targetModuleId === 'wallet' || targetModuleId === 'lifestyle-rewards') {
         walletDetail = await getMemberWalletDetail();
       }
 
@@ -1112,6 +1215,10 @@ export function MemberDashboardPage() {
     if (!result.find((m) => m.id === 'unilevel-rank-progress')) {
       const afterBinaryCycle = result.findIndex((m) => m.id === 'binary-cycle-bonus');
       result.splice(afterBinaryCycle >= 0 ? afterBinaryCycle + 1 : result.length, 0, UNILEVEL_SYNTHETIC_MODULE);
+    }
+    if (!result.find((m) => m.id === 'lifestyle-rewards')) {
+      const afterUnilevel = result.findIndex((m) => m.id === 'unilevel-rank-progress');
+      result.splice(afterUnilevel >= 0 ? afterUnilevel + 1 : result.length, 0, LIFESTYLE_SYNTHETIC_MODULE);
     }
     return result;
   }, [office?.modules]);
@@ -2093,8 +2200,8 @@ export function MemberDashboardPage() {
         ) : null}
 
         {/* ── LIFESTYLE REWARDS ── */}
-        {moduleId === 'lifestyle-rewards' && activeModule ? (
-          <LifestylePanel activeModule={activeModule} office={office} />
+        {moduleId === 'lifestyle-rewards' ? (
+          <LifestyleRewardsView walletDetail={walletDetail} packageTier={office?.profile.packageTier} />
         ) : null}
 
         {/* ── UNILEVEL / RANKING PROGRESS ── */}
