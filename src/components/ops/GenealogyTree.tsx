@@ -34,6 +34,9 @@ type GenealogyTreeProps = {
   onSelect?: (nodeId: string) => void;
   selectedNodeId?: string | null;
   onNavigateToNode?: (username: string) => void;
+  // Notifies the parent how many tree levels the canvas wants loaded, so the
+  // server only builds that depth (instead of the whole subtree).
+  onRequestDepth?: (treeDepth: number) => void;
   onOpenSlot?: (slot: { parentUsername: string; parentReferralCode?: string; side: 'left' | 'right' }) => void;
   availableActivationCodes?: ActivationCodeOption[];
   adminMode?: boolean;
@@ -233,7 +236,7 @@ function openPrintableExport(title: string, rows: Array<Record<string, string>>,
   return true;
 }
 
-export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode, onOpenSlot, availableActivationCodes = [], adminMode = false, onUpgradeSuccess, suppressPointerAway = false }: GenealogyTreeProps) {
+export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode, onRequestDepth, onOpenSlot, availableActivationCodes = [], adminMode = false, onUpgradeSuccess, suppressPointerAway = false }: GenealogyTreeProps) {
   const navigate = useNavigate();
   const { confirmAction, presentNotice, notify } = useFeedback();
   const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
@@ -317,6 +320,12 @@ export function GenealogyTree({ root, onSelect, selectedNodeId, onNavigateToNode
 
   const canvasDepth = Math.max(2, visibleDepth * 2);
   const canvasRoot = useMemo(() => toCanvasNode(root, 0, 'root', canvasDepth), [canvasDepth, root]);
+
+  // Ask the parent to fetch exactly the depth the canvas renders (server caps the
+  // tree build to this, so we never pull the whole subtree).
+  useEffect(() => {
+    onRequestDepth?.(canvasDepth);
+  }, [canvasDepth, onRequestDepth]);
 
   useEffect(() => {
     let active = true;

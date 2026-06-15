@@ -373,8 +373,11 @@ export function createMemberPlacementReservation(payload: {
   });
 }
 
-export function fetchMemberBinaryTree(rootUsername?: string): Promise<GenealogyCenter> {
-  const suffix = rootUsername ? `?rootUsername=${encodeURIComponent(rootUsername)}` : '';
+export function fetchMemberBinaryTree(rootUsername?: string, depth?: number): Promise<GenealogyCenter> {
+  const params = new URLSearchParams();
+  if (rootUsername) params.set('rootUsername', rootUsername);
+  if (depth && Number.isFinite(depth)) params.set('depth', String(depth));
+  const suffix = params.toString() ? `?${params.toString()}` : '';
   return fetchJson(`/api/member/genealogy/binary-tree${suffix}`, { method: 'GET' });
 }
 

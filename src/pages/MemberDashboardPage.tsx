@@ -350,6 +350,8 @@ export function MemberDashboardPage() {
   const [shadowAccounts, setShadowAccounts] = useState<ShadowAccountCenter | null>(null);
   const [selectedTreeNodeId, setSelectedTreeNodeId] = useState<string | null>(null);
   const [treeRootUsername, setTreeRootUsername] = useState('');
+  // Tree-depth window (tree levels) the canvas asked for; only this much is fetched.
+  const [treeDepth, setTreeDepth] = useState(4);
   const [pendingRegistrationSlot, setPendingRegistrationSlot] = useState<GenealogyOpenSlotSelection | null>(null);
   const [encashAmountInput, setEncashAmountInput] = useState('0');
   const [encashPreview, setEncashPreview] = useState<EncashmentPreview | null>(null);
@@ -500,17 +502,17 @@ export function MemberDashboardPage() {
 
       if (targetModuleId === 'genealogy') {
         [binaryTree, activationCodes] = await Promise.all([
-          getMemberBinaryTree(rootUsername.trim() || undefined).catch(() => null),
+          getMemberBinaryTree(rootUsername.trim() || undefined, treeDepth).catch(() => null),
           getMemberActivationCodes()
         ]);
       }
 
       if (targetModuleId === 'binary-cycle-bonus' || targetModuleId === 'salesmatch-bonus') {
-        binaryTree = await getMemberBinaryTree(rootUsername.trim() || undefined).catch(() => null);
+        binaryTree = await getMemberBinaryTree(rootUsername.trim() || undefined, treeDepth).catch(() => null);
       }
 
       if (targetModuleId === 'dashboard') {
-        binaryTree = await getMemberBinaryTree(rootUsername.trim() || undefined).catch(() => null);
+        binaryTree = await getMemberBinaryTree(rootUsername.trim() || undefined, treeDepth).catch(() => null);
       }
 
       if (targetModuleId === 'account-shadow-management') {
@@ -542,13 +544,14 @@ export function MemberDashboardPage() {
       getMemberSummary,
       getMemberTransactionDetail,
       getMemberTransactions,
-      getMemberWalletDetail
+      getMemberWalletDetail,
+      treeDepth
     ]
   );
 
   const memberCacheKey = useCallback(
-    (targetModuleId: string, rootUsername: string) => `member:${targetModuleId}:${rootUsername.toUpperCase()}`,
-    []
+    (targetModuleId: string, rootUsername: string) => `member:${targetModuleId}:${rootUsername.toUpperCase()}:d${treeDepth}`,
+    [treeDepth]
   );
 
   const prefetchModule = useCallback(
@@ -1812,6 +1815,7 @@ export function MemberDashboardPage() {
                   selectedNodeId={selectedTreeNodeId}
                   onSelect={setSelectedTreeNodeId}
                   onNavigateToNode={setTreeRootUsername}
+                  onRequestDepth={setTreeDepth}
                   onOpenSlot={setPendingRegistrationSlot}
                   availableActivationCodes={(activationCodes?.inventory ?? [])
                     .filter((i) => i.status === 'available' && i.codeFamily === 'YOR CODES' && i.registrationEligible !== false)
