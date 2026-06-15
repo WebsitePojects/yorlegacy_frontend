@@ -1231,7 +1231,9 @@ export function AdminDashboardPage() {
   const currentOpsRole = office?.profile.accessScope ?? user?.role ?? 'admin';
   const effectiveAdminRole = currentOpsRole === 'platform' ? 'admin' : currentOpsRole;
   const isCashierRole = effectiveAdminRole === 'cashier' || user?.role === 'cashier';
-  const canGenerateCodes = isCashierRole || effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin';
+  // Cashiers may only release/transfer/correct codes — never generate batches
+  // (the backend rejects cashier generation too). Hide the whole card for them.
+  const canGenerateCodes = !isCashierRole && (effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin');
   const canApproveEncashment = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin';
   const canChangeMemberStatus = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin';
   const canEditFullMemberProfile = effectiveAdminRole === 'admin' || effectiveAdminRole === 'superadmin' || effectiveAdminRole === 'bod';
@@ -1348,7 +1350,8 @@ export function AdminDashboardPage() {
                 <DataPoint label="Awaiting Release" value={activationCodes.metrics.unreleasedCodes} />
                 <DataPoint label="Used" value={activationCodes.metrics.usedCodes} />
               </div>
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+              <div className={cn('grid gap-4', canGenerateCodes && 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]')}>
+                {canGenerateCodes ? (
                 <Card className="ops-admin-control-card border-[var(--border)] bg-[var(--card)]">
                   <CardHeader className="pb-3">
                     <CardTitle>Code Generation</CardTitle>
@@ -1437,6 +1440,7 @@ export function AdminDashboardPage() {
                     )}
                   </CardContent>
                 </Card>
+                ) : null}
 
                 {/* ── Release & Transfer panel ── */}
                 <Card className="ops-admin-transfer-card border-[var(--border)] bg-[var(--card)]">
