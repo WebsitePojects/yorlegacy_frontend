@@ -3124,9 +3124,9 @@ function RankingsView({ activeModule }: ModuleViewProps) {
     <section className="space-y-5">
       <Card className="border-[var(--border)] bg-[var(--card)]">
         <CardHeader>
-          <CardTitle>Rankings &amp; Network Volume</CardTitle>
+          <CardTitle>Rankings &amp; Unilevel Income</CardTitle>
           <CardDescription>
-            {activeModule?.description ?? 'Rank and volume progress report based on direct referral, binary point, and package-level signals.'}
+            {activeModule?.description ?? 'Rank tier is based only on lifetime unilevel income. Total income remains visible for accounting context and leaderboard comparison.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -3593,7 +3593,7 @@ function ShadowOverviewView() {
         ))}
       </div>
 
-      <Card className="ops-admin-table-card flex h-[600px] flex-col border-[var(--border)] bg-[var(--card)]">
+      <Card className="ops-admin-table-card flex flex-col border-[var(--border)] bg-[var(--card)] md:h-[600px]">
         <CardHeader className="shrink-0 gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <CardTitle>Shadow Monitor ({filtered.length})</CardTitle>
@@ -3611,7 +3611,7 @@ function ShadowOverviewView() {
         </CardHeader>
         <CardContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
           <div className="min-h-0 flex-1 overflow-hidden border-t border-[var(--border)]">
-            <div className="h-full overflow-x-auto overflow-y-auto">
+            <div className="hidden h-full md:block" style={{ overflowX: 'auto', overflowY: 'auto' }}>
               <table className="w-full min-w-[1080px] text-sm">
                 <thead className="sticky top-0 z-10">
                   <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
@@ -3655,6 +3655,49 @@ function ShadowOverviewView() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="grid gap-3 p-3 md:hidden">
+              {loading ? (
+                <div className="rounded-lg border border-[var(--border)] px-3 py-8 text-center text-sm text-[var(--muted-foreground)]">Loading...</div>
+              ) : pageRows.length === 0 ? (
+                <div className="rounded-lg border border-[var(--border)] px-3 py-8 text-center text-sm text-[var(--muted-foreground)]">No shadow accounts match the filters.</div>
+              ) : pageRows.map((s) => (
+                <div key={s.id} className="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[var(--foreground)]">{s.ownerUsername}</p>
+                      <p className="truncate text-xs text-[var(--muted-foreground)]">{s.ownerFullName}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className={cn('inline-flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold', s.placement === 'left' ? 'bg-blue-500/15 text-blue-400' : 'bg-emerald-500/15 text-emerald-400')}>
+                        {s.placement === 'left' ? 'L' : 'R'}
+                      </span>
+                      <Badge variant="outline" className={s.totalEarned > 0 ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : s.state === 'reserved_shadow' ? 'border-amber-500/40 bg-amber-500/10 text-amber-400' : 'border-[var(--border)] text-[var(--muted-foreground)]'}>
+                        {formatShadowState(s.state)}
+                      </Badge>
+                    </div>
+                  </div>
+                  <p className="mt-2 break-all font-mono text-[11px] text-[var(--muted-foreground)]">{s.shadowCode}</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-md border border-[var(--border)] px-2 py-1.5">
+                      <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Left Vol</p>
+                      <p className="mt-1 font-mono text-[var(--foreground)]">{s.leftVolume}</p>
+                    </div>
+                    <div className="rounded-md border border-[var(--border)] px-2 py-1.5">
+                      <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Right Vol</p>
+                      <p className="mt-1 font-mono text-[var(--foreground)]">{s.rightVolume}</p>
+                    </div>
+                    <div className="rounded-md border border-[var(--border)] px-2 py-1.5">
+                      <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Matched</p>
+                      <p className="mt-1 font-mono text-[var(--foreground)]">{s.matchedPoints}</p>
+                    </div>
+                    <div className="rounded-md border border-[var(--border)] px-2 py-1.5">
+                      <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">SMB</p>
+                      <p className="mt-1 font-mono text-amber-500">{peso(s.totalEarned)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
           {totalPages > 1 && (
