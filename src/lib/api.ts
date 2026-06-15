@@ -488,6 +488,43 @@ export function fetchAdminVouchers(): Promise<VoucherCenter> {
   return fetchJson('/api/admin/vouchers', { method: 'GET' });
 }
 
+// News / Announcements (admin-authored, public bulletin).
+export type NewsCategory = 'announcement' | 'news' | 'promo' | 'memo';
+export type NewsStatus = 'draft' | 'published' | 'archived';
+export type NewsPost = {
+  id: string;
+  title: string;
+  body: string;
+  category: NewsCategory;
+  status: NewsStatus;
+  pinned: boolean;
+  createdByLabel: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function fetchAdminNewsPosts(): Promise<{ posts: NewsPost[] }> {
+  return fetchJson('/api/admin/news-posts', { method: 'GET' });
+}
+export function createAdminNewsPost(payload: { title: string; body: string; category: NewsCategory; status: NewsStatus; pinned?: boolean }): Promise<{ post: NewsPost }> {
+  return fetchJson('/api/admin/news-posts', { method: 'POST', body: JSON.stringify(payload) });
+}
+export function updateAdminNewsPost(id: string, patch: Partial<{ title: string; body: string; category: NewsCategory; status: NewsStatus; pinned: boolean }>): Promise<{ post: NewsPost }> {
+  return fetchJson(`/api/admin/news-posts/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) });
+}
+export function deleteAdminNewsPost(id: string): Promise<{ ok: boolean }> {
+  return fetchJson(`/api/admin/news-posts/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+// Public (no auth)
+export function fetchPublicAnnouncements(): Promise<{ posts: NewsPost[] }> {
+  return fetchJson('/api/public/announcements', { method: 'GET' });
+}
+export function submitPublicContact(payload: { name: string; email: string; subject: string; message: string }): Promise<{ status: string; id: string }> {
+  return fetchJson('/api/public/contact', { method: 'POST', body: JSON.stringify(payload) });
+}
+
 // Shadow-account overview (admin monitoring).
 export type ShadowOverviewRow = {
   id: string;

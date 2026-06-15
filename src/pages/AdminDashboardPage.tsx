@@ -72,7 +72,14 @@ import {
   fetchAdminCdAccounts,
   type CdAccountCenter,
   fetchAdminShadowOverview,
-  type ShadowOverview
+  type ShadowOverview,
+  fetchAdminNewsPosts,
+  createAdminNewsPost,
+  updateAdminNewsPost,
+  deleteAdminNewsPost,
+  type NewsPost,
+  type NewsCategory,
+  type NewsStatus
 } from '@/lib/api';
 import { SponsorTreeCanvas } from '@/features/unilevel/components/SponsorTreeCanvas';
 import type {
@@ -4443,73 +4450,152 @@ function ContactMessagesView({ activeModule }: ModuleViewProps) {
 
 // ─── 9. News & Posts View ─────────────────────────────────────────────────────
 
-function NewsPostsView({ activeModule }: ModuleViewProps) {
-  const rows = activeModule?.table?.rows ?? [];
+function resolvePostStatusClass(status: string): string {
+  if (/publish/i.test(status)) return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
+  if (/draft/i.test(status)) return 'border-amber-500/40 bg-amber-500/10 text-amber-400';
+  return 'border-[var(--border)] text-[var(--muted-foreground)]';
+}
 
-  function resolvePostStatusClass(status: string): string {
-    if (/publish/i.test(status)) return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
-    if (/draft/i.test(status))   return 'border-amber-500/40 bg-amber-500/10 text-amber-400';
-    return 'border-[var(--border)] text-[var(--muted-foreground)]';
+const NEWS_CATEGORIES: NewsCategory[] = ['announcement', 'news', 'promo', 'memo'];
+
+function NewsPostsView(_props: ModuleViewProps) {
+  const [posts, setPosts] = useState<NewsPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showEditor, setShowEditor] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [category, setCategory] = useState<NewsCategory>('announcement');
+  const { notify, confirmAction } = useFeedback();
+
+  const reload = useCallback(async () => {
+    try {
+      const data = await fetchAdminNewsPosts();
+      setPosts(data.posts);
+    } catch {
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void reload(); }, [reload]);
+
+  async function submitNew(publish: boolean) {
+    setFormError(null);
+    if (title.trim().length < 3 || body.trim().length < 3) {
+      setFormError('Title and body are required.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await createAdminNewsPost({ title: title.trim(), body: body.trim(), category, status: publish ? 'published' : 'draft' });
+      setShowEditor(false); setTitle(''); setBody(''); setCategory('announcement');
+      await reload();
+      void notify({ title: publish ? 'Post published' : 'Draft saved', tone: 'success' });
+    } catch (cause) {
+      setFormError(cause instanceof Error ? cause.message : 'Unable to save post.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setStatus(post: NewsPost, status: NewsStatus) {
+    try {
+      await updateAdminNewsPost(post.id, { status });
+      await reload();
+    } catch (cause) {
+      void notify({ title: 'Update failed', description: cause instanceof Error ? cause.message : '', tone: 'destructive' });
+    }
+  }
+
+  async function removePost(post: NewsPost) {
+    const ok = await confirmAction({ title: 'Delete this post?', description: post.title, confirmLabel: 'Delete', tone: 'destructive' });
+    if (!ok) return;
+    try {
+      await deleteAdminNewsPost(post.id);
+      await reload();
+    } catch (cause) {
+      void notify({ title: 'Delete failed', description: cause instanceof Error ? cause.message : '', tone: 'destructive' });
+    }
   }
 
   return (
     <section className="space-y-5">
-      {/* Page Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Admin</p>
           <h2 className="mt-0.5 text-xl font-semibold text-[var(--foreground)]">News &amp; Announcements</h2>
-          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            {activeModule?.description ?? 'Manage news, announcements, memos, and promotions visible on the public site.'}
-          </p>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">Published posts appear on the public site bulletin.</p>
         </div>
-        <Button type="button" className="ops-admin-primary-action gap-2">
+        <Button type="button" className="ops-admin-primary-action gap-2" onClick={() => { setFormError(null); setShowEditor((v) => !v); }}>
           <Plus className="size-4" />
-          New Post
+          {showEditor ? 'Close' : 'New Post'}
         </Button>
       </div>
 
+      {showEditor ? (
+        <Card className="border-[var(--border)] bg-[var(--card)]">
+          <CardContent className="space-y-3 pt-5">
+            {formError ? <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-400">{formError}</div> : null}
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+              <Input placeholder="Post title" value={title} onChange={(e) => setTitle(e.target.value)} />
+              <select className={SELECT_CLASS + ' sm:w-44'} value={category} onChange={(e) => setCategory(e.target.value as NewsCategory)}>
+                {NEWS_CATEGORIES.map((c) => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+              </select>
+            </div>
+            <textarea
+              className="min-h-[140px] w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)]"
+              placeholder="Write the announcement…"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" disabled={busy} onClick={() => void submitNew(false)}>Save Draft</Button>
+              <Button type="button" className="ops-admin-primary-action" disabled={busy} onClick={() => void submitNew(true)}>{busy ? 'Saving…' : 'Publish'}</Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card className="border-[var(--border)] bg-[var(--card)]">
         <CardContent className="pt-5">
-          {rows.length === 0 ? (
+          {loading ? (
+            <ModuleEmptyState message="Loading posts…" />
+          ) : posts.length === 0 ? (
             <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] py-16 text-center">
-              <span className="flex size-14 items-center justify-center rounded-2xl bg-[var(--muted)]">
-                <Newspaper className="size-7 text-[var(--muted-foreground)]" />
-              </span>
+              <span className="flex size-14 items-center justify-center rounded-2xl bg-[var(--muted)]"><Newspaper className="size-7 text-[var(--muted-foreground)]" /></span>
               <div>
                 <p className="font-medium text-[var(--foreground)]">No posts yet.</p>
-                <p className="mt-1 text-sm text-[var(--muted-foreground)]">Create your first one!</p>
+                <p className="mt-1 text-sm text-[var(--muted-foreground)]">Create your first announcement.</p>
               </div>
-              <Button type="button" className="ops-admin-primary-action gap-2 mt-1">
-                <Plus className="size-4" />
-                New Post
-              </Button>
             </div>
           ) : (
             <div className="space-y-3">
-              {rows.map((row, i) => {
-                const status = String(row['status'] ?? row['Status'] ?? '');
-                return (
-                  <div key={i} className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
-                    <div className="flex items-center gap-4">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
-                        <FileText className="size-5 text-amber-500" />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-[var(--foreground)]">{String(row['title'] ?? row['Title'] ?? '—')}</p>
-                        <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
-                          {String(row['type'] ?? row['Type'] ?? row['category'] ?? 'Post')} · {String(row['date'] ?? row['Date'] ?? row['publishedAt'] ?? '—')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-3">
-                      <Badge variant="outline" className={resolvePostStatusClass(status)}>{status || 'Draft'}</Badge>
-                      <Button type="button" size="sm" variant="outline">Edit</Button>
-                      <Button type="button" size="sm" variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10">Delete</Button>
+              {posts.map((post) => (
+                <div key={post.id} className="flex items-start justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
+                  <div className="flex min-w-0 items-start gap-4">
+                    <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10"><FileText className="size-5 text-amber-500" /></span>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-[var(--foreground)]">{post.title}</p>
+                      <p className="mt-0.5 line-clamp-2 text-xs text-[var(--muted-foreground)]">{post.body}</p>
+                      <p className="mt-1 text-[10px] uppercase tracking-widest text-[var(--muted-foreground)]">{post.category} · {post.publishedAt ? formatDateTime(post.publishedAt) : 'unpublished'}</p>
                     </div>
                   </div>
-                );
-              })}
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <Badge variant="outline" className={resolvePostStatusClass(post.status)}>{post.status}</Badge>
+                    <div className="flex gap-2">
+                      {post.status === 'published' ? (
+                        <Button type="button" size="sm" variant="outline" onClick={() => void setStatus(post, 'archived')}>Unpublish</Button>
+                      ) : (
+                        <Button type="button" size="sm" variant="outline" className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10" onClick={() => void setStatus(post, 'published')}>Publish</Button>
+                      )}
+                      <Button type="button" size="sm" variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10" onClick={() => void removePost(post)}>Delete</Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
