@@ -460,6 +460,49 @@ export function fetchAdminEncashments(): Promise<AdminEncashmentCenter> {
   return fetchJson('/api/admin/encashments', { method: 'GET' });
 }
 
+// GATE-VOUCHER-B1T1-20260615: admin Buy-1-Take-1 voucher inventory.
+export type VoucherStatus = 'available' | 'used' | 'suspended' | 'expired';
+export type VoucherRecord = {
+  id: string;
+  voucherCode: string;
+  beneficiaryUsername: string;
+  beneficiaryFullName: string | null;
+  packageTier: string;
+  quantity: number;
+  remaining: number;
+  status: VoucherStatus;
+  grantedByLabel: string | null;
+  remarks: string | null;
+  issuedAt: string;
+  expiresAt: string | null;
+};
+export type VoucherCenter = {
+  stats: { total: number; active: number; expired: number; suspended: number; fullyUsed: number };
+  vouchers: VoucherRecord[];
+};
+
+export function fetchAdminVouchers(): Promise<VoucherCenter> {
+  return fetchJson('/api/admin/vouchers', { method: 'GET' });
+}
+
+export function grantAdminVoucher(payload: {
+  beneficiaryUsername: string;
+  packageTier: string;
+  quantity: number;
+  expiresAt?: string | null;
+  remarks?: string | null;
+}): Promise<{ voucher: VoucherRecord }> {
+  return fetchJson('/api/admin/vouchers/grant', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function suspendAdminVoucher(id: string): Promise<{ voucher: VoucherRecord }> {
+  return fetchJson(`/api/admin/vouchers/${encodeURIComponent(id)}/suspend`, { method: 'POST' });
+}
+
+export function reactivateAdminVoucher(id: string): Promise<{ voucher: VoucherRecord }> {
+  return fetchJson(`/api/admin/vouchers/${encodeURIComponent(id)}/reactivate`, { method: 'POST' });
+}
+
 export function approveAdminEncashment(encashmentId: string): Promise<GatedActionResponse> {
   return fetchJson(`/api/admin/encashments/${encodeURIComponent(encashmentId)}/approve`, {
     method: 'POST'

@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-06-15 — GATE-VOUCHER-B1T1-20260615: Buy-1-Take-1 voucher inventory (admin)
+
+**Rule area:** Voucher entitlements (new money-adjacent surface)
+**Gate ID:** `GATE-VOUCHER-B1T1-20260615`
+**Scope:** New `vouchers` table (migration `0014`), backend voucher module, admin Voucher Management UI.
+
+### What changed
+
+Voucher Management previously rendered hardcoded sandbox rows (activation-code data mapped into mismatched columns → all "—"). Replaced with a real, fully-functional admin feature:
+
+- **New table `public.vouchers`** — a voucher is granted to **any user in the userbase** and represents a **Buy-1-Take-1** entitlement on a package tier. `quantity` = total B1T1 redemptions granted, `remaining` depletes as the beneficiary redeems. Status: `available` / `used` / `suspended` / `expired` (expiry computed at read time from `expires_at`).
+- **Backend** (`src/modules/vouchers/`): repository (Supabase), service (grant/suspend/reactivate/list with stats + effective-status), thin admin routes: `GET /api/admin/vouchers`, `POST /api/admin/vouchers/grant`, `POST /api/admin/vouchers/:id/suspend`, `POST /api/admin/vouchers/:id/reactivate`. Grant/suspend require `admin|bod|superadmin`.
+- **Frontend**: Voucher Management now fetches live data, real stat tiles, search + status filter, a Grant Voucher modal (username + package + quantity + optional expiry + remarks), View detail, and Suspend/Reactivate actions.
+- **Member-side redemption is deferred** pending owner confirmation (admin grant/monitor surface only for now).
+
+Money-adjacent (entitlement value), so changelogged + gated. Additive migration; no existing money rows touched.
+
+---
+
 ## 2026-06-15 — GATE-PLACEMENT-TOKEN-PARAM-20260615: fix reserved-slot share link dropping placement
 
 **Rule area:** Binary placement (genealogy position from sponsor share link)

@@ -57,7 +57,13 @@ import {
   type SponsorTreeCenter,
   type GlobalBonusData,
   type GlobalBonusEntry,
-  type StockistLevel
+  type StockistLevel,
+  fetchAdminVouchers,
+  grantAdminVoucher,
+  suspendAdminVoucher,
+  reactivateAdminVoucher,
+  type VoucherCenter,
+  type VoucherRecord
 } from '@/lib/api';
 import { SponsorTreeCanvas } from '@/features/unilevel/components/SponsorTreeCanvas';
 import type {
@@ -3365,38 +3371,129 @@ const VOUCHER_STAT_TILES = [
 type VoucherStatusFilter = 'all' | 'active' | 'expired' | 'suspended' | 'used';
 
 function resolveVoucherStatusClass(status: string): string {
-  if (/active/i.test(status)) return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
+  if (/active|available/i.test(status)) return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
   if (/expired/i.test(status)) return 'border-red-500/40 bg-red-500/10 text-red-400';
   if (/suspend/i.test(status)) return 'border-amber-500/40 bg-amber-500/10 text-amber-400';
   if (/used/i.test(status)) return 'border-purple-500/40 bg-purple-500/10 text-purple-400';
   return 'border-[var(--border)] text-[var(--muted-foreground)]';
 }
 
-function VoucherManagementView({ activeModule }: ModuleViewProps) {
+const VOUCHER_PACKAGE_TIERS = ['Basic', 'Classic', 'Standard', 'Business', 'VIP'] as const;
+
+function formatVoucherDate(value: string | null): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function VoucherManagementView(_props: ModuleViewProps) {
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<VoucherStatusFilter>('all');
-  const rows = activeModule?.table?.rows ?? [];
+  const [center, setCenter] = useState<VoucherCenter | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
+  const [showGrant, setShowGrant] = useState(false);
+  const [viewVoucher, setViewVoucher] = useState<VoucherRecord | null>(null);
 
-  const countByStatus = (statusKey: string | null) => {
-    if (!statusKey) return rows.length;
-    return rows.filter((row) => {
-      const s = String(row['status'] ?? row['Status'] ?? '').toLowerCase();
-      return s.includes(statusKey);
-    }).length;
+  // Grant form state
+  const [grantUsername, setGrantUsername] = useState('');
+  const [grantPackage, setGrantPackage] = useState<string>('Standard');
+  const [grantQuantity, setGrantQuantity] = useState('1');
+  const [grantExpiry, setGrantExpiry] = useState('');
+  const [grantRemarks, setGrantRemarks] = useState('');
+  const [grantError, setGrantError] = useState<string | null>(null);
+  const [grantBusy, setGrantBusy] = useState(false);
+
+  const reload = useCallback(async () => {
+    try {
+      setError(null);
+      const data = await fetchAdminVouchers();
+      setCenter(data);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to load vouchers.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const vouchers = center?.vouchers ?? [];
+  const stats = center?.stats ?? { total: 0, active: 0, expired: 0, suspended: 0, fullyUsed: 0 };
+  const tileCount: Record<string, number> = {
+    'null': stats.total,
+    active: stats.active,
+    expired: stats.expired,
+    suspended: stats.suspended,
+    used: stats.fullyUsed
   };
 
-  const filteredRows = rows.filter((row) => {
-    const s = String(row['status'] ?? row['Status'] ?? '').toLowerCase();
+  const filteredRows = vouchers.filter((v) => {
+    const s = v.status.toLowerCase();
     const q = searchText.trim().toLowerCase();
-    const statusMatch = statusFilter === 'all' || s.includes(statusFilter);
+    const statusMatch =
+      statusFilter === 'all' ||
+      (statusFilter === 'active' ? s === 'available' : s === statusFilter);
     const searchMatch =
       !q ||
-      String(row['id'] ?? row['Id'] ?? '').toLowerCase().includes(q) ||
-      String(row['username'] ?? row['Username'] ?? '').toLowerCase().includes(q) ||
-      String(row['fullName'] ?? row['full_name'] ?? row['FullName'] ?? '').toLowerCase().includes(q) ||
-      String(row['code'] ?? row['Code'] ?? '').toLowerCase().includes(q);
+      v.voucherCode.toLowerCase().includes(q) ||
+      v.beneficiaryUsername.toLowerCase().includes(q) ||
+      (v.beneficiaryFullName ?? '').toLowerCase().includes(q);
     return statusMatch && searchMatch;
   });
+
+  async function submitGrant() {
+    setGrantError(null);
+    const qty = Number(grantQuantity);
+    if (!grantUsername.trim()) {
+      setGrantError('Enter the beneficiary username.');
+      return;
+    }
+    if (!Number.isFinite(qty) || qty < 1) {
+      setGrantError('Quantity must be at least 1.');
+      return;
+    }
+    setGrantBusy(true);
+    try {
+      await grantAdminVoucher({
+        beneficiaryUsername: grantUsername.trim(),
+        packageTier: grantPackage,
+        quantity: qty,
+        expiresAt: grantExpiry ? new Date(grantExpiry).toISOString() : null,
+        remarks: grantRemarks.trim() || null
+      });
+      setShowGrant(false);
+      setGrantUsername('');
+      setGrantQuantity('1');
+      setGrantExpiry('');
+      setGrantRemarks('');
+      await reload();
+    } catch (cause) {
+      setGrantError(cause instanceof Error ? cause.message : 'Unable to grant voucher.');
+    } finally {
+      setGrantBusy(false);
+    }
+  }
+
+  async function toggleSuspend(v: VoucherRecord) {
+    setActionBusy(v.id);
+    try {
+      if (v.status === 'suspended') {
+        await reactivateAdminVoucher(v.id);
+      } else {
+        await suspendAdminVoucher(v.id);
+      }
+      await reload();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Action failed.');
+    } finally {
+      setActionBusy(null);
+    }
+  }
 
   return (
     <section className="space-y-5">
@@ -3405,18 +3502,23 @@ function VoucherManagementView({ activeModule }: ModuleViewProps) {
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Admin</p>
           <h2 className="mt-0.5 text-xl font-semibold text-[var(--foreground)]">Voucher Management</h2>
+          <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">Buy-1-Take-1 vouchers grantable to any account in the userbase.</p>
         </div>
-        <Button type="button" className="ops-admin-primary-action gap-2">
+        <Button type="button" className="ops-admin-primary-action gap-2" onClick={() => { setGrantError(null); setShowGrant(true); }}>
           <Plus className="size-4" />
           Grant Voucher
         </Button>
       </div>
 
+      {error ? (
+        <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>
+      ) : null}
+
       {/* Stat Tiles */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {VOUCHER_STAT_TILES.map((tile) => {
           const TileIcon = tile.icon;
-          const count = countByStatus(tile.statusKey);
+          const count = tileCount[String(tile.statusKey)] ?? 0;
           return (
             <button
               key={tile.label}
@@ -3429,15 +3531,12 @@ function VoucherManagementView({ activeModule }: ModuleViewProps) {
                   : 'border-[var(--border)] bg-[var(--card)]'
               )}
             >
-              <span
-                className="flex size-10 shrink-0 items-center justify-center rounded-xl"
-                style={{ background: tile.bg }}
-              >
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl" style={{ background: tile.bg }}>
                 <TileIcon className="size-5" style={{ color: tile.color }} />
               </span>
               <div className="min-w-0">
                 <p className="truncate text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--muted-foreground)]">{tile.label}</p>
-                <p className="mt-0.5 text-lg font-semibold text-[var(--foreground)]">{count}</p>
+                <p className="mt-0.5 text-lg font-semibold text-[var(--foreground)]">{loading ? '…' : count}</p>
               </div>
             </button>
           );
@@ -3455,7 +3554,6 @@ function VoucherManagementView({ activeModule }: ModuleViewProps) {
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
               />
-              <Button type="button" className="ops-admin-primary-action shrink-0">Search</Button>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -3481,7 +3579,9 @@ function VoucherManagementView({ activeModule }: ModuleViewProps) {
       {/* Table */}
       <Card className="border-[var(--border)] bg-[var(--card)]">
         <CardContent className="pt-5">
-          {filteredRows.length === 0 ? (
+          {loading ? (
+            <ModuleEmptyState message="Loading vouchers…" />
+          ) : filteredRows.length === 0 ? (
             <ModuleEmptyState message="No vouchers found." />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
@@ -3501,48 +3601,51 @@ function VoucherManagementView({ activeModule }: ModuleViewProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRows.map((row, i) => {
-                    const status = String(row['status'] ?? row['Status'] ?? '');
-                    return (
-                      <tr key={i} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
-                        <td className="px-4 py-3 font-mono text-[var(--muted-foreground)]">{String(row['id'] ?? row['Id'] ?? i + 1)}</td>
-                        <td className="px-4 py-3 font-medium text-[var(--foreground)]">{String(row['username'] ?? row['Username'] ?? '—')}</td>
-                        <td className="px-4 py-3">{String(row['fullName'] ?? row['full_name'] ?? row['FullName'] ?? row['name'] ?? row['Name'] ?? '—')}</td>
-                        <td className="px-4 py-3">{String(row['package'] ?? row['Package'] ?? row['type'] ?? row['Type'] ?? '—')}</td>
-                        <td className="px-4 py-3 font-mono font-semibold text-[var(--foreground)]">{String(row['amount'] ?? row['Amount'] ?? row['value'] ?? row['Value'] ?? '—')}</td>
-                        <td className="px-4 py-3 font-mono">{String(row['remaining'] ?? row['Remaining'] ?? row['amount'] ?? '—')}</td>
-                        <td className="px-4 py-3">
-                          <Badge variant="outline" className={resolveVoucherStatusClass(status)}>
-                            {status || '—'}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['issued'] ?? row['Issued'] ?? row['issuedAt'] ?? row['createdAt'] ?? '—')}</td>
-                        <td className="px-4 py-3 text-[var(--muted-foreground)]">{String(row['expiry'] ?? row['Expiry'] ?? row['expiresAt'] ?? '—')}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="gap-1.5 border-amber-500/40 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
-                              variant="outline"
-                            >
-                              <Eye className="size-3" />
-                              View
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="gap-1.5 border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                              variant="outline"
-                            >
-                              <Lock className="size-3" />
-                              Suspend
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {filteredRows.map((v) => (
+                    <tr key={v.id} className="border-b border-[var(--border)] transition hover:bg-[var(--muted)]/30">
+                      <td className="px-4 py-3 font-mono text-[var(--muted-foreground)]">{v.voucherCode}</td>
+                      <td className="px-4 py-3 font-medium text-[var(--foreground)]">{v.beneficiaryUsername}</td>
+                      <td className="px-4 py-3">{v.beneficiaryFullName ?? '—'}</td>
+                      <td className="px-4 py-3">{v.packageTier}</td>
+                      <td className="px-4 py-3 font-mono font-semibold text-[var(--foreground)]">{v.quantity}</td>
+                      <td className="px-4 py-3 font-mono">{v.remaining}</td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className={resolveVoucherStatusClass(v.status)}>{v.status}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-[var(--muted-foreground)]">{formatVoucherDate(v.issuedAt)}</td>
+                      <td className="px-4 py-3 text-[var(--muted-foreground)]">{formatVoucherDate(v.expiresAt)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="gap-1.5 border-amber-500/40 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                            variant="outline"
+                            onClick={() => setViewVoucher(v)}
+                          >
+                            <Eye className="size-3" />
+                            View
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={actionBusy === v.id || v.status === 'used'}
+                            className={cn(
+                              'gap-1.5',
+                              v.status === 'suspended'
+                                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                                : 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                            )}
+                            variant="outline"
+                            onClick={() => void toggleSuspend(v)}
+                          >
+                            <Lock className="size-3" />
+                            {v.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -3550,6 +3653,84 @@ function VoucherManagementView({ activeModule }: ModuleViewProps) {
           <p className="mt-3 text-xs text-[var(--muted-foreground)]">Showing {filteredRows.length} voucher(s)</p>
         </CardContent>
       </Card>
+
+      {/* Grant Voucher modal */}
+      {showGrant ? (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 p-4" onClick={() => setShowGrant(false)}>
+          <Card className="w-full max-w-md border-[var(--border)] bg-[var(--card)]" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle>Grant Voucher</CardTitle>
+              <CardDescription className="text-xs">Buy-1-Take-1 entitlement for any account. Remaining depletes as the beneficiary redeems.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {grantError ? <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-400">{grantError}</div> : null}
+              <label className="grid gap-1.5 text-sm">
+                <span className="font-medium text-[var(--muted-foreground)]">Beneficiary username</span>
+                <Input value={grantUsername} onChange={(e) => setGrantUsername(e.target.value)} placeholder="e.g. Jervy28" />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="grid gap-1.5 text-sm">
+                  <span className="font-medium text-[var(--muted-foreground)]">Package</span>
+                  <select className="ops-admin-select h-10 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 text-sm" value={grantPackage} onChange={(e) => setGrantPackage(e.target.value)}>
+                    {VOUCHER_PACKAGE_TIERS.map((tier) => <option key={tier} value={tier}>{tier}</option>)}
+                  </select>
+                </label>
+                <label className="grid gap-1.5 text-sm">
+                  <span className="font-medium text-[var(--muted-foreground)]">Quantity (B1T1)</span>
+                  <Input type="number" min={1} value={grantQuantity} onChange={(e) => setGrantQuantity(e.target.value)} />
+                </label>
+              </div>
+              <label className="grid gap-1.5 text-sm">
+                <span className="font-medium text-[var(--muted-foreground)]">Expiry (optional)</span>
+                <Input type="date" value={grantExpiry} onChange={(e) => setGrantExpiry(e.target.value)} />
+              </label>
+              <label className="grid gap-1.5 text-sm">
+                <span className="font-medium text-[var(--muted-foreground)]">Remarks (optional)</span>
+                <Input value={grantRemarks} onChange={(e) => setGrantRemarks(e.target.value)} placeholder="Audit note…" />
+              </label>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setShowGrant(false)}>Cancel</Button>
+                <Button type="button" className="ops-admin-primary-action" disabled={grantBusy} onClick={() => void submitGrant()}>
+                  {grantBusy ? 'Granting…' : 'Grant Voucher'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {/* View detail modal */}
+      {viewVoucher ? (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 p-4" onClick={() => setViewVoucher(null)}>
+          <Card className="w-full max-w-md border-[var(--border)] bg-[var(--card)]" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle>Voucher {viewVoucher.voucherCode}</CardTitle>
+              <CardDescription className="text-xs">Buy-1-Take-1 voucher detail.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {[
+                ['Beneficiary', `${viewVoucher.beneficiaryUsername}${viewVoucher.beneficiaryFullName ? ` (${viewVoucher.beneficiaryFullName})` : ''}`],
+                ['Package', viewVoucher.packageTier],
+                ['Quantity', String(viewVoucher.quantity)],
+                ['Remaining', String(viewVoucher.remaining)],
+                ['Status', viewVoucher.status],
+                ['Granted by', viewVoucher.grantedByLabel ?? '—'],
+                ['Issued', formatVoucherDate(viewVoucher.issuedAt)],
+                ['Expiry', formatVoucherDate(viewVoucher.expiresAt)],
+                ['Remarks', viewVoucher.remarks ?? '—']
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-4 border-b border-[var(--border)] pb-1.5 last:border-0">
+                  <span className="text-[var(--muted-foreground)]">{label}</span>
+                  <span className="text-right font-medium text-[var(--foreground)]">{value}</span>
+                </div>
+              ))}
+              <div className="flex justify-end pt-2">
+                <Button type="button" variant="outline" onClick={() => setViewVoucher(null)}>Close</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
     </section>
   );
 }
