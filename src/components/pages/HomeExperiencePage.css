@@ -4420,7 +4420,7 @@ body.story-scroll-locked {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
-  padding: 1rem 1rem 1rem 3rem;
+  padding: 1rem 3.5rem 1rem 3rem;
   color: #ffffff;
   font-size: 0.95rem;
   box-sizing: border-box;
@@ -4443,17 +4443,35 @@ body.story-scroll-locked {
 
 .login-pw-toggle-btn {
   position: absolute;
-  right: 1.25rem;
+  right: 0.85rem;
   top: 50%;
   transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(197, 168, 128, 0.12);
+  border: 1px solid rgba(197, 168, 128, 0.18);
+  border-radius: 9px;
+  color: rgba(255, 255, 255, 0.78);
   cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-pw-toggle-btn:focus-visible {
+  outline: none;
+  border-color: rgba(197, 168, 128, 0.5);
+  background: rgba(197, 168, 128, 0.2);
+  box-shadow: 0 0 0 3px rgba(197, 168, 128, 0.16);
 }
 
 .login-pw-toggle-btn:hover {
   color: #ffffff;
+  background: rgba(197, 168, 128, 0.2);
+  border-color: rgba(197, 168, 128, 0.34);
+  transform: translateY(-50%) scale(1.03);
 }
 
 .login-meta-row {

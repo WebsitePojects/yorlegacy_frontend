@@ -348,6 +348,31 @@ export function ProtectedOfficeFrame({
 
           <div className="ops-content-shell" aria-busy={isContentLoading}>
             <div className="ops-content-shell-stage">{children}</div>
+            {isContentLoading ? (
+              <div className="ops-content-loader-card" role="status" aria-live="polite" aria-label={`Loading ${loadingLabel}`}>
+                <div className="ops-content-loader-body">
+                  <Badge variant="outline">Loading</Badge>
+                  <div className="ops-content-loader-copy">
+                    <h2>{loadingLabel}</h2>
+                    <p>The content area is refreshing with the latest workspace data.</p>
+                  </div>
+                  <div className="ops-content-loader-skeleton" aria-hidden="true">
+                    <span className="ops-skeleton-line ops-skeleton-line-lg" />
+                    <span className="ops-skeleton-line ops-skeleton-line-md" />
+                    <span className="ops-skeleton-grid">
+                      <span />
+                      <span />
+                      <span />
+                    </span>
+                  </div>
+                  <div className="ops-content-loader-pulse" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </main>
       </div>

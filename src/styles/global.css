@@ -1903,21 +1903,59 @@ body {
 .ops-content-loader-card {
   position: absolute;
   inset: 0;
-  overflow: hidden;
   z-index: 2;
-  display: flex;
-  min-height: 280px;
-  align-items: center;
-  backdrop-filter: blur(16px) saturate(112%);
-  background: color-mix(in srgb, var(--background) 72%, transparent);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 24px;
+  backdrop-filter: blur(18px) saturate(125%);
+  background:
+    radial-gradient(circle at top, rgba(242, 184, 75, 0.12), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--background) 70%, transparent), color-mix(in srgb, var(--background) 84%, transparent));
+}
+
+.ops-content-loader-card::before,
+.ops-content-loader-card::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+}
+
+.ops-content-loader-card::before {
+  top: 18%;
+  right: 12%;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(242, 184, 75, 0.14), transparent 68%);
+  filter: blur(6px);
+}
+
+.ops-content-loader-card::after {
+  bottom: -80px;
+  left: 8%;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(194, 123, 70, 0.10), transparent 66%);
+  filter: blur(10px);
 }
 
 .ops-content-loader-body {
+  position: relative;
+  z-index: 1;
   display: grid;
-  gap: 16px;
-  place-items: start;
-  width: 100%;
-  padding: 28px;
+  gap: 18px;
+  place-items: center;
+  width: min(100%, 520px);
+  padding: 30px 28px;
+  text-align: center;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--background) 82%, transparent), color-mix(in srgb, var(--card) 70%, transparent));
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .ops-content-shell {
@@ -1957,15 +1995,57 @@ body {
 }
 
 .ops-content-loader-copy p {
-  margin-top: 6px;
+  margin-top: 8px;
   color: var(--muted-foreground);
   line-height: 1.7;
+}
+
+.ops-content-loader-skeleton {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.ops-skeleton-line,
+.ops-skeleton-grid span {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05), rgba(242, 184, 75, 0.16), rgba(255, 255, 255, 0.05));
+  background-size: 200% 100%;
+  animation: yor-loader-shimmer 1.8s ease-in-out infinite;
+}
+
+.ops-skeleton-line {
+  height: 12px;
+}
+
+.ops-skeleton-line-lg {
+  width: min(100%, 380px);
+}
+
+.ops-skeleton-line-md {
+  width: min(82%, 280px);
+}
+
+.ops-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.ops-skeleton-grid span {
+  height: 72px;
+  border-radius: 20px;
 }
 
 .ops-content-loader-pulse {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  margin-top: 2px;
 }
 
 .ops-content-loader-pulse span {
@@ -1995,6 +2075,16 @@ body {
   40% {
     transform: translateY(-6px);
     opacity: 1;
+  }
+}
+
+@keyframes yor-loader-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
   }
 }
 
@@ -11794,42 +11884,6 @@ html, body {
 }
 
 /* ── Content Loader ───────────────────────────────────────────────────────── */
-.ops-content-loader-card {
-  position: fixed;
-  inset: 56px 0 0;
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: var(--office-bg);
-  backdrop-filter: blur(12px);
-}
-.ops-content-loader-pulse {
-  display: flex; gap: 6px; align-items: center;
-}
-.ops-content-loader-pulse span {
-  display: block;
-  width: 6px; height: 6px;
-  border-radius: 999px;
-  background: var(--color-primary);
-  animation: loaderPulse 1.2s ease-in-out infinite;
-}
-.ops-content-loader-pulse span:nth-child(2) { animation-delay: 0.2s; }
-.ops-content-loader-pulse span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes loaderPulse {
-  0%, 100% { opacity: 0.3; transform: scale(0.8); }
-  50%       { opacity: 1;   transform: scale(1.2); }
-}
-.ops-content-loader-brand {
-  display: flex; align-items: center; gap: 8px;
-  font-family: var(--font-headline);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--office-muted);
-}
-
 /* ── Mobile Bottom Navigation ─────────────────────────────────────────────── */
 .ops-mobile-bottom-nav {
   position: fixed;
