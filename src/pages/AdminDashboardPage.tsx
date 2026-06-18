@@ -1874,7 +1874,6 @@ export function AdminDashboardPage() {
                                 />
                                 <button
                                   type="button"
-                                  tabIndex={-1}
                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]"
                                   onClick={() => setShowAdminMemberPassword((v) => !v)}
                                   aria-label={showAdminMemberPassword ? 'Hide password' : 'Show password'}
@@ -2181,7 +2180,6 @@ export function AdminDashboardPage() {
                                   />
                                   <button
                                     type="button"
-                                    tabIndex={-1}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]"
                                     onClick={() => setShowAdminMemberPassword((v) => !v)}
                                   >

@@ -116,7 +116,7 @@ type AuthContextValue = AuthState & {
     requestedAmount: number;
   }>;
   submitEncashment: (amount: number) => Promise<GatedActionResponse>;
-  updateMemberCredentials: (payload: { email?: string; password?: string }) => Promise<GatedActionResponse>;
+  updateMemberCredentials: (payload: { username?: string; email?: string; password?: string }) => Promise<GatedActionResponse>;
   updatePayoutSettings: (payoutOption: string, payoutDetails: string) => Promise<GatedActionResponse>;
   getMemberTransactions: () => Promise<{ moneyMode: 'playground' | 'sandbox'; transactions: MemberTransactionSummary[] }>;
   getMemberTransactionDetail: (transactionId: string) => Promise<MemberTransactionDetail>;
@@ -239,6 +239,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return authState;
   }
 
+  async function updateOwnMemberCredentials(payload: {
+    username?: string;
+    email?: string;
+    password?: string;
+  }): Promise<GatedActionResponse> {
+    const response = await updateMemberCredentials(payload);
+    await refresh();
+    return response;
+  }
+
   async function logout(): Promise<void> {
     await logoutUser();
     clearAllOfficeCache();
@@ -273,7 +283,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     getLeaderboard: fetchLeaderboard,
     previewEncashment: previewMemberEncashment,
     submitEncashment: submitMemberEncashment,
-    updateMemberCredentials,
+    updateMemberCredentials: updateOwnMemberCredentials,
     updatePayoutSettings: updateMemberPayoutSettings,
     getMemberTransactions: fetchMemberTransactions,
     getMemberTransactionDetail: fetchMemberTransactionDetail,

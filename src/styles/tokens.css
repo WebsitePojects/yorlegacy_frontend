@@ -35,6 +35,7 @@
   --yor-copper: #b86d3f;
   --yor-copper-soft: #8f5b37;
   --yor-amber: #d8a34f;
+  --yor-gold: #a87839;
   --yor-text: #211c17;
   --yor-muted: #726153;
   --yor-shadow: 0 22px 50px rgba(85, 51, 23, 0.12);
@@ -51,29 +52,37 @@
   --color-neutral:   #121212;
 
   /* Surfaces — Light */
-  --office-bg:          #F2EDE4;
-  --office-card:        #FFFDF9;
-  --office-sidebar:     #FAF7F2;
-  --office-surface:     #FFFDF9;
-  --office-text:        #1A1208;
-  --office-muted:       #6B5C45;
-  --office-border:      rgba(175, 110, 30, 0.14);
-  --office-border-mid:  rgba(175, 110, 30, 0.26);
-  --office-border-strong: rgba(175, 110, 30, 0.42);
+  --office-bg:          #f4efe7;
+  --office-card:        rgba(255, 253, 249, 0.96);
+  --office-sidebar:     rgba(251, 248, 243, 0.94);
+  --office-surface:     #fffdfa;
+  --office-text:        #1f1912;
+  --office-muted:       #6f6559;
+  --office-border:      rgba(121, 98, 75, 0.14);
+  --office-border-mid:  rgba(121, 98, 75, 0.24);
+  --office-border-strong: rgba(121, 98, 75, 0.34);
 
   /* Active state tints */
-  --office-active-bg:   rgba(217, 128, 20, 0.09);
-  --office-hover-bg:    rgba(217, 128, 20, 0.055);
-  --office-primary-tint: rgba(217, 128, 20, 0.055);
+  --office-active-bg:   rgba(154, 114, 72, 0.10);
+  --office-hover-bg:    rgba(154, 114, 72, 0.055);
+  --office-primary-tint: rgba(154, 114, 72, 0.06);
 
   /* Shadows — Light (warmer, more premium) */
-  --office-shadow-sm:   0 2px 10px rgba(120, 70, 10, 0.08);
-  --office-shadow-md:   0 4px 18px rgba(120, 70, 10, 0.10);
-  --office-shadow-lg:   0 8px 36px rgba(120, 70, 10, 0.12);
-  --office-shadow-hover: 0 8px 26px rgba(120, 70, 10, 0.14);
+  --office-shadow-sm:   0 8px 18px rgba(88, 66, 43, 0.06), 0 1px 0 rgba(255, 255, 255, 0.76);
+  --office-shadow-md:   0 14px 34px rgba(88, 66, 43, 0.08), 0 1px 0 rgba(255, 255, 255, 0.72);
+  --office-shadow-lg:   0 22px 52px rgba(88, 66, 43, 0.10), 0 1px 0 rgba(255, 255, 255, 0.70);
+  --office-shadow-hover: 0 18px 40px rgba(88, 66, 43, 0.12), 0 1px 0 rgba(255, 255, 255, 0.78);
 
   /* Light-mode glow tokens */
-  --office-glow-primary: 0 0 0 1px rgba(217,128,20,0.20), 0 4px 20px rgba(217,128,20,0.12);
+  --office-glow-primary: 0 0 0 1px rgba(154,114,72,0.18), 0 10px 30px rgba(154,114,72,0.10);
+  --office-card-highlight: rgba(255, 255, 255, 0.88);
+  --office-card-shadow-edge: rgba(121, 98, 75, 0.10);
+  --status-success-bg: rgba(92, 110, 94, 0.14);
+  --status-success-border: rgba(92, 110, 94, 0.22);
+  --status-success-text: #4f675a;
+  --status-warning-bg: rgba(143, 99, 49, 0.14);
+  --status-warning-border: rgba(143, 99, 49, 0.24);
+  --status-warning-text: #8f6331;
 
   /* Typography */
   --font-headline: 'Hanken Grotesk', 'Inter', system-ui, sans-serif;
@@ -129,6 +138,7 @@
   --yor-copper: #c27b46;
   --yor-copper-soft: #efc8a5;
   --yor-amber: #e2b056;
+  --yor-gold: #d6ad67;
   --yor-text: #f4efe7;
   --yor-muted: #a59687;
   --yor-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
@@ -153,4 +163,12 @@
   --office-shadow-md:   0 4px 16px rgba(0, 0, 0, 0.36);
   --office-shadow-lg:   0 8px 32px rgba(0, 0, 0, 0.44);
   --office-shadow-hover: 0 8px 24px rgba(242, 184, 75, 0.06);
+  --office-card-highlight: rgba(255, 255, 255, 0.04);
+  --office-card-shadow-edge: rgba(0, 0, 0, 0.36);
+  --status-success-bg: rgba(167, 188, 174, 0.14);
+  --status-success-border: rgba(167, 188, 174, 0.24);
+  --status-success-text: #a7bcae;
+  --status-warning-bg: rgba(215, 186, 139, 0.14);
+  --status-warning-border: rgba(215, 186, 139, 0.24);
+  --status-warning-text: #d7ba8b;
 }

@@ -191,12 +191,22 @@ export function ProtectedOfficeFrame({
   return (
     <section className="ops-shell bg-[var(--background)] text-[var(--foreground)]">
       {isContentLoading ? (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[var(--background)]/80 backdrop-blur-sm">
+        <div
+          className="ops-content-loader-overlay"
+          role="status"
+          aria-live="polite"
+          aria-label={`Loading ${loadingLabel}`}
+        >
           <div className="ops-content-loader-body">
-            <Badge variant="outline">Loading</Badge>
+            <div className="ops-content-loader-orbit" aria-hidden="true">
+              <span className="ops-content-loader-orbit-ring ops-content-loader-orbit-ring-outer" />
+              <span className="ops-content-loader-orbit-ring ops-content-loader-orbit-ring-inner" />
+              <span className="ops-content-loader-orbit-core" />
+            </div>
+            <Badge variant="outline" className="ops-content-loader-badge">Loading</Badge>
             <div className="ops-content-loader-copy">
               <h2>{loadingLabel}</h2>
-              <p>The content area is refreshing with the latest workspace data.</p>
+              <p>Preparing your secure workspace and latest account data.</p>
             </div>
             <div className="ops-content-loader-pulse" aria-hidden="true">
               <span />
@@ -351,7 +361,12 @@ export function ProtectedOfficeFrame({
             {isContentLoading ? (
               <div className="ops-content-loader-card" role="status" aria-live="polite" aria-label={`Loading ${loadingLabel}`}>
                 <div className="ops-content-loader-body">
-                  <Badge variant="outline">Loading</Badge>
+                  <div className="ops-content-loader-orbit" aria-hidden="true">
+                    <span className="ops-content-loader-orbit-ring ops-content-loader-orbit-ring-outer" />
+                    <span className="ops-content-loader-orbit-ring ops-content-loader-orbit-ring-inner" />
+                    <span className="ops-content-loader-orbit-core" />
+                  </div>
+                  <Badge variant="outline" className="ops-content-loader-badge">Loading</Badge>
                   <div className="ops-content-loader-copy">
                     <h2>{loadingLabel}</h2>
                     <p>The content area is refreshing with the latest workspace data.</p>

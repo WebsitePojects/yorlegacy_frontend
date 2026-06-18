@@ -36,6 +36,21 @@ function normalizeUsername(value: string) {
   return value.trimStart();
 }
 
+function registrationPackageChipClass(packageTier: string) {
+  switch (packageTier.trim().toUpperCase()) {
+    case 'VIP':
+      return 'office-package-chip office-package-chip--vip';
+    case 'BUSINESS':
+      return 'office-package-chip office-package-chip--business';
+    case 'STANDARD':
+      return 'office-package-chip office-package-chip--standard';
+    case 'CLASSIC':
+      return 'office-package-chip office-package-chip--classic';
+    default:
+      return 'office-package-chip office-package-chip--basic';
+  }
+}
+
 export function RegistrationPageView({
   content: _content,
   variant = 'page',
@@ -426,6 +441,23 @@ export function RegistrationPageView({
               {isModal ? 'Encode Member In Open Slot' : 'Create Member Account'}
             </h1>
           </div>
+
+          {isModal ? (
+            <div className="registration-encode-summary">
+              <div className="registration-encode-summary-card">
+                <span>Placement Route</span>
+                <strong>{placementSummary}</strong>
+              </div>
+              <div className="registration-encode-summary-card">
+                <span>Resolved Package</span>
+                {derivedPackageTier ? (
+                  <span className={registrationPackageChipClass(derivedPackageTier)}>{derivedPackageTier}</span>
+                ) : (
+                  <strong>{availableCodes.length === 0 && !codeLoading ? 'Waiting for released code' : 'Waiting for code validation'}</strong>
+                )}
+              </div>
+            </div>
+          ) : null}
 
           {isModal && placementParentUsername && placementSide ? (
             <div className="registration-derived-grid" style={{ marginBottom: '24px' }}>

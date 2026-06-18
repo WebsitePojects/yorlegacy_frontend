@@ -315,6 +315,7 @@ export function submitMemberEncashment(amount: number): Promise<GatedActionRespo
 }
 
 export function updateMemberCredentials(payload: {
+  username?: string;
   email?: string;
   password?: string;
 }): Promise<GatedActionResponse> {
