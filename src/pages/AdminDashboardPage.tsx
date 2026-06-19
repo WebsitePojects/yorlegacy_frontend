@@ -1,26 +1,32 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowRight,
   Banknote,
   Bell,
+  Bold,
   ChevronDown,
   ChevronRight,
   Eye,
   EyeOff,
   FileText,
   GitBranch,
+  Italic,
   KeyRound,
   LayoutDashboard,
+  List,
   Lock,
   Mail,
   MessageSquare,
   Newspaper,
+  Paperclip,
+  Pin,
   Plus,
   Search,
   Tag,
   TrendingUp,
+  Underline,
   Users
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
@@ -77,10 +83,19 @@ import {
   createAdminNewsPost,
   updateAdminNewsPost,
   deleteAdminNewsPost,
+  type NewsAttachment,
   type NewsPost,
   type NewsCategory,
   type NewsStatus
 } from '@/lib/api';
+import {
+  formatAttachmentSize,
+  formatNewsDate,
+  getAttachmentAcceptValue,
+  getNewsAttachmentKind,
+  renderNewsBodyHtml,
+  stripNewsFormatting
+} from '@/lib/news';
 import { SponsorTreeCanvas } from '@/features/unilevel/components/SponsorTreeCanvas';
 import type {
   AdminActivationCodeCenter,
@@ -1790,12 +1805,12 @@ export function AdminDashboardPage() {
 
           {moduleId === 'member-management' && memberCenter ? (
             <section className="space-y-4">
-              <Card className="border-[var(--border)] bg-[var(--card)]">
+              <Card className="ops-member-management-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Member Profile Update</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+                  <div className="ops-member-search-row grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
                     <Input
                       value={memberSearchDraft}
                       onChange={(event) => setMemberSearchDraft(event.target.value)}
@@ -1820,7 +1835,7 @@ export function AdminDashboardPage() {
 
                   {memberCenter.selectedMember ? (
                     <>
-                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      <div className="ops-member-summary-grid grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         <DataPoint label="Username" value={memberCenter.selectedMember.username} />
                         <DataPoint label="Package" value={memberCenter.selectedMember.packageTier} />
                         <DataPoint label="Status" value={memberCenter.selectedMember.accountStatus} />
@@ -1829,7 +1844,7 @@ export function AdminDashboardPage() {
                         <DataPoint label="Direct Referrals" value={memberCenter.selectedMember.directReferrals} />
                       </div>
 
-                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      <div className="ops-member-profile-grid grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         {/* Names — all roles can edit */}
                         <label className="grid gap-2 text-sm">
                           <span className="font-medium text-[var(--muted-foreground)]">First Name</span>
@@ -1942,12 +1957,12 @@ export function AdminDashboardPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-[var(--border)] bg-[var(--card)]">
+              <Card className="ops-member-directory-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardTitle>Member Directory</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+                  <div className="ops-member-directory-table overflow-x-auto rounded-xl border border-[var(--border)]">
                     <table className="w-full min-w-[1280px] text-sm">
                       <thead>
                         <tr className="border-b border-[var(--border)] bg-[var(--background)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
@@ -2073,7 +2088,7 @@ export function AdminDashboardPage() {
           {/* ── ACCOUNT DETAILS (cashier + admin) ── */}
           {moduleId === 'account-details' && memberCenter ? (
             <section className="space-y-4">
-              <Card className="border-[var(--border)] bg-[var(--card)]">
+              <Card className="ops-account-details-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader>
                   <CardDescription className="text-xs">
                     {isCashierRole
@@ -2082,7 +2097,7 @@ export function AdminDashboardPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+                  <div className="ops-member-search-row grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
                       <Input
@@ -2118,7 +2133,7 @@ export function AdminDashboardPage() {
                   {memberCenter.selectedMember ? (
                     <>
                       {/* Read-only profile info */}
-                      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                      <div className="ops-account-summary-grid grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                         {[
                           ['Username', memberCenter.selectedMember.username],
                           ['Package', memberCenter.selectedMember.packageTier],
@@ -2132,7 +2147,7 @@ export function AdminDashboardPage() {
                         ))}
                       </div>
 
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
+                      <div className="ops-account-editor-panel rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">
                           {isCashierRole ? 'Edit Names' : 'Edit Profile'}
                         </p>
@@ -2602,7 +2617,7 @@ export function AdminDashboardPage() {
           ) : null}
 
           {moduleId === 'news-posts' ? (
-            <NewsPostsView activeModule={activeModule} />
+            <NewsPostsViewV2 activeModule={activeModule} />
           ) : null}
 
           {moduleId === 'change-password' ? (
@@ -4790,6 +4805,370 @@ function ChangePasswordView() {
           </CardContent>
         </Card>
       </div>
+    </section>
+  );
+}
+
+function insertWrappedSelection(
+  textarea: HTMLTextAreaElement,
+  before: string,
+  after: string,
+  fallback: string
+) {
+  const selectionStart = textarea.selectionStart;
+  const selectionEnd = textarea.selectionEnd;
+  const selected = textarea.value.slice(selectionStart, selectionEnd) || fallback;
+  const nextValue = `${textarea.value.slice(0, selectionStart)}${before}${selected}${after}${textarea.value.slice(selectionEnd)}`;
+  const caret = selectionStart + before.length + selected.length + after.length;
+  return { nextValue, caret };
+}
+
+function readNewsAttachment(file: File): Promise<NewsAttachment> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error(`Unable to read ${file.name}.`));
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        reject(new Error(`Unable to process ${file.name}.`));
+        return;
+      }
+
+      resolve({
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        sizeBytes: file.size,
+        dataUrl: reader.result,
+        kind: getNewsAttachmentKind(file.type || 'application/octet-stream')
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function NewsPostsViewV2(_props: ModuleViewProps) {
+  const [posts, setPosts] = useState<NewsPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showEditor, setShowEditor] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [category, setCategory] = useState<NewsCategory>('announcement');
+  const [pinned, setPinned] = useState(false);
+  const [attachments, setAttachments] = useState<NewsAttachment[]>([]);
+  const bodyInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const { notify, confirmAction } = useFeedback();
+
+  const reload = useCallback(async () => {
+    try {
+      const data = await fetchAdminNewsPosts();
+      setPosts(data.posts);
+    } catch {
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  useEffect(() => {
+    if (!showEditor) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [showEditor]);
+
+  function resetComposer() {
+    setShowEditor(false);
+    setFormError(null);
+    setTitle('');
+    setBody('');
+    setCategory('announcement');
+    setPinned(false);
+    setAttachments([]);
+  }
+
+  function applyFormatting(before: string, after: string, fallback: string) {
+    const textarea = bodyInputRef.current;
+    if (!textarea) return;
+    const result = insertWrappedSelection(textarea, before, after, fallback);
+    setBody(result.nextValue);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(result.caret, result.caret);
+    });
+  }
+
+  function insertBulletList() {
+    const textarea = bodyInputRef.current;
+    if (!textarea) return;
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    const selected = textarea.value.slice(selectionStart, selectionEnd).trim();
+    const snippet = selected
+      ? selected
+          .split('\n')
+          .map((line) => (line.trim().startsWith('- ') ? line : `- ${line.trim()}`))
+          .join('\n')
+      : '- First point\n- Second point';
+    const nextValue = `${textarea.value.slice(0, selectionStart)}${snippet}${textarea.value.slice(selectionEnd)}`;
+    setBody(nextValue);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const caret = selectionStart + snippet.length;
+      textarea.setSelectionRange(caret, caret);
+    });
+  }
+
+  async function handleAttachmentChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    if (!files.length) return;
+    setFormError(null);
+
+    try {
+      const nextAttachments = await Promise.all(files.slice(0, Math.max(0, 3 - attachments.length)).map((file) => readNewsAttachment(file)));
+      const totalBytes = [...attachments, ...nextAttachments].reduce((sum, attachment) => sum + attachment.sizeBytes, 0);
+      if (totalBytes > 10 * 1024 * 1024) {
+        setFormError('Attachments are too large. Keep the total upload under 10 MB.');
+        return;
+      }
+      setAttachments((current) => [...current, ...nextAttachments].slice(0, 3));
+    } catch (cause) {
+      setFormError(cause instanceof Error ? cause.message : 'Unable to attach files.');
+    } finally {
+      event.target.value = '';
+    }
+  }
+
+  async function submitNew(publish: boolean) {
+    setFormError(null);
+    if (title.trim().length < 3 || body.trim().length < 3) {
+      setFormError('Title and body are required.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await createAdminNewsPost({
+        title: title.trim(),
+        body: body.trim(),
+        category,
+        pinned,
+        attachments,
+        status: publish ? 'published' : 'draft'
+      });
+      resetComposer();
+      await reload();
+      void notify({ title: publish ? 'Post published' : 'Draft saved', tone: 'success' });
+    } catch (cause) {
+      setFormError(cause instanceof Error ? cause.message : 'Unable to save post.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setStatus(post: NewsPost, status: NewsStatus) {
+    try {
+      await updateAdminNewsPost(post.id, { status });
+      await reload();
+    } catch (cause) {
+      void notify({ title: 'Update failed', description: cause instanceof Error ? cause.message : '', tone: 'destructive' });
+    }
+  }
+
+  async function removePost(post: NewsPost) {
+    const ok = await confirmAction({ title: 'Delete this post?', description: post.title, confirmLabel: 'Delete', tone: 'destructive' });
+    if (!ok) return;
+    try {
+      await deleteAdminNewsPost(post.id);
+      await reload();
+    } catch (cause) {
+      void notify({ title: 'Delete failed', description: cause instanceof Error ? cause.message : '', tone: 'destructive' });
+    }
+  }
+
+  return (
+    <section className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Admin</p>
+          <h2 className="mt-0.5 text-xl font-semibold text-[var(--foreground)]">News &amp; Announcements</h2>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">Published posts appear on the public site bulletin and the News &amp; Updates page.</p>
+        </div>
+        <Button type="button" className="ops-admin-primary-action gap-2" onClick={() => { setFormError(null); setShowEditor(true); }}>
+          <Plus className="size-4" />
+          New Post
+        </Button>
+      </div>
+
+      {showEditor ? (
+        <div className="news-post-modal-shell">
+          <button type="button" className="news-post-modal-backdrop" aria-label="Close post editor" onClick={resetComposer} />
+          <div className="news-post-modal-card">
+            <div className="news-post-modal-head">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">Admin composer</p>
+                <h3>Create New Post</h3>
+              </div>
+              <button type="button" className="news-post-modal-close" onClick={resetComposer} aria-label="Close post editor">
+                <Plus className="size-4 rotate-45" />
+              </button>
+            </div>
+
+            <div className="news-post-modal-body">
+              {formError ? <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-400">{formError}</div> : null}
+
+              <label className="grid gap-2 text-sm">
+                <span className="font-medium text-[var(--muted-foreground)]">Title</span>
+                <Input placeholder="Post title" value={title} onChange={(event) => setTitle(event.target.value)} />
+              </label>
+
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px]">
+                <label className="grid gap-2 text-sm">
+                  <span className="font-medium text-[var(--muted-foreground)]">Type</span>
+                  <select className={SELECT_CLASS} value={category} onChange={(event) => setCategory(event.target.value as NewsCategory)}>
+                    {NEWS_CATEGORIES.map((item) => (
+                      <option key={item} value={item}>
+                        {item.charAt(0).toUpperCase() + item.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm">
+                  <span className="font-medium text-[var(--muted-foreground)]">Options</span>
+                  <button type="button" className={`news-post-pin-toggle ${pinned ? 'is-active' : ''}`} onClick={() => setPinned((value) => !value)}>
+                    <Pin className="size-4" />
+                    {pinned ? 'Pinned post' : 'Pin post'}
+                  </button>
+                </label>
+              </div>
+
+              <div className="grid gap-2 text-sm">
+                <span className="font-medium text-[var(--muted-foreground)]">Media or file</span>
+                <label className="news-post-upload-panel">
+                  <input type="file" accept={getAttachmentAcceptValue()} multiple onChange={handleAttachmentChange} className="sr-only" />
+                  <Paperclip className="size-5 text-[var(--color-primary)]" />
+                  <div>
+                    <p className="font-medium text-[var(--foreground)]">Upload image, video, PDF, DOC, or DOCX</p>
+                    <p className="text-xs text-[var(--muted-foreground)]">Up to 3 files total, 10 MB combined.</p>
+                  </div>
+                </label>
+                {attachments.length ? (
+                  <div className="grid gap-2">
+                    {attachments.map((attachment, index) => (
+                      <div key={`${attachment.name}-${index}`} className="news-post-attachment-chip">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-[var(--foreground)]">{attachment.name}</p>
+                          <p className="text-xs text-[var(--muted-foreground)]">{formatAttachmentSize(attachment.sizeBytes)}</p>
+                        </div>
+                        <button type="button" onClick={() => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="grid gap-2 text-sm">
+                <span className="font-medium text-[var(--muted-foreground)]">Content</span>
+                <div className="news-post-toolbar">
+                  <button type="button" onClick={() => applyFormatting('**', '**', 'Bold text')} aria-label="Bold">
+                    <Bold className="size-4" />
+                  </button>
+                  <button type="button" onClick={() => applyFormatting('*', '*', 'Italic text')} aria-label="Italic">
+                    <Italic className="size-4" />
+                  </button>
+                  <button type="button" onClick={() => applyFormatting('__', '__', 'Underlined text')} aria-label="Underline">
+                    <Underline className="size-4" />
+                  </button>
+                  <button type="button" onClick={insertBulletList} aria-label="Bullet list">
+                    <List className="size-4" />
+                  </button>
+                </div>
+                <textarea
+                  ref={bodyInputRef}
+                  className="news-post-body-input"
+                  placeholder="Write your post content..."
+                  value={body}
+                  onChange={(event) => setBody(event.target.value)}
+                />
+                <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+                  <span>Use **bold**, *italic*, __underline__, and bullet lists.</span>
+                  <span>{body.length} / 8000</span>
+                </div>
+              </div>
+
+              <div className="news-post-preview">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">Preview</p>
+                <h4>{title || 'Post title'}</h4>
+                <div className="news-rich-body text-sm text-[var(--muted-foreground)]" dangerouslySetInnerHTML={{ __html: renderNewsBodyHtml(body || 'Your formatted post preview will appear here.') }} />
+              </div>
+            </div>
+
+            <div className="news-post-modal-foot">
+              <Button type="button" variant="outline" disabled={busy} onClick={resetComposer}>Cancel</Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" disabled={busy} onClick={() => void submitNew(false)}>Save Draft</Button>
+                <Button type="button" className="ops-admin-primary-action" disabled={busy} onClick={() => void submitNew(true)}>
+                  {busy ? 'Saving...' : 'Publish'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <Card className="border-[var(--border)] bg-[var(--card)]">
+        <CardContent className="pt-5">
+          {loading ? (
+            <ModuleEmptyState message="Loading posts..." />
+          ) : posts.length === 0 ? (
+            <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-[var(--border)] bg-[var(--background)] py-16 text-center">
+              <span className="flex size-14 items-center justify-center rounded-2xl bg-[var(--muted)]"><Newspaper className="size-7 text-[var(--muted-foreground)]" /></span>
+              <div>
+                <p className="font-medium text-[var(--foreground)]">No posts yet.</p>
+                <p className="mt-1 text-sm text-[var(--muted-foreground)]">Create your first announcement.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {posts.map((post) => (
+                <div key={post.id} className="flex items-start justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-5 py-4">
+                  <div className="flex min-w-0 items-start gap-4">
+                    <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10"><FileText className="size-5 text-amber-500" /></span>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-[var(--foreground)]">{post.title}</p>
+                      <p className="mt-0.5 line-clamp-2 text-xs text-[var(--muted-foreground)]">{stripNewsFormatting(post.body)}</p>
+                      <p className="mt-1 text-[10px] uppercase tracking-widest text-[var(--muted-foreground)]">{post.category} · {post.publishedAt ? formatNewsDate(post.publishedAt) : 'unpublished'}</p>
+                      {post.attachments.length ? (
+                        <p className="mt-1 text-[10px] uppercase tracking-widest text-[var(--muted-foreground)]">
+                          {post.attachments.length} attachment{post.attachments.length > 1 ? 's' : ''}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <Badge variant="outline" className={resolvePostStatusClass(post.status)}>{post.status}</Badge>
+                    <div className="flex gap-2">
+                      {post.status === 'published' ? (
+                        <Button type="button" size="sm" variant="outline" onClick={() => void setStatus(post, 'archived')}>Unpublish</Button>
+                      ) : (
+                        <Button type="button" size="sm" variant="outline" className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10" onClick={() => void setStatus(post, 'published')}>Publish</Button>
+                      )}
+                      <Button type="button" size="sm" variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10" onClick={() => void removePost(post)}>Delete</Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </section>
   );
 }

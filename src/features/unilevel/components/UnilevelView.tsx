@@ -19,11 +19,10 @@ function money(v: number) {
 }
 
 function levelBadgeColor(level: number): string {
-  if (level === 1) return 'border-amber-500/50 bg-amber-500/10 text-amber-400';
-  if (level === 2) return 'border-orange-500/50 bg-orange-500/10 text-orange-400';
-  if (level <= 4) return 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400';
-  if (level <= 6) return 'border-blue-500/50 bg-blue-500/10 text-blue-400';
-  return 'border-violet-500/50 bg-violet-500/10 text-violet-400';
+  if (level <= 2) return 'border-[var(--office-tone-amber-border)] bg-[var(--office-tone-amber-bg)] text-[var(--office-tone-amber-text)]';
+  if (level <= 4) return 'border-[var(--office-tone-emerald-border)] bg-[var(--office-tone-emerald-bg)] text-[var(--office-tone-emerald-text)]';
+  if (level <= 6) return 'border-[var(--office-tone-blue-border)] bg-[var(--office-tone-blue-bg)] text-[var(--office-tone-blue-text)]';
+  return 'border-[var(--office-tone-violet-border)] bg-[var(--office-tone-violet-bg)] text-[var(--office-tone-violet-text)]';
 }
 
 // ── Loading skeleton ───────────────────────────────────────────────────────────
@@ -93,7 +92,7 @@ export function UnilevelView() {
   const activeLevel = byLevel.filter((l) => l.amount > 0);
 
   return (
-    <section className="space-y-6">
+    <section className="office-unilevel-view space-y-6">
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -104,7 +103,7 @@ export function UnilevelView() {
       </div>
 
       {/* ── Personal rank progress ── */}
-      <Card className="border-[var(--border)] bg-[var(--card)] overflow-hidden">
+      <Card className="office-unilevel-hero overflow-hidden border-[var(--border)] bg-[var(--card)]">
         <CardContent className="pt-5">
           <div className="flex items-center gap-2 mb-3">
             <span className="flex size-8 items-center justify-center rounded-lg bg-amber-500/15">
@@ -168,7 +167,7 @@ export function UnilevelView() {
       </Card>
 
       {/* ── Maintenance progress ── */}
-      <Card className="border-[var(--border)] bg-[var(--card)]">
+      <Card className="office-unilevel-maintenance border-[var(--border)] bg-[var(--card)]">
         <CardContent className="pt-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -198,7 +197,7 @@ export function UnilevelView() {
       </Card>
 
       {/* ── Stats row ── */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="office-unilevel-stats grid gap-4 sm:grid-cols-3">
         <Card className="border-[var(--border)] bg-[var(--card)]">
           <CardContent className="pt-5">
             <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Total Earned</p>
@@ -235,7 +234,7 @@ export function UnilevelView() {
       </div>
 
       {/* ── Per-level breakdown ── */}
-      <Card className="border-[var(--border)] bg-[var(--card)]">
+      <Card className="office-unilevel-levels border-[var(--border)] bg-[var(--card)]">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Earnings by Level</CardTitle>
         </CardHeader>
@@ -319,7 +318,7 @@ export function UnilevelView() {
       )}
 
       {/* ── Sponsor tree canvas ── */}
-      <Card className="border-[var(--border)] bg-[var(--card)] overflow-hidden">
+      <Card className="office-unilevel-tree overflow-hidden border-[var(--border)] bg-[var(--card)]">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between gap-3">
             <div>

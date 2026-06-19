@@ -1341,9 +1341,9 @@ export function MemberDashboardPage() {
 
         {/* ── TRANSACTIONS ── */}
         {moduleId === 'transactions' ? (
-          <section className="space-y-4">
-            <Card className="border-[var(--border)] bg-[var(--card)]">
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <section className="office-transactions space-y-4">
+            <Card className="office-feature-card border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="office-transaction-heading flex flex-row items-center justify-between gap-3 pb-3">
                 <div>
                   <CardTitle className="text-base">Transaction History</CardTitle>
                   <CardDescription className="text-xs">Wallet movements and encashment rows — click View Details for the full breakdown.</CardDescription>
@@ -1351,8 +1351,8 @@ export function MemberDashboardPage() {
                 <Badge variant="outline">{transactions.length} records</Badge>
               </CardHeader>
               <CardContent className="space-y-4 pt-0">
-                <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-                  <table className="w-full min-w-[680px] text-sm">
+                <div className="office-transaction-list rounded-xl border border-[var(--border)]">
+                  <table className="office-responsive-table office-transaction-table w-full text-sm">
                     <thead>
                       <tr className="border-b border-[var(--border)] bg-[var(--accent)]/40 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
                         <th className="px-4 py-3">Type</th>
@@ -1375,7 +1375,7 @@ export function MemberDashboardPage() {
                         const isRewardCredit = category.includes('get_five') || category.includes('get five');
                         return (
                           <tr key={transaction.id} className="border-b border-[var(--border)] transition last:border-0 hover:bg-[var(--accent)]/30">
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3" data-label="Type">
                               <Badge
                                 variant={isEncash ? 'outline' : isDirectReferral ? 'warning' : 'success'}
                                 className={cn(
@@ -1386,15 +1386,15 @@ export function MemberDashboardPage() {
                                 {transaction.category || (isEncash ? 'Encashment' : 'Income')}
                               </Badge>
                             </td>
-                            <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">{transaction.date}</td>
-                            <td className="px-4 py-3 font-semibold text-[var(--foreground)]">{transaction.gross}</td>
-                            <td className={cn('px-4 py-3 font-semibold', isEncash || isDirectReferral || isRewardCredit ? 'text-[var(--status-warning-text)]' : 'text-[var(--status-success-text)]')}>
+                            <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]" data-label="Date">{transaction.date}</td>
+                            <td className="px-4 py-3 font-semibold text-[var(--foreground)]" data-label="Amount">{transaction.gross}</td>
+                            <td data-label="Net Receivable" className={cn('px-4 py-3 font-semibold', isEncash || isDirectReferral || isRewardCredit ? 'text-[var(--status-warning-text)]' : 'text-[var(--status-success-text)]')}>
                               {transaction.net}
                             </td>
-                            <td className={cn('max-w-[180px] truncate px-4 py-3 text-xs', isDirectReferral ? 'text-[var(--foreground)]' : 'text-[var(--muted-foreground)]')} title={transaction.source}>
+                            <td data-label="Details" className={cn('max-w-[180px] truncate px-4 py-3 text-xs', isDirectReferral ? 'text-[var(--foreground)]' : 'text-[var(--muted-foreground)]')} title={transaction.source}>
                               {transaction.source}
                             </td>
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-4 py-3 text-right" data-label="Action">
                               <Button type="button" size="sm" variant="outline" className="h-7 border-[var(--status-warning-border)] bg-[var(--background)] px-3 text-xs text-[var(--status-warning-text)] hover:bg-[var(--status-warning-bg)]"
                                 onClick={() => handleSelectTransaction(transaction.id)}>
                                 View Details
@@ -1418,7 +1418,7 @@ export function MemberDashboardPage() {
               </CardContent>
             </Card>
             {transactionDetail ? (
-              <Card className="border-[var(--border)] bg-[var(--card)]">
+              <Card className="office-feature-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Transaction Detail</CardTitle>
                   <CardDescription className="text-xs font-mono">{transactionDetail.transaction.id}</CardDescription>
@@ -1449,9 +1449,9 @@ export function MemberDashboardPage() {
 
         {/* ── ACCOUNT DETAILS ── */}
         {moduleId === 'account-details' && office ? (
-          <section className="space-y-4">
+          <section className="office-account-details space-y-4">
             {/* ── Profile overview card ── */}
-            <Card className="border-[var(--border)] bg-[var(--card)]">
+            <Card className="office-feature-card border-[var(--border)] bg-[var(--card)]">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
                   <span className="flex size-10 items-center justify-center rounded-xl bg-[var(--yor-copper)]/15">
@@ -1489,7 +1489,7 @@ export function MemberDashboardPage() {
                       <span className={cn('min-w-0 truncate text-sm font-medium text-[var(--foreground)]', passwordDraft && !showMemberPasswordPreview && 'tracking-widest')}>
                         {passwordDraft
                           ? (showMemberPasswordPreview ? passwordDraft : '••••••••')
-                          : 'Protected · set a new password below'}
+                          : 'Securely encrypted'}
                       </span>
                       <button
                         type="button"
@@ -1501,7 +1501,7 @@ export function MemberDashboardPage() {
                           }
                           setShowMemberPasswordPreview((value) => !value);
                         }}
-                        aria-label={passwordDraft ? (showMemberPasswordPreview ? 'Hide new password' : 'Show new password') : 'Enter a new password to preview'}
+                        aria-label={passwordDraft ? (showMemberPasswordPreview ? 'Hide new password' : 'Show new password') : 'Focus new password field'}
                       >
                         {!passwordDraft ? <KeyRound className="size-4" /> : showMemberPasswordPreview ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                       </button>
@@ -1514,7 +1514,7 @@ export function MemberDashboardPage() {
             {/* ── Edit cards ── */}
             <div className="grid gap-4 xl:grid-cols-2">
               {/* Security — email + password */}
-              <Card className="border-[var(--border)] bg-[var(--card)]">
+              <Card className="office-feature-card office-settings-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
                     <span className="flex size-9 items-center justify-center rounded-lg bg-blue-500/10">
@@ -1577,6 +1577,9 @@ export function MemberDashboardPage() {
                       </button>
                     </div>
                   </label>
+                  <p className="text-xs leading-5 text-[var(--muted-foreground)]">
+                    Your existing password is stored as a one-way security hash and cannot be displayed. The eye button previews only the new password you type here.
+                  </p>
                   <Button
                     type="button"
                     className="w-full"
@@ -1620,7 +1623,7 @@ export function MemberDashboardPage() {
               </Card>
 
               {/* Payout settings */}
-              <Card className="border-[var(--border)] bg-[var(--card)]">
+              <Card className="office-feature-card office-settings-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
                     <span className="flex size-9 items-center justify-center rounded-lg bg-amber-500/10">
@@ -2146,7 +2149,7 @@ export function MemberDashboardPage() {
 
         {/* ── SHADOW ACCOUNTS ── */}
         {moduleId === 'account-shadow-management' && activeModule && shadowAccounts ? (
-          <section className="grid gap-4">
+          <section className="office-shadow-accounts grid gap-4">
             <div className="grid gap-3 sm:grid-cols-3">
               <NogaStatCard icon={<ShieldCheck className="size-4" />} color="amber" label="Owner" value={shadowAccounts.owner} sub="shadow account holder" />
               <NogaStatCard icon={<Users className="size-4" />} color="blue" label="Shadow Slots" value={String(shadowAccounts.accounts.length)} sub="reserved binary positions" />
@@ -2169,7 +2172,7 @@ export function MemberDashboardPage() {
             ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
               {shadowAccounts.accounts.map((account) => (
-                <div key={account.id} className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
+                <div key={account.id} className="office-shadow-card relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
                   <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-amber-500/40 via-amber-300/60 to-transparent" />
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -2443,7 +2446,7 @@ function NogaStatCard({
 }) {
   const { bg, text, glow, border } = nogaColorMap[color];
   return (
-    <div className={`flex items-start gap-3 rounded-2xl border ${border} bg-[var(--card)] p-4 shadow-md ${glow}`}>
+    <div data-tone={color} className={`office-tone-card flex items-start gap-3 rounded-2xl border ${border} bg-[var(--card)] p-4 shadow-md ${glow}`}>
       <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${bg} ${text}`}>
         {icon}
       </span>
@@ -2597,7 +2600,8 @@ function DashboardIncomeGrid({
           <Link
             key={card.label}
             to={card.href}
-            className={`group relative flex flex-col gap-3 overflow-hidden rounded-2xl border ${border} bg-[var(--card)] p-5 shadow-md ${glow} transition-all duration-200 hover:scale-[1.015] hover:shadow-lg`}
+            data-tone={card.color}
+            className={`office-tone-card group relative flex flex-col gap-3 overflow-hidden rounded-2xl border ${border} bg-[var(--card)] p-5 shadow-md ${glow} transition-all duration-200 hover:scale-[1.015] hover:shadow-lg`}
           >
             {/* Subtle top glow line */}
             <div className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-current to-transparent opacity-40 ${text}`} />
@@ -2679,17 +2683,19 @@ function WalletView({
   const lifestyleThreshold = 1000;
 
   return (
-    <section className="space-y-4">
+    <section className="office-wallet-view space-y-4">
       {/* Tab switcher */}
-      <div className="flex gap-1 rounded-xl border border-[var(--border)] bg-[var(--accent)] p-1">
+      <div className="office-wallet-tabs" role="tablist" aria-label="Wallet sections">
         <button
           type="button"
           onClick={() => setActiveTab('main')}
+          role="tab"
+          aria-selected={activeTab === 'main'}
           className={[
-            'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition',
+            'office-wallet-tab',
             activeTab === 'main'
-              ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-              : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]',
+              ? 'is-active'
+              : '',
           ].join(' ')}
         >
           <Wallet className="size-4" />
@@ -2698,11 +2704,13 @@ function WalletView({
         <button
           type="button"
           onClick={() => setActiveTab('lifestyle')}
+          role="tab"
+          aria-selected={activeTab === 'lifestyle'}
           className={[
-            'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition',
+            'office-wallet-tab',
             activeTab === 'lifestyle'
-              ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-              : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]',
+              ? 'is-active'
+              : '',
           ].join(' ')}
         >
           <Star className="size-4" />
@@ -2711,11 +2719,13 @@ function WalletView({
         <button
           type="button"
           onClick={() => { setActiveTab('ledger'); setLedgerPage(1); setLedgerTypeFilter('all'); }}
+          role="tab"
+          aria-selected={activeTab === 'ledger'}
           className={[
-            'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition',
+            'office-wallet-tab',
             activeTab === 'ledger'
-              ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-              : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]',
+              ? 'is-active'
+              : '',
           ].join(' ')}
         >
           <FileText className="size-4" />

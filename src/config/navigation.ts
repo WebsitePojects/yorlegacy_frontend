@@ -26,6 +26,11 @@ export const primaryNavigation: PrimaryNavigationItem[] = [
     matchPatterns: ['/products', '/perfume-collection']
   },
   {
+    label: 'News & Updates',
+    href: '/news-updates',
+    matchPatterns: ['/news-updates']
+  },
+  {
     label: 'Earn',
     href: '/earn',
     matchPatterns: ['/earn', '/earn/*', '/rank-incentives']

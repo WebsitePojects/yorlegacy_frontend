@@ -492,6 +492,14 @@ export function fetchAdminVouchers(): Promise<VoucherCenter> {
 // News / Announcements (admin-authored, public bulletin).
 export type NewsCategory = 'announcement' | 'news' | 'promo' | 'memo';
 export type NewsStatus = 'draft' | 'published' | 'archived';
+export type NewsAttachmentKind = 'image' | 'video' | 'document';
+export type NewsAttachment = {
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  dataUrl: string;
+  kind: NewsAttachmentKind;
+};
 export type NewsPost = {
   id: string;
   title: string;
@@ -499,6 +507,7 @@ export type NewsPost = {
   category: NewsCategory;
   status: NewsStatus;
   pinned: boolean;
+  attachments: NewsAttachment[];
   createdByLabel: string | null;
   publishedAt: string | null;
   createdAt: string;
@@ -508,10 +517,10 @@ export type NewsPost = {
 export function fetchAdminNewsPosts(): Promise<{ posts: NewsPost[] }> {
   return fetchJson('/api/admin/news-posts', { method: 'GET' });
 }
-export function createAdminNewsPost(payload: { title: string; body: string; category: NewsCategory; status: NewsStatus; pinned?: boolean }): Promise<{ post: NewsPost }> {
+export function createAdminNewsPost(payload: { title: string; body: string; category: NewsCategory; status: NewsStatus; pinned?: boolean; attachments?: NewsAttachment[] }): Promise<{ post: NewsPost }> {
   return fetchJson('/api/admin/news-posts', { method: 'POST', body: JSON.stringify(payload) });
 }
-export function updateAdminNewsPost(id: string, patch: Partial<{ title: string; body: string; category: NewsCategory; status: NewsStatus; pinned: boolean }>): Promise<{ post: NewsPost }> {
+export function updateAdminNewsPost(id: string, patch: Partial<{ title: string; body: string; category: NewsCategory; status: NewsStatus; pinned: boolean; attachments: NewsAttachment[] }>): Promise<{ post: NewsPost }> {
   return fetchJson(`/api/admin/news-posts/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) });
 }
 export function deleteAdminNewsPost(id: string): Promise<{ ok: boolean }> {
