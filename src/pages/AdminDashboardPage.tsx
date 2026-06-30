@@ -32,6 +32,7 @@ import {
 import { GenealogyTree } from '../components/ops/GenealogyTree';
 import { LeaderboardInFrame } from './LeaderboardPage';
 import { clearOfficeCache, readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
+import { resolveEncashmentSelection } from '@/features/encashments/selection';
 import { cn, formatAccountTypeLabel } from '@/lib/utils';
 import {
   GatedActionsCard,
@@ -619,13 +620,13 @@ export function AdminDashboardPage() {
     }
 
     if (bundle.encashments) {
-      const nextSelectedId = bundle.encashments.encashments[0]?.id ?? '';
-      const selectedRow =
-        bundle.encashments.encashments.find((row) => row.id === selectedEncashmentId) ??
-        bundle.encashments.encashments[0] ??
-        null;
-      setSelectedEncashmentId(nextSelectedId || selectedRow?.id || '');
-      setEncashmentDraft(buildEncashmentDraft(selectedRow));
+      const encashmentRows = bundle.encashments.encashments;
+      setSelectedEncashmentId((currentId) => {
+        const nextSelectedId = resolveEncashmentSelection(encashmentRows, currentId);
+        const selectedRow = encashmentRows.find((row) => row.id === nextSelectedId);
+        setEncashmentDraft(buildEncashmentDraft(selectedRow));
+        return nextSelectedId;
+      });
     }
 
     if (bundle.memberCenter) {
@@ -635,7 +636,7 @@ export function AdminDashboardPage() {
       setMemberDetailUsername(bundle.memberCenter.selectedMember?.username ?? '');
       setMemberProfileDraft(buildMemberProfileDraft(bundle.memberCenter.selectedMember));
     }
-  }, [selectedEncashmentId]);
+  }, []);
 
   const buildAdminBundle = useCallback(
     async (
