@@ -147,6 +147,21 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
       return payload as T;
     }
 
+    // GATE-AUTH-401-REDIRECT-20260630: an expired/invalid session on a protected
+    // office data call previously threw an uncaught "Authentication required" and
+    // left the member stuck (could not change password, encash, etc.). Bounce to the
+    // matching login page once so they can re-authenticate. Login's own 401 (wrong
+    // credentials, under /api/auth/) is excluded so the sign-in error still renders.
+    if (
+      response.status === 401 &&
+      (path.startsWith('/api/member/') || path.startsWith('/api/admin/')) &&
+      typeof window !== 'undefined' &&
+      !/\/(admin\/)?login$/.test(window.location.pathname)
+    ) {
+      const loginPath = path.startsWith('/api/admin/') ? '/admin/login' : '/login';
+      window.location.assign(loginPath);
+    }
+
     const rawMsg = payload?.message ?? payload?.reason ?? payload?.detail ?? payload?.error ?? `Request failed for ${path}`;
     const rawMessage = typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg);
     throw new Error(friendlyApiErrorMessage(response.status, path, rawMessage));
