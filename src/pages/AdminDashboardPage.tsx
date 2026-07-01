@@ -34,6 +34,8 @@ import { GenealogyTree } from '../components/ops/GenealogyTree';
 import { LeaderboardInFrame } from './LeaderboardPage';
 import { clearOfficeCache, readOfficeCache, warmOfficeCache } from '@/lib/office-cache';
 import { resolveEncashmentSelection } from '@/features/encashments/selection';
+import { formatEncashmentDate } from '@/features/encashments/audit';
+import { EncashmentAuditDetails } from '@/features/encashments/components/EncashmentAuditDetails';
 import { cn, formatAccountTypeLabel } from '@/lib/utils';
 import {
   GatedActionsCard,
@@ -440,7 +442,7 @@ type EncashmentDraft = {
   tax: string;
   cdDeduction: string;
   remarks: string;
-  submittedAt: string | null;
+  requestedAt: string | null;
   reviewedBy: string | null;
   reviewedAt: string | null;
   paidAt: string | null;
@@ -475,7 +477,7 @@ const EMPTY_ENCASHMENT_DRAFT: EncashmentDraft = {
   tax: '0',
   cdDeduction: '0',
   remarks: '',
-  submittedAt: null,
+  requestedAt: null,
   reviewedBy: null,
   reviewedAt: null,
   paidAt: null,
@@ -520,7 +522,7 @@ function buildEncashmentDraft(
     fee: String(parseMoneyValue(row.fee)),
     tax: String(parseMoneyValue(row.tax)),
     cdDeduction: String(parseMoneyValue(row.cdDeduction)),
-    submittedAt: row.submittedAt,
+    requestedAt: row.requestedAt,
     reviewedBy: row.reviewedBy,
     reviewedAt: row.reviewedAt,
     paidAt: row.paidAt,
@@ -2349,7 +2351,7 @@ export function AdminDashboardPage() {
                   <CardContent className="p-0 pb-0">
                     <div className="h-[420px] flex flex-col overflow-hidden border-t border-[var(--border)]">
                       <div className="overflow-x-auto flex-1 overflow-y-auto">
-                        <table className="w-full min-w-[960px] text-sm">
+                        <table className="w-full min-w-[1100px] text-sm">
                           <thead className="sticky top-0 z-10">
                             <tr className="border-b border-[var(--border)] bg-[var(--card)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
                               <th className="px-4 py-3">#</th>
@@ -2359,13 +2361,15 @@ export function AdminDashboardPage() {
                               <th className="px-4 py-3">Payout Account</th>
                               <th className="px-4 py-3">Gross</th>
                               <th className="px-4 py-3">Net</th>
+                              <th className="px-4 py-3">Encashed On</th>
                               <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3">Details</th>
                             </tr>
                           </thead>
                           <tbody>
                             {pageRows.length === 0 ? (
                               <tr>
-                                <td colSpan={8} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
+                                <td colSpan={10} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
                                   No encashments match the selected filter.
                                 </td>
                               </tr>
@@ -2392,10 +2396,25 @@ export function AdminDashboardPage() {
                                   </td>
                                   <td className="px-4 py-3">{item.gross}</td>
                                   <td className="px-4 py-3">{item.net}</td>
+                                  <td className="whitespace-nowrap px-4 py-3 text-xs text-[var(--muted-foreground)]">{formatEncashmentDate(item.requestedAt)}</td>
                                   <td className="px-4 py-3">
                                     <Badge variant={/paid/i.test(item.status) ? 'success' : /cancel/i.test(item.status) ? 'warning' : 'outline'}>
                                       {item.status}
                                     </Badge>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        handleSelectEncashment(item.id);
+                                        requestAnimationFrame(() => document.getElementById('selected-encashment-details')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                                      }}
+                                    >
+                                      View Details
+                                    </Button>
                                   </td>
                                 </tr>
                               );
@@ -2429,7 +2448,7 @@ export function AdminDashboardPage() {
                 </Card>
 
                 {/* ── Selected Detail ── */}
-                <Card className="border-[var(--border)] bg-[var(--card)]">
+                <Card id="selected-encashment-details" className="scroll-mt-4 border-[var(--border)] bg-[var(--card)]">
                   <CardHeader>
                     <CardTitle>Selected Request</CardTitle>
                   </CardHeader>
@@ -2442,6 +2461,7 @@ export function AdminDashboardPage() {
                           <DataPoint label="Member" value={selectedEncashment.member} />
                           <DataPoint label="Status" value={selectedEncashment.status} />
                           <DataPoint label="Payout Method" value={encashmentDraft.method || '—'} />
+                          <DataPoint label="Payout Details" value={selectedEncashment.payoutDetails || '—'} />
                           <DataPoint label="Remarks" value={encashmentDraft.remarks || '—'} />
                         </div>
                         {/* Prominent, always-visible payout account — the number admins
@@ -2472,17 +2492,14 @@ export function AdminDashboardPage() {
                             </Button>
                           )}
                         </div>
-                        {/* GATE-ENCASH-RECORD-20260701: full audit record — when it was
-                            submitted and, once settled, who reviewed/paid it and when. */}
+                        {/* GATE-ENCASH-RECORD-20260701: who reviewed it + the deterministic
+                            process reference. Requested/Reviewed/Paid dates and the full
+                            ledger-reconciliation breakdown render below via EncashmentAuditDetails. */}
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <DataPoint label="Submitted" value={formatDateTime(encashmentDraft.submittedAt)} />
                           <DataPoint label="Reference" value={encashmentDraft.processId || '—'} />
                           <DataPoint label="Reviewed By" value={encashmentDraft.reviewedBy || 'Not yet reviewed'} />
-                          <DataPoint
-                            label={/paid/i.test(selectedEncashment.status) ? 'Paid At' : 'Reviewed At'}
-                            value={formatDateTime(encashmentDraft.paidAt ?? encashmentDraft.reviewedAt)}
-                          />
                         </div>
+                        <EncashmentAuditDetails encashment={selectedEncashment} />
                         <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
                           <div className="grid gap-2 text-sm text-[var(--muted-foreground)]">
                             <div className="flex items-center justify-between gap-3">
@@ -2496,6 +2513,10 @@ export function AdminDashboardPage() {
                             <div className="flex items-center justify-between gap-3">
                               <span>Tax</span>
                               <strong className="text-[var(--foreground)]">{formatCurrency(parseMoneyValue(encashmentDraft.tax))}</strong>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span>System Retainer</span>
+                              <strong className="text-[var(--foreground)]">{selectedEncashment.systemRetainer || '—'}</strong>
                             </div>
                             <div className="flex items-center justify-between gap-3">
                               <span>CD Deduction</span>

@@ -518,17 +518,31 @@ export type AdminEncashmentCenter = {
     gross: string;
     fee: string;
     tax: string;
+    systemRetainer?: string;
     cdDeduction: string;
     net: string;
     method: string;
     payoutDetails: string;
     status: string;
     remarks: string;
-    submittedAt: string | null;
+    requestedAt: string | null;
     reviewedBy: string | null;
     reviewedAt: string | null;
     paidAt: string | null;
     processId: string | null;
+    audit?: {
+      snapshotAvailable: boolean;
+      incomeSources: Array<{ type: string; amount: number }>;
+      totalIncomeCredits: number;
+      priorDebits: number;
+      balanceBefore: number;
+      grossDebit: number;
+      balanceAfter: number;
+      currentBalance: number;
+      laterRestorations: number;
+      reconciliationDifference: number;
+      reconciled: boolean;
+    };
   }>;
   totals: {
     gross: number;
