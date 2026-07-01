@@ -524,6 +524,11 @@ export type AdminEncashmentCenter = {
     payoutDetails: string;
     status: string;
     remarks: string;
+    submittedAt: string | null;
+    reviewedBy: string | null;
+    reviewedAt: string | null;
+    paidAt: string | null;
+    processId: string | null;
   }>;
   totals: {
     gross: number;

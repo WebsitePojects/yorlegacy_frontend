@@ -440,6 +440,11 @@ type EncashmentDraft = {
   tax: string;
   cdDeduction: string;
   remarks: string;
+  submittedAt: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  paidAt: string | null;
+  processId: string | null;
 };
 
 type TransferSearchResult = {
@@ -469,7 +474,12 @@ const EMPTY_ENCASHMENT_DRAFT: EncashmentDraft = {
   fee: '0',
   tax: '0',
   cdDeduction: '0',
-  remarks: ''
+  remarks: '',
+  submittedAt: null,
+  reviewedBy: null,
+  reviewedAt: null,
+  paidAt: null,
+  processId: null
 };
 
 function parseMoneyValue(value: string) {
@@ -510,6 +520,11 @@ function buildEncashmentDraft(
     fee: String(parseMoneyValue(row.fee)),
     tax: String(parseMoneyValue(row.tax)),
     cdDeduction: String(parseMoneyValue(row.cdDeduction)),
+    submittedAt: row.submittedAt,
+    reviewedBy: row.reviewedBy,
+    reviewedAt: row.reviewedAt,
+    paidAt: row.paidAt,
+    processId: row.processId,
     remarks: row.remarks
   };
 }
@@ -2456,6 +2471,17 @@ export function AdminDashboardPage() {
                               <Copy className="mr-1.5 size-3.5" /> Copy
                             </Button>
                           )}
+                        </div>
+                        {/* GATE-ENCASH-RECORD-20260701: full audit record — when it was
+                            submitted and, once settled, who reviewed/paid it and when. */}
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <DataPoint label="Submitted" value={formatDateTime(encashmentDraft.submittedAt)} />
+                          <DataPoint label="Reference" value={encashmentDraft.processId || '—'} />
+                          <DataPoint label="Reviewed By" value={encashmentDraft.reviewedBy || 'Not yet reviewed'} />
+                          <DataPoint
+                            label={/paid/i.test(selectedEncashment.status) ? 'Paid At' : 'Reviewed At'}
+                            value={formatDateTime(encashmentDraft.paidAt ?? encashmentDraft.reviewedAt)}
+                          />
                         </div>
                         <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
                           <div className="grid gap-2 text-sm text-[var(--muted-foreground)]">
