@@ -7,6 +7,7 @@ import {
   Bell,
   ChevronDown,
   ChevronRight,
+  Copy,
   Eye,
   EyeOff,
   FileText,
@@ -434,6 +435,7 @@ type MemberProfileDraft = {
 type EncashmentDraft = {
   id: string;
   method: string;
+  payoutDetails: string;
   fee: string;
   tax: string;
   cdDeduction: string;
@@ -463,6 +465,7 @@ const EMPTY_MEMBER_PROFILE_DRAFT: MemberProfileDraft = {
 const EMPTY_ENCASHMENT_DRAFT: EncashmentDraft = {
   id: '',
   method: '',
+  payoutDetails: '',
   fee: '0',
   tax: '0',
   cdDeduction: '0',
@@ -503,6 +506,7 @@ function buildEncashmentDraft(
   return {
     id: row.id,
     method: row.method,
+    payoutDetails: row.payoutDetails,
     fee: String(parseMoneyValue(row.fee)),
     tax: String(parseMoneyValue(row.tax)),
     cdDeduction: String(parseMoneyValue(row.cdDeduction)),
@@ -2330,13 +2334,14 @@ export function AdminDashboardPage() {
                   <CardContent className="p-0 pb-0">
                     <div className="h-[420px] flex flex-col overflow-hidden border-t border-[var(--border)]">
                       <div className="overflow-x-auto flex-1 overflow-y-auto">
-                        <table className="w-full min-w-[800px] text-sm">
+                        <table className="w-full min-w-[960px] text-sm">
                           <thead className="sticky top-0 z-10">
                             <tr className="border-b border-[var(--border)] bg-[var(--card)] text-left text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
                               <th className="px-4 py-3">#</th>
                               <th className="px-4 py-3">Member</th>
                               <th className="px-4 py-3">Reference</th>
                               <th className="px-4 py-3">Method</th>
+                              <th className="px-4 py-3">Payout Account</th>
                               <th className="px-4 py-3">Gross</th>
                               <th className="px-4 py-3">Net</th>
                               <th className="px-4 py-3">Status</th>
@@ -2345,7 +2350,7 @@ export function AdminDashboardPage() {
                           <tbody>
                             {pageRows.length === 0 ? (
                               <tr>
-                                <td colSpan={7} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
+                                <td colSpan={8} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
                                   No encashments match the selected filter.
                                 </td>
                               </tr>
@@ -2364,6 +2369,12 @@ export function AdminDashboardPage() {
                                   <td className="px-4 py-3 font-medium text-[var(--foreground)]">{item.member}</td>
                                   <td className="px-4 py-3 font-mono text-xs text-[var(--yor-copper-soft)]">{item.id}</td>
                                   <td className="px-4 py-3">{item.method}</td>
+                                  {/* Always-visible payout account number — the thing admins previously had to hunt for. */}
+                                  <td className="px-4 py-3 font-mono text-xs font-semibold text-[var(--foreground)]">
+                                    {item.payoutDetails && item.payoutDetails !== '—' ? item.payoutDetails : (
+                                      <span className="font-sans italic text-[var(--muted-foreground)]">not on file</span>
+                                    )}
+                                  </td>
                                   <td className="px-4 py-3">{item.gross}</td>
                                   <td className="px-4 py-3">{item.net}</td>
                                   <td className="px-4 py-3">
@@ -2417,6 +2428,34 @@ export function AdminDashboardPage() {
                           <DataPoint label="Status" value={selectedEncashment.status} />
                           <DataPoint label="Payout Method" value={encashmentDraft.method || '—'} />
                           <DataPoint label="Remarks" value={encashmentDraft.remarks || '—'} />
+                        </div>
+                        {/* Prominent, always-visible payout account — the number admins
+                            need to actually send the money to. Copy button so it never
+                            has to be retyped by hand. */}
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--yor-copper-soft)]/40 bg-[var(--yor-copper-soft)]/10 px-4 py-3">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Payout Account Number</p>
+                            <p className="font-mono text-base font-bold text-[var(--foreground)]">
+                              {encashmentDraft.payoutDetails && encashmentDraft.payoutDetails !== '—' ? encashmentDraft.payoutDetails : 'Not on file'}
+                            </p>
+                          </div>
+                          {encashmentDraft.payoutDetails && encashmentDraft.payoutDetails !== '—' && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  await navigator.clipboard.writeText(encashmentDraft.payoutDetails);
+                                  notify({ title: 'Payout account copied', description: encashmentDraft.payoutDetails, tone: 'success' });
+                                } catch {
+                                  notify({ title: 'Unable to copy', description: 'Copy the account number manually.', tone: 'destructive' });
+                                }
+                              }}
+                            >
+                              <Copy className="mr-1.5 size-3.5" /> Copy
+                            </Button>
+                          )}
                         </div>
                         <div className="rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
                           <div className="grid gap-2 text-sm text-[var(--muted-foreground)]">

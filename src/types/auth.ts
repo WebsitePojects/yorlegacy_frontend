@@ -521,6 +521,7 @@ export type AdminEncashmentCenter = {
     cdDeduction: string;
     net: string;
     method: string;
+    payoutDetails: string;
     status: string;
     remarks: string;
   }>;
