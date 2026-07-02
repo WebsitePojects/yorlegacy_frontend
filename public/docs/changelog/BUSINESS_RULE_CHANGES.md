@@ -2,6 +2,48 @@
 
 ---
 
+## 2026-06-27 — GATE-OWNER-REWIRE-20260627: system operator earns the 5% retainer, exempt from it, with a dashboard/wallet surface
+
+**Rule area:** System retainer (5% encashment fee) — recipient, exemption, and visibility
+**Gate ID:** `GATE-OWNER-REWIRE-20260627` (supersedes `GATE-RETAINER-EXEMPT-20260613`)
+
+### Background
+The retainer-exempt account was hardcoded to userId `0f0464cf…`. That row was the
+original "PrinceI.T" seed but has since been reassigned to a real member (Leonora Rey
+Hiramatsu). So the exemption was pointing at a real member, and the 5% withheld on every
+member encashment was credited to **nobody** (zero `system_retainer` ledger rows).
+
+### What changed
+1. **Operator identity fixed** → `SYSTEM_OWNER_USER_ID = db514090…` (username Princel.T,
+   the account the owner logs into). It is the retainer-exempt account (pays 0% on its own
+   encashments) and the recipient of every other member's 5%.
+2. **5% credited to the operator wallet** on encashment **mark-paid** (`creditOwnerRetainer`)
+   as a `system_retainer` entry in the **main (encashable) wallet**, idempotent via process
+   key `…:owner-retainer`. So the operator can actually encash it.
+3. **One-time historical backfill** (`backfillOwnerRetainer`, `POST /api/admin/owner/retainer-backfill`,
+   superadmin) credits the operator for the 5% on all already-paid encashments.
+4. **Operator dashboard card** "System Retainer Pool" (`getOwnerRetainerSummary`,
+   `GET /api/member/owner/retainer-summary`) — total collected, contributing encashments,
+   last credited. Renders only for the operator.
+5. **Wallet breakdown chip** — `system_retainer` added to the wallet income streams as
+   "System Retainer Commission" (zero/hidden for non-operators).
+
+### Money effect
+The operator wallet now accrues the 5% (going-forward + backfilled). No member's deductions
+change — the 5% was always withheld; it now lands in the operator wallet instead of nowhere.
+`entryType` `system_retainer` is already permitted by the wallet_ledger CHECK constraint (no
+migration). Verified with a falsified regression test (credit disappears if the mark-paid hook
+is removed).
+
+### Files
+`encoding-service.ts` (SYSTEM_OWNER_USER_ID, exemption set, creditOwnerRetainer,
+backfillOwnerRetainer, getOwnerRetainerSummary, mark-paid hook, INCOME_STREAM_META +
+ENTRY_TYPE_LABELS chip), `routes/member.ts`, `routes/admin.ts`, `lib/api.ts`,
+`MemberDashboardPage.tsx`. Prod DB owner tag/email/payout already corrected under a prior
+approved change.
+
+---
+
 ## 2026-06-15 — GATE-RANK-UNILEVEL-20260615: rank gated by UNILEVEL income only
 
 **Rule area:** Rank ladder (Manager → Hall of Famer)

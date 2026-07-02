@@ -46,7 +46,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { searchMemberTransferTargets } from '@/lib/api';
-import { apiUrl } from '@/lib/api';
+import { apiUrl, fetchOwnerRetainerSummary, type OwnerRetainerSummary } from '@/lib/api';
 import { BinaryCyclePanel } from '@/features/earnings/components/BinaryCyclePanel';
 import { DirectReferralPanel } from '@/features/earnings/components/DirectReferralPanel';
 import { GlobalBonusPanel } from '@/features/earnings/components/GlobalBonusPanel';
@@ -495,6 +495,8 @@ export function MemberDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [isContentLoading, setIsContentLoading] = useState(true);
   const [reloadNonce, setReloadNonce] = useState(0);
+  // GATE-OWNER-REWIRE-20260627: operator-only 5% System Retainer Pool card.
+  const [ownerRetainer, setOwnerRetainer] = useState<OwnerRetainerSummary | null>(null);
 
   // Live updates: open one SSE stream; when the server pushes a PV/income change for
   // this member, refetch the active view so balances tick without a manual reload.
@@ -517,6 +519,19 @@ export function MemberDashboardPage() {
       source?.close();
     };
   }, []);
+
+  // GATE-OWNER-REWIRE-20260627: fetch the operator retainer pool once on the
+  // dashboard. Non-owners get isOwner:false and the card never renders.
+  useEffect(() => {
+    if (moduleId !== 'dashboard') {
+      return;
+    }
+    let cancelled = false;
+    fetchOwnerRetainerSummary()
+      .then((data) => { if (!cancelled) setOwnerRetainer(data); })
+      .catch(() => { if (!cancelled) setOwnerRetainer(null); });
+    return () => { cancelled = true; };
+  }, [moduleId, reloadNonce]);
 
   const applyMemberBundle = useCallback(
     (bundle: MemberModuleBundle) => {
@@ -1305,6 +1320,37 @@ export function MemberDashboardPage() {
       summaryCard={summaryCard}
     >
       <div className="member-office-flow space-y-6">
+
+        {/* ── SYSTEM RETAINER POOL (operator only) ── */}
+        {moduleId === 'dashboard' && ownerRetainer?.isOwner ? (
+          <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-[var(--card)]">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="flex size-11 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/15">
+                  <ShieldCheck className="size-5 text-amber-500" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">System Retainer Pool</CardTitle>
+                  <CardDescription className="text-xs">Operator-only — 5% system fee collected across all paid encashments. Credited to your wallet and encashable.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl bg-[var(--accent)]/40 px-3.5 py-3">
+                <span className="block text-xs text-[var(--muted-foreground)]">Total Collected (5%)</span>
+                <strong className="font-mono text-lg text-amber-500">{formatCurrency(ownerRetainer.totalRetainer)}</strong>
+              </div>
+              <div className="rounded-xl bg-[var(--accent)]/40 px-3.5 py-3">
+                <span className="block text-xs text-[var(--muted-foreground)]">Encashments Contributing</span>
+                <strong className="font-mono text-lg text-[var(--foreground)]">{ownerRetainer.entryCount}</strong>
+              </div>
+              <div className="rounded-xl bg-[var(--accent)]/40 px-3.5 py-3">
+                <span className="block text-xs text-[var(--muted-foreground)]">Last Credited</span>
+                <strong className="text-sm text-[var(--foreground)]">{formatDateTime(ownerRetainer.lastCreditedAt)}</strong>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {/* ── DASHBOARD ── */}
         {moduleId === 'dashboard' ? (

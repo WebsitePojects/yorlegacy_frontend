@@ -329,6 +329,19 @@ export function submitMemberEncashment(amount: number): Promise<GatedActionRespo
   });
 }
 
+// GATE-OWNER-REWIRE-20260627: operator-only running total of every member's 5%
+// system retainer credited to the operator wallet. Non-owners get isOwner:false.
+export type OwnerRetainerSummary = {
+  isOwner: boolean;
+  totalRetainer: number;
+  entryCount: number;
+  lastCreditedAt: string | null;
+};
+
+export function fetchOwnerRetainerSummary(): Promise<OwnerRetainerSummary> {
+  return fetchJson('/api/member/owner/retainer-summary', { method: 'GET' });
+}
+
 export function updateMemberCredentials(payload: {
   email?: string;
   password?: string;
