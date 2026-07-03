@@ -36,10 +36,10 @@ const DEFAULT_OFFSET = { x: 0, y: 64 };
 
 function packageColor(tier: string): string {
   const t = tier.trim().toUpperCase();
-  if (t === 'VIP') return 'border-amber-500/60 bg-amber-500/10 text-amber-300';
-  if (t === 'BUSINESS') return 'border-indigo-500/60 bg-indigo-500/10 text-indigo-300';
-  if (t === 'STANDARD') return 'border-emerald-500/60 bg-emerald-500/10 text-emerald-300';
-  if (t === 'CLASSIC') return 'border-violet-500/60 bg-violet-500/10 text-violet-300';
+  if (t === 'VIP') return 'border-[var(--office-tone-amber-border)] bg-[var(--office-tone-amber-bg)] text-[var(--office-tone-amber-text)]';
+  if (t === 'BUSINESS') return 'border-[var(--office-tone-blue-border)] bg-[var(--office-tone-blue-bg)] text-[var(--office-tone-blue-text)]';
+  if (t === 'STANDARD') return 'border-[var(--office-tone-emerald-border)] bg-[var(--office-tone-emerald-bg)] text-[var(--office-tone-emerald-text)]';
+  if (t === 'CLASSIC') return 'border-[var(--office-tone-violet-border)] bg-[var(--office-tone-violet-bg)] text-[var(--office-tone-violet-text)]';
   return 'border-[var(--border)] bg-[var(--muted)]/30 text-[var(--muted-foreground)]';
 }
 

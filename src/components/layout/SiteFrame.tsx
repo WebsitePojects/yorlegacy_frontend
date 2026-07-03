@@ -62,6 +62,7 @@ export function SiteFrame({ children }: PropsWithChildren) {
     '/founder',
     '/products',
     '/perfume-collection',
+    '/news-updates',
     '/packages',
     '/register',
     '/thank-you',

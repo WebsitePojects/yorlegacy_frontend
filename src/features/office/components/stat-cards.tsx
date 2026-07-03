@@ -3,10 +3,10 @@ import type { ReactNode } from 'react';
 export type NogaColor = 'amber' | 'blue' | 'emerald' | 'violet';
 
 export const nogaColorMap: Record<NogaColor, { bg: string; text: string; glow: string; border: string }> = {
-  amber:   { bg: 'bg-amber-500/15',   text: 'text-amber-600 dark:text-amber-400',   glow: 'shadow-amber-500/20',   border: 'border-amber-500/25' },
-  blue:    { bg: 'bg-blue-500/15',    text: 'text-blue-600 dark:text-blue-400',    glow: 'shadow-blue-500/20',    border: 'border-blue-500/25' },
-  emerald: { bg: 'bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400', glow: 'shadow-emerald-500/20', border: 'border-emerald-500/25' },
-  violet:  { bg: 'bg-violet-500/15',  text: 'text-violet-600 dark:text-violet-400',  glow: 'shadow-violet-500/20',  border: 'border-violet-500/25' }
+  amber:   { bg: 'bg-[var(--office-tone-amber-bg)]',   text: 'text-[var(--office-tone-amber-text)]',   glow: 'shadow-[0_16px_34px_var(--office-tone-amber-shadow)]',   border: 'border-[var(--office-tone-amber-border)]' },
+  blue:    { bg: 'bg-[var(--office-tone-blue-bg)]',    text: 'text-[var(--office-tone-blue-text)]',    glow: 'shadow-[0_16px_34px_var(--office-tone-blue-shadow)]',    border: 'border-[var(--office-tone-blue-border)]' },
+  emerald: { bg: 'bg-[var(--office-tone-emerald-bg)]', text: 'text-[var(--office-tone-emerald-text)]', glow: 'shadow-[0_16px_34px_var(--office-tone-emerald-shadow)]', border: 'border-[var(--office-tone-emerald-border)]' },
+  violet:  { bg: 'bg-[var(--office-tone-violet-bg)]',  text: 'text-[var(--office-tone-violet-text)]',  glow: 'shadow-[0_16px_34px_var(--office-tone-violet-shadow)]',  border: 'border-[var(--office-tone-violet-border)]' }
 };
 
 export function NogaStatCard({

@@ -108,9 +108,9 @@ export function OfficeSidebar({
                         title={module.label}
                         aria-label={module.label}
                         className={cn(
-                          'block rounded-xl border px-3 py-2.5 transition-colors',
+                          'ops-sidebar-link block rounded-xl border px-3 py-2.5 transition-colors',
                           active
-                            ? 'border-[var(--ring)] bg-[var(--accent)]'
+                            ? 'is-active border-[var(--ring)] bg-[var(--accent)]'
                             : 'border-transparent hover:border-[var(--border)] hover:bg-[var(--accent)]'
                         )}
                         onMouseEnter={() => onPrefetchModule?.(module.id)}

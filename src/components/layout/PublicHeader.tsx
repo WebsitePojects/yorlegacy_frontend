@@ -18,6 +18,7 @@ export function PublicHeader() {
     { label: 'Vision', href: '/vision' },
     { label: 'Mission', href: '/mission' },
     { label: 'Products', href: '/products' },
+    { label: 'News & Updates', href: '/news-updates' },
     { label: 'Packages', href: '/packages' },
     { label: '8 Ways of Wealth', href: '/earn' }
   ];

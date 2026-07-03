@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowRight,
@@ -75,6 +76,21 @@ const formatCurrency = (value: number): string =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })}`;
+
+function officePackageToneClass(packageTier: string): string {
+  switch (packageTier.trim().toUpperCase()) {
+    case 'VIP':
+      return 'office-package-chip office-package-chip--vip';
+    case 'BUSINESS':
+      return 'office-package-chip office-package-chip--business';
+    case 'STANDARD':
+      return 'office-package-chip office-package-chip--standard';
+    case 'CLASSIC':
+      return 'office-package-chip office-package-chip--classic';
+    default:
+      return 'office-package-chip office-package-chip--basic';
+  }
+}
 
 function formatDateTime(value: string | null | undefined): string {
   if (!value) {
@@ -198,21 +214,6 @@ const memberIncomeRouteMap: Record<string, { memberModuleId: string; publicHref:
 function getVisibleMemberMetrics(moduleId: string, metrics: MemberOfficeData['metrics']) {
   if (moduleId === 'dashboard') {
     return metrics;
-  }
-
-  if (moduleId === 'direct-referrals') {
-    return [];
-  }
-
-  if (
-    moduleId === 'salesmatch-bonus' ||
-    moduleId === 'binary-cycle-bonus' ||
-    moduleId === 'lifestyle-rewards'
-  ) {
-    return metrics.filter((metric) => {
-      const label = metric.label.toLowerCase();
-      return label.includes('left points') || label.includes('right points');
-    });
   }
 
   return [];
@@ -484,9 +485,12 @@ export function MemberDashboardPage() {
   const [payoutMethodDraft, setPayoutMethodDraft] = useState('');
   const [payoutDetailsDraft, setPayoutDetailsDraft] = useState('');
   const [isPayoutSaving, setIsPayoutSaving] = useState(false);
+  const [usernameDraft, setUsernameDraft] = useState('');
   const [emailDraft, setEmailDraft] = useState('');
   const [passwordDraft, setPasswordDraft] = useState('');
-  const [showMemberPassword, setShowMemberPassword] = useState(false);
+  const [showMemberPasswordPreview, setShowMemberPasswordPreview] = useState(false);
+  const [showMemberPasswordField, setShowMemberPasswordField] = useState(false);
+  const newPasswordInputRef = useRef<HTMLInputElement | null>(null);
   const [isCredentialsSaving, setIsCredentialsSaving] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [copiedCodeCount, setCopiedCodeCount] = useState<Record<string, number>>({});
@@ -549,8 +553,11 @@ export function MemberDashboardPage() {
       setSelectedTreeNodeId(bundle.binaryTree?.root.nodeId ?? null);
       setPayoutMethodDraft(bundle.office.profile.payoutMethod ?? '');
       setPayoutDetailsDraft(bundle.office.profile.payoutDetails ?? '');
+      setUsernameDraft(bundle.office.profile.username ?? '');
       setEmailDraft(bundle.summary?.user.email ?? '');
       setPasswordDraft('');
+      setShowMemberPasswordPreview(false);
+      setShowMemberPasswordField(false);
 
       if (bundle.walletDetail) {
         setEncashAmountInput(formatEncashmentInput(bundle.walletDetail.preview.requestedAmount));
@@ -1380,9 +1387,9 @@ export function MemberDashboardPage() {
 
         {/* ── TRANSACTIONS ── */}
         {moduleId === 'transactions' ? (
-          <section className="space-y-4">
-            <Card className="border-[var(--border)] bg-[var(--card)]">
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <section className="office-transactions space-y-4">
+            <Card className="office-feature-card border-[var(--border)] bg-[var(--card)]">
+              <CardHeader className="office-transaction-heading flex flex-row items-center justify-between gap-3 pb-3">
                 <div>
                   <CardTitle className="text-base">Transaction History</CardTitle>
                   <CardDescription className="text-xs">Wallet movements and encashment rows — click View Details for the full breakdown.</CardDescription>
@@ -1390,8 +1397,8 @@ export function MemberDashboardPage() {
                 <Badge variant="outline">{transactions.length} records</Badge>
               </CardHeader>
               <CardContent className="space-y-4 pt-0">
-                <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-                  <table className="w-full min-w-[680px] text-sm">
+                <div className="office-transaction-list rounded-xl border border-[var(--border)]">
+                  <table className="office-responsive-table office-transaction-table w-full text-sm">
                     <thead>
                       <tr className="border-b border-[var(--border)] bg-[var(--accent)]/40 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
                         <th className="px-4 py-3">Type</th>
@@ -1408,20 +1415,33 @@ export function MemberDashboardPage() {
                           <td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--muted-foreground)]">No transactions recorded yet.</td>
                         </tr>
                       ) : transactions.slice((transactionPage - 1) * 10, transactionPage * 10).map((transaction) => {
-                        const isEncash = transaction.category?.toLowerCase().includes('encash') || transaction.type === 'encashment';
+                        const category = transaction.category?.toLowerCase() ?? '';
+                        const isEncash = category.includes('encash') || transaction.type === 'encashment';
+                        const isDirectReferral = category.includes('direct_referral') || category.includes('direct referral');
+                        const isRewardCredit = category.includes('get_five') || category.includes('get five');
                         return (
                           <tr key={transaction.id} className="border-b border-[var(--border)] transition last:border-0 hover:bg-[var(--accent)]/30">
-                            <td className="px-4 py-3">
-                              <Badge variant={isEncash ? 'outline' : 'success'} className="whitespace-nowrap text-[10px]">
+                            <td className="px-4 py-3" data-label="Type">
+                              <Badge
+                                variant={isEncash ? 'outline' : isDirectReferral ? 'warning' : 'success'}
+                                className={cn(
+                                  'whitespace-nowrap text-[10px]',
+                                  isDirectReferral && 'font-semibold tracking-[0.04em]'
+                                )}
+                              >
                                 {transaction.category || (isEncash ? 'Encashment' : 'Income')}
                               </Badge>
                             </td>
-                            <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">{transaction.date}</td>
-                            <td className="px-4 py-3 font-semibold text-[var(--foreground)]">{transaction.gross}</td>
-                            <td className={['px-4 py-3 font-semibold', isEncash ? 'text-amber-400' : 'text-emerald-400'].join(' ')}>{transaction.net}</td>
-                            <td className="max-w-[180px] truncate px-4 py-3 text-xs text-[var(--muted-foreground)]" title={transaction.source}>{transaction.source}</td>
-                            <td className="px-4 py-3 text-right">
-                              <Button type="button" size="sm" variant="outline" className="h-7 px-3 text-xs"
+                            <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]" data-label="Date">{transaction.date}</td>
+                            <td className="px-4 py-3 font-semibold text-[var(--foreground)]" data-label="Amount">{transaction.gross}</td>
+                            <td data-label="Net Receivable" className={cn('px-4 py-3 font-semibold', isEncash || isDirectReferral || isRewardCredit ? 'text-[var(--status-warning-text)]' : 'text-[var(--status-success-text)]')}>
+                              {transaction.net}
+                            </td>
+                            <td data-label="Details" className={cn('max-w-[180px] truncate px-4 py-3 text-xs', isDirectReferral ? 'text-[var(--foreground)]' : 'text-[var(--muted-foreground)]')} title={transaction.source}>
+                              {transaction.source}
+                            </td>
+                            <td className="px-4 py-3 text-right" data-label="Action">
+                              <Button type="button" size="sm" variant="outline" className="h-7 border-[var(--status-warning-border)] bg-[var(--background)] px-3 text-xs text-[var(--status-warning-text)] hover:bg-[var(--status-warning-bg)]"
                                 onClick={() => handleSelectTransaction(transaction.id)}>
                                 View Details
                               </Button>
@@ -1444,7 +1464,7 @@ export function MemberDashboardPage() {
               </CardContent>
             </Card>
             {transactionDetail ? (
-              <Card className="border-[var(--border)] bg-[var(--card)]">
+              <Card className="office-feature-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Transaction Detail</CardTitle>
                   <CardDescription className="text-xs font-mono">{transactionDetail.transaction.id}</CardDescription>
@@ -1461,7 +1481,9 @@ export function MemberDashboardPage() {
                     ].map(({ label, value, highlight }) => (
                       <div key={label} className="flex flex-col gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 py-3">
                         <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">{label}</span>
-                        <span className={['text-sm font-semibold', highlight ? 'text-emerald-400' : 'text-[var(--foreground)]'].join(' ')}>{value}</span>
+                        <span className={cn('text-sm font-semibold', highlight ? 'text-amber-600 dark:text-amber-300' : 'text-[var(--foreground)]')}>
+                          {value}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1473,9 +1495,9 @@ export function MemberDashboardPage() {
 
         {/* ── ACCOUNT DETAILS ── */}
         {moduleId === 'account-details' && office ? (
-          <section className="space-y-4">
+          <section className="office-account-details space-y-4">
             {/* ── Profile overview card ── */}
-            <Card className="border-[var(--border)] bg-[var(--card)]">
+            <Card className="office-feature-card border-[var(--border)] bg-[var(--card)]">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
                   <span className="flex size-10 items-center justify-center rounded-xl bg-[var(--yor-copper)]/15">
@@ -1506,20 +1528,28 @@ export function MemberDashboardPage() {
                       <span className="text-sm font-medium text-[var(--foreground)]">{value}</span>
                     </div>
                   ))}
-                  {/* Password masked */}
+                  {/* Stored passwords remain server-side hashes; only a new password draft can be previewed. */}
                   <div className="flex flex-col gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3.5 py-3">
                     <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Password</span>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium tracking-widest text-[var(--foreground)]">
-                        {showMemberPassword ? (passwordDraft || '••••••••') : '••••••••'}
+                      <span className={cn('min-w-0 truncate text-sm font-medium text-[var(--foreground)]', passwordDraft && !showMemberPasswordPreview && 'tracking-widest')}>
+                        {passwordDraft
+                          ? (showMemberPasswordPreview ? passwordDraft : '••••••••')
+                          : 'Securely encrypted'}
                       </span>
                       <button
                         type="button"
-                        className="text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]"
-                        onClick={() => setShowMemberPassword((v) => !v)}
-                        aria-label={showMemberPassword ? 'Hide password' : 'Show password'}
+                        className="flex size-11 shrink-0 items-center justify-center rounded-lg text-[var(--muted-foreground)] transition hover:bg-[var(--accent)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                        onClick={() => {
+                          if (!passwordDraft) {
+                            newPasswordInputRef.current?.focus();
+                            return;
+                          }
+                          setShowMemberPasswordPreview((value) => !value);
+                        }}
+                        aria-label={passwordDraft ? (showMemberPasswordPreview ? 'Hide new password' : 'Show new password') : 'Focus new password field'}
                       >
-                        {showMemberPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        {!passwordDraft ? <KeyRound className="size-4" /> : showMemberPasswordPreview ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                       </button>
                     </div>
                   </div>
@@ -1530,7 +1560,7 @@ export function MemberDashboardPage() {
             {/* ── Edit cards ── */}
             <div className="grid gap-4 xl:grid-cols-2">
               {/* Security — email + password */}
-              <Card className="border-[var(--border)] bg-[var(--card)]">
+              <Card className="office-feature-card office-settings-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
                     <span className="flex size-9 items-center justify-center rounded-lg bg-blue-500/10">
@@ -1538,11 +1568,23 @@ export function MemberDashboardPage() {
                     </span>
                     <div>
                       <CardTitle className="text-sm font-semibold">Security Settings</CardTitle>
-                      <CardDescription className="text-xs">Update your login email or password.</CardDescription>
+                      <CardDescription className="text-xs">Update your login username, email, or password.</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  <label className="grid gap-1.5 text-sm">
+                    <span className="font-medium text-[var(--muted-foreground)]">Username</span>
+                    <div className="relative">
+                      <Users className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+                      <Input
+                        value={usernameDraft}
+                        onChange={(e) => setUsernameDraft(e.target.value)}
+                        placeholder="Choose your username"
+                        className="pl-9"
+                      />
+                    </div>
+                  </label>
                   <label className="grid gap-1.5 text-sm">
                     <span className="font-medium text-[var(--muted-foreground)]">Email Address</span>
                     <div className="relative">
@@ -1561,31 +1603,45 @@ export function MemberDashboardPage() {
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
                       <Input
-                        type={showMemberPassword ? 'text' : 'password'}
+                        ref={newPasswordInputRef}
+                        type={showMemberPasswordField ? 'text' : 'password'}
                         value={passwordDraft}
-                        onChange={(e) => setPasswordDraft(e.target.value)}
+                        onChange={(e) => {
+                          setPasswordDraft(e.target.value);
+                          if (!e.target.value) setShowMemberPasswordPreview(false);
+                        }}
                         placeholder="Leave blank to keep current"
                         className="pl-9 pr-10"
                       />
                       <button
                         type="button"
-                        tabIndex={-1}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]"
-                        onClick={() => setShowMemberPassword((v) => !v)}
-                        aria-label={showMemberPassword ? 'Hide password' : 'Show password'}
+                        onClick={() => setShowMemberPasswordField((value) => !value)}
+                        aria-label={showMemberPasswordField ? 'Hide password' : 'Show password'}
                       >
-                        {showMemberPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        {showMemberPasswordField ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                       </button>
                     </div>
                   </label>
+                  <p className="text-xs leading-5 text-[var(--muted-foreground)]">
+                    Your existing password is stored as a one-way security hash and cannot be displayed. The eye button previews only the new password you type here.
+                  </p>
                   <Button
                     type="button"
                     className="w-full"
-                    disabled={isCredentialsSaving || (!emailDraft.trim() && !passwordDraft.trim())}
+                    disabled={
+                      isCredentialsSaving ||
+                      (!usernameDraft.trim() && !emailDraft.trim() && !passwordDraft.trim()) ||
+                      (
+                        usernameDraft.trim() === (office.profile.username ?? '') &&
+                        emailDraft.trim() === (summary?.user.email ?? '') &&
+                        !passwordDraft.trim()
+                      )
+                    }
                     onClick={async () => {
                       const confirmed = await confirmAction({
                         title: 'Update security credentials?',
-                        description: 'Your email and/or password will be updated immediately.',
+                        description: 'Your username, email, and/or password will be updated immediately.',
                         confirmLabel: 'Update Credentials',
                         tone: 'warning'
                       });
@@ -1593,6 +1649,7 @@ export function MemberDashboardPage() {
                       setIsCredentialsSaving(true);
                       try {
                         await updateMemberCredentials({
+                          username: usernameDraft.trim() || undefined,
                           email: emailDraft.trim() || undefined,
                           password: passwordDraft.trim() || undefined
                         });
@@ -1612,7 +1669,7 @@ export function MemberDashboardPage() {
               </Card>
 
               {/* Payout settings */}
-              <Card className="border-[var(--border)] bg-[var(--card)]">
+              <Card className="office-feature-card office-settings-card border-[var(--border)] bg-[var(--card)]">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
                     <span className="flex size-9 items-center justify-center rounded-lg bg-amber-500/10">
@@ -1733,7 +1790,13 @@ export function MemberDashboardPage() {
                         <div key={item.code} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 transition hover:bg-[var(--accent)]/40">
                           <p className="font-mono text-sm font-semibold text-[var(--foreground)]">{item.code}</p>
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-[var(--muted-foreground)]">{item.packageTier}</span>
+                            <span
+                              className={cn('min-w-[96px] justify-center', officePackageToneClass(item.packageTier))}
+                              title={`${item.packageTier} package`}
+                              aria-label={`${item.packageTier} package`}
+                            >
+                              {item.packageTier}
+                            </span>
                             <Button type="button" size="sm" variant="outline" className="h-7 px-3 text-xs"
                               onClick={() => { setSelectedCode(item.code); void navigator.clipboard.writeText(item.code); }}>
                               Copy
@@ -2132,7 +2195,7 @@ export function MemberDashboardPage() {
 
         {/* ── SHADOW ACCOUNTS ── */}
         {moduleId === 'account-shadow-management' && activeModule && shadowAccounts ? (
-          <section className="grid gap-4">
+          <section className="office-shadow-accounts grid gap-4">
             <div className="grid gap-3 sm:grid-cols-3">
               <NogaStatCard icon={<ShieldCheck className="size-4" />} color="amber" label="Owner" value={shadowAccounts.owner} sub="shadow account holder" />
               <NogaStatCard icon={<Users className="size-4" />} color="blue" label="Shadow Slots" value={String(shadowAccounts.accounts.length)} sub="reserved binary positions" />
@@ -2155,7 +2218,7 @@ export function MemberDashboardPage() {
             ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
               {shadowAccounts.accounts.map((account) => (
-                <div key={account.id} className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
+                <div key={account.id} className="office-shadow-card relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
                   <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-amber-500/40 via-amber-300/60 to-transparent" />
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -2301,24 +2364,27 @@ export function MemberDashboardPage() {
 
       </div>
 
-      {moduleId === 'genealogy' && binaryTree && pendingRegistrationSlot ? (
-        <RegistrationPageView
-          key={`${pendingRegistrationSlot.parentUsername}-${pendingRegistrationSlot.side}`}
-          variant="modal"
-          initialContext={{
-            referralCode: binaryTree.root.referralCode,
-            placementSide: pendingRegistrationSlot.side,
-            placementParentUsername: pendingRegistrationSlot.parentUsername,
-            placementParentLabel: pendingRegistrationSlot.parentUsername
-          }}
-          onClose={() => setPendingRegistrationSlot(null)}
-          onSubmitted={() => {
-            setPendingRegistrationSlot(null);
-            clearAllOfficeCache();
-            setReloadNonce((current) => current + 1);
-          }}
-        />
-      ) : null}
+      {moduleId === 'genealogy' && binaryTree && pendingRegistrationSlot
+        ? createPortal(
+            <RegistrationPageView
+              key={`${pendingRegistrationSlot.parentUsername}-${pendingRegistrationSlot.side}`}
+              variant="modal"
+              initialContext={{
+                referralCode: binaryTree.root.referralCode,
+                placementSide: pendingRegistrationSlot.side,
+                placementParentUsername: pendingRegistrationSlot.parentUsername,
+                placementParentLabel: pendingRegistrationSlot.parentUsername
+              }}
+              onClose={() => setPendingRegistrationSlot(null)}
+              onSubmitted={() => {
+                setPendingRegistrationSlot(null);
+                clearAllOfficeCache();
+                setReloadNonce((current) => current + 1);
+              }}
+            />,
+            document.body
+          )
+        : null}
     </ProtectedOfficeFrame>
   );
 }
@@ -2404,10 +2470,10 @@ function EncashmentStatCard({
 type NogaColor = 'amber' | 'blue' | 'emerald' | 'violet';
 
 const nogaColorMap: Record<NogaColor, { bg: string; text: string; glow: string; border: string }> = {
-  amber:   { bg: 'bg-amber-500/15',   text: 'text-amber-600 dark:text-amber-400',   glow: 'shadow-amber-500/20',   border: 'border-amber-500/25' },
-  blue:    { bg: 'bg-blue-500/15',    text: 'text-blue-600 dark:text-blue-400',    glow: 'shadow-blue-500/20',    border: 'border-blue-500/25' },
-  emerald: { bg: 'bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400', glow: 'shadow-emerald-500/20', border: 'border-emerald-500/25' },
-  violet:  { bg: 'bg-violet-500/15',  text: 'text-violet-600 dark:text-violet-400',  glow: 'shadow-violet-500/20',  border: 'border-violet-500/25' },
+  amber:   { bg: 'bg-[var(--office-tone-amber-bg)]',   text: 'text-[var(--office-tone-amber-text)]',   glow: 'shadow-[0_16px_34px_var(--office-tone-amber-shadow)]',   border: 'border-[var(--office-tone-amber-border)]' },
+  blue:    { bg: 'bg-[var(--office-tone-blue-bg)]',    text: 'text-[var(--office-tone-blue-text)]',    glow: 'shadow-[0_16px_34px_var(--office-tone-blue-shadow)]',    border: 'border-[var(--office-tone-blue-border)]' },
+  emerald: { bg: 'bg-[var(--office-tone-emerald-bg)]', text: 'text-[var(--office-tone-emerald-text)]', glow: 'shadow-[0_16px_34px_var(--office-tone-emerald-shadow)]', border: 'border-[var(--office-tone-emerald-border)]' },
+  violet:  { bg: 'bg-[var(--office-tone-violet-bg)]',  text: 'text-[var(--office-tone-violet-text)]',  glow: 'shadow-[0_16px_34px_var(--office-tone-violet-shadow)]',  border: 'border-[var(--office-tone-violet-border)]' },
 };
 
 
@@ -2426,7 +2492,7 @@ function NogaStatCard({
 }) {
   const { bg, text, glow, border } = nogaColorMap[color];
   return (
-    <div className={`flex items-start gap-3 rounded-2xl border ${border} bg-[var(--card)] p-4 shadow-md ${glow}`}>
+    <div data-tone={color} className={`office-tone-card flex items-start gap-3 rounded-2xl border ${border} bg-[var(--card)] p-4 shadow-md ${glow}`}>
       <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${bg} ${text}`}>
         {icon}
       </span>
@@ -2580,7 +2646,8 @@ function DashboardIncomeGrid({
           <Link
             key={card.label}
             to={card.href}
-            className={`group relative flex flex-col gap-3 overflow-hidden rounded-2xl border ${border} bg-[var(--card)] p-5 shadow-md ${glow} transition-all duration-200 hover:scale-[1.015] hover:shadow-lg`}
+            data-tone={card.color}
+            className={`office-tone-card group relative flex flex-col gap-3 overflow-hidden rounded-2xl border ${border} bg-[var(--card)] p-5 shadow-md ${glow} transition-all duration-200 hover:scale-[1.015] hover:shadow-lg`}
           >
             {/* Subtle top glow line */}
             <div className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-current to-transparent opacity-40 ${text}`} />
@@ -2662,17 +2729,19 @@ function WalletView({
   const lifestyleThreshold = 1000;
 
   return (
-    <section className="space-y-4">
+    <section className="office-wallet-view space-y-4">
       {/* Tab switcher */}
-      <div className="flex gap-1 rounded-xl border border-[var(--border)] bg-[var(--accent)] p-1">
+      <div className="office-wallet-tabs" role="tablist" aria-label="Wallet sections">
         <button
           type="button"
           onClick={() => setActiveTab('main')}
+          role="tab"
+          aria-selected={activeTab === 'main'}
           className={[
-            'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition',
+            'office-wallet-tab',
             activeTab === 'main'
-              ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-              : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]',
+              ? 'is-active'
+              : '',
           ].join(' ')}
         >
           <Wallet className="size-4" />
@@ -2681,11 +2750,13 @@ function WalletView({
         <button
           type="button"
           onClick={() => setActiveTab('lifestyle')}
+          role="tab"
+          aria-selected={activeTab === 'lifestyle'}
           className={[
-            'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition',
+            'office-wallet-tab',
             activeTab === 'lifestyle'
-              ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-              : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]',
+              ? 'is-active'
+              : '',
           ].join(' ')}
         >
           <Star className="size-4" />
@@ -2694,11 +2765,13 @@ function WalletView({
         <button
           type="button"
           onClick={() => { setActiveTab('ledger'); setLedgerPage(1); setLedgerTypeFilter('all'); }}
+          role="tab"
+          aria-selected={activeTab === 'ledger'}
           className={[
-            'flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition',
+            'office-wallet-tab',
             activeTab === 'ledger'
-              ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-              : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]',
+              ? 'is-active'
+              : '',
           ].join(' ')}
         >
           <FileText className="size-4" />

@@ -15,18 +15,26 @@ type DirectReferralPanelProps = {
   activeModule: OperationalModule;
 };
 
+function packageChipClass(packageTier: string) {
+  switch (packageTier.trim().toUpperCase()) {
+    case 'VIP':
+      return 'office-package-chip office-package-chip--vip';
+    case 'BUSINESS':
+      return 'office-package-chip office-package-chip--business';
+    case 'STANDARD':
+      return 'office-package-chip office-package-chip--standard';
+    case 'CLASSIC':
+      return 'office-package-chip office-package-chip--classic';
+    default:
+      return 'office-package-chip office-package-chip--basic';
+  }
+}
+
 export function DirectReferralPanel({ activeModule }: DirectReferralPanelProps) {
   const [page, setPage] = useState(1);
-  // Hydrate synchronously from cache so revisiting the page renders instantly
-  // (cache-first / stale-while-revalidate) instead of flashing a loading spinner.
   const cachedRows = readOfficeCache<DirectReferralRow[]>(DR_CACHE_KEY)?.data ?? null;
   const [prodRows, setProdRows] = useState<DirectReferralRow[] | null>(cachedRows);
-  // Tracks whether the production endpoint answered. A successful response of zero
-  // rows is authoritative (the member genuinely has no directs) and must NOT fall
-  // back to the static sandbox catalog, which previously showed a phantom "5".
   const [prodResolved, setProdResolved] = useState(cachedRows !== null);
-  // Only show the loading state on a cold open (no cache). With cache present we
-  // render it immediately and refresh in the background.
   const [loading, setLoading] = useState(cachedRows === null);
 
   useEffect(() => {
@@ -48,27 +56,26 @@ export function DirectReferralPanel({ activeModule }: DirectReferralPanelProps) 
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [cachedRows]);
 
   const moduleRows = activeModule.table.rows as Array<Record<string, unknown>>;
-  const sandboxRows: DirectReferralRow[] = moduleRows.map((r) => ({
-    username: String(r.username ?? ''),
-    name: String(r.name ?? ''),
-    package: String(r.package ?? ''),
-    status: String(r.status ?? ''),
-    placement: String(r.placement ?? '')
+  const sandboxRows: DirectReferralRow[] = moduleRows.map((row) => ({
+    username: String(row.username ?? ''),
+    name: String(row.name ?? ''),
+    package: String(row.package ?? ''),
+    status: String(row.status ?? ''),
+    placement: String(row.placement ?? '')
   }));
 
-  // Prefer the production list whenever it resolved (even if empty); only fall back
-  // to the sandbox catalog when the production call actually failed.
   const rows: DirectReferralRow[] = prodResolved ? (prodRows ?? []) : sandboxRows;
   const totalPages = Math.max(1, Math.ceil(rows.length / DR_PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const visibleRows = rows.slice((currentPage - 1) * DR_PAGE_SIZE, currentPage * DR_PAGE_SIZE);
 
-  const COLS = [
+  const columns = [
     { key: 'username', label: 'Username' },
     { key: 'name', label: 'Full Name' },
     { key: 'package', label: 'Package' },
@@ -79,8 +86,8 @@ export function DirectReferralPanel({ activeModule }: DirectReferralPanelProps) 
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-4">
-        <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl border border-blue-500/25 bg-blue-500/10 shadow-md shadow-blue-500/20">
-          <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{loading ? '…' : rows.length}</span>
+        <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl border border-[var(--office-tone-blue-border)] bg-[var(--office-tone-blue-bg)] shadow-[0_16px_34px_var(--office-tone-blue-shadow)]">
+          <span className="text-2xl font-bold text-[var(--office-tone-blue-text)]">{loading ? '…' : rows.length}</span>
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-[var(--muted-foreground)]">Direct Referrals</p>
@@ -88,6 +95,7 @@ export function DirectReferralPanel({ activeModule }: DirectReferralPanelProps) 
           <p className="text-xs text-[var(--muted-foreground)]">Members you personally sponsored</p>
         </div>
       </div>
+
       <Card className="border-[var(--border)] bg-[var(--card)]">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <div>
@@ -101,26 +109,28 @@ export function DirectReferralPanel({ activeModule }: DirectReferralPanelProps) 
             <table className="w-full min-w-[540px] text-sm">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--accent)]/40 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
-                  {COLS.map((col) => (
+                  {columns.map((col) => (
                     <th key={col.key} className="px-4 py-3">{col.label}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={COLS.length} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">Loading…</td></tr>
-                ) : visibleRows.length ? visibleRows.map((row, i) => (
-                  <tr key={i} className="border-b border-[var(--border)] transition last:border-0 hover:bg-[var(--accent)]/30">
+                  <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">Loading…</td></tr>
+                ) : visibleRows.length ? visibleRows.map((row, index) => (
+                  <tr key={`${row.username}-${index}`} className="border-b border-[var(--border)] transition last:border-0 hover:bg-[var(--accent)]/30">
                     <td className="px-4 py-3 font-mono text-[var(--muted-foreground)]">{row.username}</td>
                     <td className="px-4 py-3 text-[var(--foreground)]">{row.name}</td>
-                    <td className="px-4 py-3 text-[var(--foreground)]">{row.package}</td>
+                    <td className="px-4 py-3">
+                      <span className={packageChipClass(row.package)}>{row.package}</span>
+                    </td>
                     <td className="px-4 py-3">
                       <Badge variant={row.status === 'active' ? 'success' : 'outline'} className="text-[10px]">{row.status}</Badge>
                     </td>
                     <td className="px-4 py-3 capitalize text-[var(--foreground)]">{row.placement}</td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={COLS.length} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">No direct referrals yet.</td></tr>
+                  <tr><td colSpan={columns.length} className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">No direct referrals yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -129,8 +139,8 @@ export function DirectReferralPanel({ activeModule }: DirectReferralPanelProps) 
             <div className="flex items-center justify-between gap-3 text-sm text-[var(--muted-foreground)]">
               <span>Page {currentPage} of {totalPages} · {rows.length} referral(s)</span>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</Button>
-                <Button type="button" variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+                <Button type="button" variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Prev</Button>
+                <Button type="button" variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>Next</Button>
               </div>
             </div>
           )}

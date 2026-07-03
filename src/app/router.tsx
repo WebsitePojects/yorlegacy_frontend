@@ -8,6 +8,7 @@ import { ContentPage } from '../pages/ContentPage';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { MemberDashboardPage } from '../pages/MemberDashboardPage';
+import { NewsUpdatesPage } from '../pages/NewsUpdatesPage';
 import { UnauthorizedPage } from '../pages/UnauthorizedPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 
@@ -43,6 +44,10 @@ export const routes = [
       {
         path: 'packages',
         element: <ContentPage slug="packages" />
+      },
+      {
+        path: 'news-updates',
+        element: <NewsUpdatesPage />
       },
       {
         path: 'register',
