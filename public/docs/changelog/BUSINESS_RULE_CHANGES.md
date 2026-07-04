@@ -2,6 +2,97 @@
 
 ---
 
+## 2026-07-04 — GATE-OWNER-FEEWAIVE-20260704: owner encashments waive fee + tax + retainer; owner identity moved to `system_owner_accounts` table
+
+**Rule area:** Encashment deduction stack for the system owner + owner-identity source of truth
+**Gate ID:** `GATE-OWNER-FEEWAIVE-20260704`
+
+### Background
+Under `GATE-OWNER-REWIRE-20260627`, the system-owner account (userId `db514090-87da-40be-9099-262b6af71a1c`,
+username Princel.T — the account the owner actually logs into) was made exempt from only the
+5% System Retainer on its own encashments; it still paid the ₱50 processing fee and the 10%
+withholding tax like any other member. Separately, "who is the owner" was resolved from a single
+hardcoded constant (`SYSTEM_OWNER_USER_ID`) plus a one-entry exemption Set in backend TypeScript —
+not backed by any dedicated table, and with no structural guard against a `member_profiles`
+"company account" tag being confused for genuine owner status.
+
+### What changed
+1. **Full-gross waiver on the owner's own encashments.** The owner now receives the full gross
+   with no deductions at all: the ₱50 processing fee, the 10% withholding tax, and the 5% System
+   Retainer are ALL waived (previously only the retainer was waived). CD (code-debt) recovery is
+   **unchanged** — if the owner has an outstanding CD obligation, it is still recovered exactly as
+   before.
+2. **Owner identity moved to a dedicated table.** New Supabase table `system_owner_accounts`
+   (`id`, `user_id` unique FK to `app_users`, `is_active`, `note`, timestamps; a partial unique
+   index enforces at most one active owner at a time) is now the SOLE source of truth for owner
+   privileges — encashment full-gross waiver, retainer exemption, and retainer recipient. A member
+   elsewhere flagged as a "company account" (`member_profiles.is_company_account` /
+   `company_account_tag`) does NOT get owner privileges from that tag alone; only the active row
+   in `system_owner_accounts` counts. This closes a spoofing gap where a company-account-tagged
+   member could theoretically be confused for the owner.
+3. **Deploy-safe fallback.** The backend resolver (`getActiveSystemOwnerUserId` / `isSystemOwner`)
+   safely falls back to the old hardcoded `SYSTEM_OWNER_USER_ID` constant if the table is
+   missing, empty, or errors — so this code deploys safely ahead of the migration being applied
+   to a given environment. A short in-memory cache (~60s) avoids a DB query on every encashment.
+
+### Money effect
+**Only the owner's own encashments are affected.** Every other member's encashment deduction
+stack (₱50 fee + 10% tax + 5% retainer + CD recovery) is completely unchanged — this is a
+single-account carve-out, not a rate change. CD recovery on the owner's own encashments is also
+unchanged.
+
+### Deployment status
+The migration file exists in the repo but has **NOT** been applied to DEV (currently paused) or
+PROD. Applying it to PROD requires separate owner/DB-workflow authorization per this repo's
+`db/migrations` process. The backend code is deploy-safe in the interim via the fallback
+described above.
+
+### Files
+`yor_backend/src/modules/production/encoding-service.ts` (owner resolver
+`getActiveSystemOwnerUserId`/`isSystemOwner`, `submitEncashment` waiver, `buildMemberWalletData`
+preview waiver, `creditOwnerRetainer`/`backfillOwnerRetainer`/`getOwnerRetainerSummary` now
+table-resolved), `yor_backend/src/modules/production/supabase-encoding-repository.ts` (new
+`findActiveSystemOwnerUserId` repo method), `yor_backend/supabase/migrations/20260704000001_system_owner_accounts.sql`
+(new table, pending DB apply), `yor_backend/supabase/schema.sql` (structural mirror update).
+
+---
+
+## 2026-07-03 — GATE-ENCASH-MIN-NET-20260703: reject encashments whose deductions meet/exceed gross
+
+**Rule area:** Encashment deduction stack — minimum net guard
+**Gate ID:** `GATE-ENCASH-MIN-NET-20260703`
+
+### Background
+The encashment deduction stack is: ₱50 processing fee + 10% withholding tax + 5% System
+Retainer + CD recovery. In `submitEncashment`, `postFixedNet` was clamped with
+`Math.max(0, …)` but the **stored `net = gross − totalDeductions` was not clamped**. For any
+gross below ~₱58.83 (or ~₱55.57 for retainer-exempt accounts), the fixed deductions exceed the
+gross, so `net` was stored **negative** while the **full gross was still debited** from the
+member's main wallet at submit time. The member permanently lost the gross for a zero/negative
+payout. The preview path (`buildMemberWalletData`) clamped its net to ₱0, so the UI showed a
+harmless "₱0 net" that silently became a negative stored net on submit — preview and submit
+disagreed.
+
+### What changed
+1. **Submit guard** — `submitEncashment` now rejects with "Encashment amount is too low to
+   cover the required deductions." when `net <= 0` (inside the existing `withMoneyLock`, before
+   the wallet is debited). No member can submit a self-defeating encashment.
+2. **Preview consistency** — the wallet preview now exposes `eligible`, `minimumEncashment`
+   (the smallest gross that leaves a positive net given fee + tax + retainer, exemption-aware),
+   and an unclamped `rawNet`, plus a note stating the minimum. The UI can now block the submit
+   instead of inviting a doomed one.
+
+### Money effect
+**No deduction rate or amount changes** — the 10% tax, ₱50 fee, and 5% retainer are untouched.
+This is purely a loss-prevention guard: it stops members from losing funds on sub-minimum
+requests. No valid (positive-net) encashment is affected. No DB/schema change.
+
+### Files
+`yor_backend/src/modules/production/encoding-service.ts` (`submitEncashment` net guard;
+`buildMemberWalletData` preview `eligible`/`minimumEncashment`/`rawNet`).
+
+---
+
 ## 2026-06-27 — GATE-OWNER-REWIRE-20260627: system operator earns the 5% retainer, exempt from it, with a dashboard/wallet surface
 
 **Rule area:** System retainer (5% encashment fee) — recipient, exemption, and visibility
