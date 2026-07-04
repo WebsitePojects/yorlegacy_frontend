@@ -119,6 +119,10 @@ function normalizeEncashmentInput(value: string): string {
     }
   }
 
+  // Strip redundant leading zeros (e.g. the default "0" + typed "7000" becoming
+  // "07000") while keeping a bare "0" or "0.xx" intact for decimal entry.
+  normalized = normalized.replace(/^0+(?=\d)/, '');
+
   return normalized;
 }
 
@@ -2778,7 +2782,9 @@ function WalletView({
               <CardHeader>
                 <CardTitle className="text-base">Encashment Preview</CardTitle>
                 <CardDescription className="text-xs">
-                  10% tax · PHP 50 processing fee{renderedEncashmentPreview.retainerExempt ? ' · system retainer waived' : ' · 5% system retainer'} · {walletDetail.summary.payoutSchedule.toLowerCase()}
+                  {renderedEncashmentPreview.retainerExempt
+                    ? 'All deductions waived (system owner)'
+                    : '10% tax · PHP 50 processing fee · 5% system retainer'} · {walletDetail.summary.payoutSchedule.toLowerCase()}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -2815,8 +2821,14 @@ function WalletView({
                   </div>
                 </div>
                 <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--background)] p-4">
-                  <EncashmentBreakdownRow label="10% Tax" value={renderedEncashmentPreview.tax} />
-                  <EncashmentBreakdownRow label="Processing Fee" value={renderedEncashmentPreview.processingFee} />
+                  {renderedEncashmentPreview.retainerExempt
+                    ? <EncashmentBreakdownRow label="10% Tax" value={0} note="Waived" />
+                    : <EncashmentBreakdownRow label="10% Tax" value={renderedEncashmentPreview.tax} />
+                  }
+                  {renderedEncashmentPreview.retainerExempt
+                    ? <EncashmentBreakdownRow label="Processing Fee" value={0} note="Waived" />
+                    : <EncashmentBreakdownRow label="Processing Fee" value={renderedEncashmentPreview.processingFee} />
+                  }
                   {renderedEncashmentPreview.retainerExempt
                     ? <EncashmentBreakdownRow label="System Retainer" value={0} note="Waived" />
                     : <EncashmentBreakdownRow label="System Retainer (5%)" value={renderedEncashmentPreview.systemRetainer} />
